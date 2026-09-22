@@ -16,13 +16,23 @@ clinical lead.
 - Voice audition. Avatar asset commissioned or chosen.
 - Regulatory advice on the v1 boundary requested.
 
+## Phase 0b: content tooling
+
+- The slot-schema loader, the context module, the closing-section schemas and
+  the parameters register, with the eight authoring checks in CI.
+- The chest pain worked module from the Framework Specification as the first
+  YAML module; the clinical lead transcribes further rows from the library.
+- The P1 to P14 transcript tests as a runnable harness over stored conversations.
+
 ## Phase 1: vertical slice, Dr Sam speaks and listens
 
 Goal: a patient hears the disclosure, tells Dr Sam a story, is reflected back to,
 and sees a read-back. Lip sync and three expressions. Runs on fakes.
 
 - `SpeechProvider` (azure, fake), `SttProvider` (azure, fake), `/say`, `/turns`
-  with a minimal persona prompt, `summary_delta`, read-back.
+  with the controller running the open phase, saturation, summary and one active
+  module (chest pain), slot writes stamped with turn ids, red-flag evaluation
+  and a logged alert; read-back from slots.
 - Frontend: consent screen, `DrSamPanel`, `Avatar` with placeholder Rive file
   (attentive, speaking, warm), `useTurnPlayer`, utterance recorder with silence
   end-point, captions, barge-in.
@@ -32,9 +42,17 @@ and sees a read-back. Lip sync and three expressions. Runs on fakes.
 
 Goal: the v1 product for patients and clinicians.
 
-- Safety-net rule set v1 with must-trigger and must-not-trigger transcripts.
+- The standard closing sections (five-route past medical history, medication
+  inventory, allergies, family history, social history, functional baseline,
+  ICE, review of systems) and the red-flag master list with three tiers.
+- Must-fire and must-not-fire transcripts per module.
 - Tone classifier and prosody features; response policy; consent switches.
-- Full persona prompt with registers; prompt-regression suite on the boundary.
+- Full persona prompt with registers; prompt-regression suite on the boundary
+  (diagnosis, urgency, medication advice, reassurance, stand-down).
+- Handover layer: narrative from slots, structured record, coding document,
+  alerts, safety-net record, clinician questions, attestation.
+- The mental health section only after the specialist review; the GP booking
+  call's Immediate tier only after D-42.
 - Content Safety screening.
 - Full expression set.
 - Structured summary, rendered document, clinician review UI, clinician question

@@ -1,273 +1,254 @@
 # 03. Technical architecture
 
-Status: **Proposed**
+Status: **Proposed**. Implements the four-layer agent defined in the Framework
+Specification and the Symptom Questioning Library (`reference/`).
 
 ## Stack
 
-Reuse the MedExec Coach foundation, as agreed: FastAPI (Python 3.11, SQLAlchemy 2,
+Reuse the MedExec Coach foundation as agreed: FastAPI (Python 3.11, SQLAlchemy 2,
 Alembic), React 18 + TypeScript (Vite), PostgreSQL, Docker, Azure Container Apps
-via Bicep, GitHub Actions. AI DOC is a new repository that starts from the
-MedExec backend and frontend skeletons (auth, settings, job queue, cost tracking,
-security middleware, test harness) with the exam-specific code removed.
-
-Additions specific to AI DOC: Azure AI Speech, Azure OpenAI, Azure AI Content
-Safety, Key Vault with managed identity, Entra External ID for patient sign-in,
-and a Rive avatar in the frontend.
+via Bicep, GitHub Actions. AI DOC is a new repository seeded from those skeletons
+with exam code removed. Additions: Azure OpenAI, Azure AI Speech, Azure AI Content
+Safety, Key Vault with managed identity, Entra External ID for patient sign-in, a
+FHIR terminology server for SNOMED CT-AU, and a Rive avatar.
 
 ## Principles
 
-1. Every external provider has a fake so the whole pipeline runs in tests and in
+1. The four layers are four codebases with four version numbers, and every
+   history records all four (Framework Specification, "Versioning").
+2. Code owns every consequential decision: module activation, saturation counts,
+   the coverage sweep, red-flag rules, escalation routing and every slot write.
+   The model owns wording, which cue to follow, when to elaborate, and the
+   handover narrative inside the process rules.
+3. Retrieval, not prompting: only the active module's slots enter the model's
+   context. The whole library is never in the prompt.
+4. Every external provider has a fake so the pipeline runs in tests and in
    `docker compose` with no keys.
-2. Keys stay on the server. The browser receives audio, timelines and captions,
-   or a short-lived speech token, never a key.
-3. The safety net is deterministic code, not model output.
-4. Health information is sensitive information under the Australian Privacy Act.
-   Everything is designed for Australia East residency, minimal retention, and an
-   audit trail.
-5. Pipeline first, realtime later: transcribe → think → speak is slower than a
-   speech-to-speech model but testable, auditable, cheaper, and gives visemes.
+5. Keys stay on the server. The browser receives audio, timelines and captions.
+6. Health information is sensitive information under the Privacy Act. Australia
+   East residency, minimal retention, audit trail.
+7. Pipeline first, realtime later: transcribe, think, speak.
 
 ## Components
 
 ```
-Browser (patient / clinician / companion device)         API (FastAPI)                         Azure
-------------------------------------------------         -------------                         -----
-Mic capture, end-of-utterance, prosody features ──────►  POST /conversations/{id}/turns
-                                                         ├─ SafetyNet (rules)  ───────────────► (none; local)
-                                                         ├─ ToneClassifier ────────────────────► Azure OpenAI (tone prompt)
-                                                         ├─ Orchestrator (persona prompt) ────► Azure OpenAI (streamed)
-                                                         ├─ ContentSafety ────────────────────► Azure AI Content Safety
-                                                         ├─ Synthesiser ──────────────────────► Azure AI Speech (audio + visemes)
-                                                         └─ TurnStore, SummaryStore (Postgres)
-Avatar (Rive) + captions + controls ◄── audio, visemes, expression, caption ──┘
-Clinician review UI ◄── GET /conversations/{id}/summary
+Browser                                       API (FastAPI)                                   Azure / services
+-------                                       -------------                                   ----------------
+Mic, end-of-utterance, prosody, barge-in ──►  POST /conversations/{id}/turns
+                                              ├─ Controller (control layer, deterministic)
+                                              │    module activation · saturation · sweep · red-flag rules · slot writes
+                                              ├─ Process rules P1..P14 (config + transcript tests)
+                                              ├─ Content: library loader (YAML modules, context module, closing sections)
+                                              ├─ Tone classifier ────────────────────────────► Azure OpenAI (tone prompt)
+                                              ├─ Persona model (wording only) ───────────────► Azure OpenAI (streamed)
+                                              ├─ Content Safety ─────────────────────────────► Azure AI Content Safety
+                                              ├─ Synthesiser ────────────────────────────────► Azure AI Speech (audio + visemes)
+                                              ├─ Terminology binder ─────────────────────────► FHIR terminology server (SNOMED CT-AU)
+                                              ├─ Alert router ───────────────────────────────► triage desk / GP callback (per setting)
+                                              └─ Stores: conversations, slot_values, alerts, handovers, attestations
+Avatar (Rive) + captions ◄── audio, visemes, expression, caption ──┘
+Clinician review and attestation UI ◄── handover, structured record, alerts
+Collateral interview UI (separate conversation linked to the index one)
 ```
+
+### Content layer on disk
+
+`content/` in the repository, edited by clinicians, with build-time authoring checks.
+
+- `content/modules/<presentation>.yaml`: the Framework Specification's slot schema
+  exactly: `module`, `version`, `status`, `activates_on`, `setting`, `slots[]`
+  with `id`, `class` (coverage | discriminating | red_flag | context), `intent`,
+  `phrasings[]` (id, form, text, use_when), `value`, `evidence` (lr, discriminates,
+  citation, grade, population, or `gap: true`), `verbatim`, `negative_reporting`;
+  `red_flags[]` with `fires_when`, `action` per setting, `alert` template,
+  `suppressible: false`; `closing` with the four safety-net components;
+  `prohibited`; `gaps`.
+- `content/context.yaml`: the context module, including `ctx.gender`,
+  `ctx.sex_recorded`, `ctx.organ_inventory`, `ctx.pregnancy_status`,
+  `ctx.medications` (with anticoagulant, antiplatelet, immunosuppressant named),
+  `ctx.smoking.pack_years`, `ctx.weight_change`, `ctx.conditions.atrial_fibrillation`,
+  `ctx.family_history.sudden_death`, `ctx.exposure.animal_bite`, each with
+  `prefill_from`, `confirm`, `gates`.
+- `content/closing/*.yaml`: past medical history (five routes, tense rule,
+  lay-anchored condition sweep per language), medication inventory (thirteen
+  categories, per-medicine fields, allergy fields), family history (trigger
+  patterns with thresholds, extended-family phrasing, three-state values), social
+  history (contextual prompts; systematic items only where a local response
+  exists), functional baseline, ideas-concerns-expectations, review of systems.
+- `content/mental_health.yaml`: Columbia Protocol wording and branching,
+  escalation per setting. Blocked from runtime until the specialist review flag
+  is set.
+- `content/parameters/<deployment>.yaml`: the configurable parameters register
+  (age thresholds, imaging rules, AUDIT-C threshold, sepsis criteria set, bat
+  exposure notification pathway, childbearing range, helplines, escalation
+  routes), versioned and visible to reviewers.
+- `content/phrasings/`: shared phrasing variants with ids, for P5 invitations
+  and the standard closing questions.
+
+Authoring checks (CI, fail the build): every phrasing passes the P7 polarity
+check; every discriminating slot has evidence or a declared gap; every red-flag
+rule references existing slot ids; every stigmatised slot has a preamble; every
+module has all four closing components; no slot id reused or changed without a
+version bump; every likelihood ratio declares a derivation population, and pooled
+values on presentations with known sex-based disparity declare a stratified value
+or a gap; no gating rule references `ctx.gender` or `ctx.sex_recorded`.
+
+### Control layer
+
+`app/control/`: the controller. Holds conversation state: phase, active modules,
+the problem list with per-problem saturation state, filled and required slots,
+context slot values with prefill provenance, the transition log, the
+phrasing-yield log, the route-yield log for past medical history, fired rules and
+alerts. Each turn it hands the persona model the phase, the allowed moves, the
+active module's outstanding slots (never the whole library), the P-rule
+constraints and the register. It parses the person's turn into slot values with
+the model's help but writes them itself, stamped with the turn id, and evaluates
+red-flag rules after every write and again after the coverage sweep. It never
+lets the model skip a phase, cap the opening, ask a hypothesis-testing question,
+stand down, or reassure. Immediate-tier rules interrupt the flow and call the
+alert router.
+
+### Process layer
+
+`app/process/rules.py`: P1 to P14 as constraints the controller enforces and as
+transcript tests the evaluation harness runs over every stored conversation. The
+same table, two uses.
+
+### Handover layer
+
+`app/handover/`: narrative generator (from slots only; a narrative clause without
+a slot behind it fails validation), structured record renderer, coding document
+renderer with provenance and the empty diagnosis block, alert record, safety-net
+record, clinician question answering (slots and verbatim only; "I didn't ask"
+otherwise), attestation workflow. Ordering rules per D-44. Terminology binding
+via `TerminologyProvider` (SNOMED CT-AU through the National Clinical Terminology
+Service's Ontoserver or Azure Health Data Services; fake returns stable ids).
+Never emits ICD-10-AM codes.
+
+### Dr Sam layer (this pack's contribution)
+
+`app/drsam/`: `ToneProvider` (llm, fake); persona prompt builder (register,
+moves, style, P-rule reminders); `SpeechProvider` (azure, fake) returning audio
+and a viseme timeline; expression mapper from move to expression; content-safety
+gate on every spoken turn. Prompts in `app/prompts/` versioned as the fourth
+layer's own component: `drsam_persona_v1.md`, `drsam_register_*_v1.md`,
+`drsam_tone_v1.md`, `drsam_handover_narrative_v1.md`.
 
 ### Browser
 
-- `src/drsam/`: `DrSamPanel.tsx`, `Avatar.tsx` (Rive runtime; inputs
-  `expression`, `viseme`, `speaking`, `reduced_motion`), `useTurnPlayer.ts`
-  (schedules visemes and expression changes against `AudioContext.currentTime`),
-  `useUtteranceRecorder.ts` (capture, 1.2 s silence end-point, upload),
-  `prosody.ts` (rate, pauses, loudness variance, fillers), `barge.ts`.
-- `src/intake/`: consent screen, conversation screen, read-back screen.
-- `src/clinician/`: summary view, question box, flag handling.
-- `src/companion/`: large-type, slow-rate variant of the panel (phase 3).
+`src/drsam/` (panel, avatar, turn player, utterance recorder with silence
+end-point, prosody features, barge-in), `src/intake/` (consent, interview,
+read-back, safety-net display), `src/collateral/`, `src/clinician/` (handover
+playback, structured record, alerts, question box, attestation editor), `src/companion/` (phase 3).
 
-### Backend
+## Providers
 
-- `app/services/drsam/questioning_engine.py`: the deterministic phase machine of
-  `02_interaction_design.md`. Holds the phase, the named problems and their
-  saturation state, the outstanding coverage, discriminating and red-flag items
-  per symptom class from the symptom library, and the background schedule. Each
-  turn it hands the model the phase, the allowed moves and at most one
-  outstanding item; the model supplies wording. It never lets the model skip a
-  phase, cap the opening, or ask a hypothesis-testing question.
-- `app/symptom_library/*.yaml`: one file per symptom class with `coverage`,
-  `discriminating` (with `lr`, `citation`, `setting`, or `gap: true`) and
-  `red_flag` (with `trigger`, `response_id`, `alert_class`) entries, and
-  `phrasings` with ids and variants. Versioned; owned by the clinical lead.
-- `app/safety_netting/*.yaml`: clinician-authored written safety-netting
-  templates keyed to symptom class (D-31).
-- `app/services/drsam/safety_net.py`: versioned rule set (YAML), pattern matching
-  on the transcript window, fixed responses, unit-tested against scripted
-  transcripts in `tests/safety_net_cases/`.
-- `app/services/drsam/tone.py`: `ToneProvider` protocol, `llm` and `fake`.
-- `app/services/drsam/orchestrator.py`: builds the persona prompt from mode,
-  audience register, transcript window, summary so far and tone; streams the
-  model; validates the turn contract; applies the response policy constraints;
-  requests synthesis per sentence; persists.
-- `app/services/drsam/speech.py`: `SpeechProvider` protocol, `azure` and `fake`;
-  returns audio bytes and a viseme timeline; caches by SSML hash in Blob Storage.
-- `app/services/drsam/content_safety.py`: screens model output before synthesis;
-  on a hit the turn is replaced by a `decline` and logged.
-- `app/services/drsam/summary.py`: merges `summary_delta` into the structured
-  history; renders Output A (handover narrative) and Output B (coding document)
-  with field-level provenance; never fills the diagnosis block.
-- `app/services/drsam/terminology.py`: `TerminologyProvider` protocol binding
-  free-text concepts to SNOMED CT-AU via a FHIR terminology server (the National
-  Clinical Terminology Service's Ontoserver, or Azure Health Data Services with
-  the SNOMED CT-AU edition loaded); `fake` returns stable placeholder concept ids.
-  Emits concepts only, never ICD-10-AM codes.
-- `app/services/drsam/attestation.py`: clinician edit-and-sign workflow; records
-  who signed what version when; the signed document is the only one exported.
-- `app/prompts/`: `drsam_persona_v1.md`, `drsam_register_patient_v1.md`,
-  `drsam_register_clinician_v1.md`, `drsam_tone_v1.md`. Versioned, reviewed by
-  the clinical lead before release.
-- `app/api/conversations.py`, `app/api/clinician.py`, `app/api/consent.py`.
-
-### Providers
-
-| Concern | v1 | Alternatives | Fake |
-| --- | --- | --- | --- |
-| Persona and tone model | Azure OpenAI, Australia East, a current GPT-4-class model, temperature low for tone | OpenAI direct; another vendor behind the same protocol | Canned turns by mode and tone |
-| Speech-to-text | Azure AI Speech, per utterance via the API | Azure real-time STT from the browser with a token (phase 4); OpenAI transcription | Placeholder transcript |
-| Text-to-speech | Azure AI Speech neural TTS with viseme events | OpenAI TTS (no visemes) | Silent audio plus synthetic visemes |
-| Output screening | Azure AI Content Safety | Model-side only | Pass-through |
-| Avatar | Rive character with a state machine | glTF + three.js with blend shapes | Static SVG with expression swap |
+| Concern | v1 | Fake |
+| --- | --- | --- |
+| Persona and tone model | Azure OpenAI, Australia East | Canned turns by phase and tone |
+| Speech-to-text | Azure AI Speech per utterance; real-time from the browser in phase 4 | Placeholder transcript |
+| Text-to-speech | Azure AI Speech neural TTS with viseme events | Silent audio plus synthetic visemes |
+| Output screening | Azure AI Content Safety | Pass-through |
+| Terminology | FHIR terminology server, SNOMED CT-AU | Stable placeholder concept ids |
+| Alert routing | ED: triage desk endpoint agreed with the site; GP: callback queue | Logged alert |
+| Supplier medication source (phase 3) | My Health Record, Active Script List or dispensing repository, with per-encounter consent | Static list |
 
 ## API
 
-All routes authenticated. Patients authenticate with Entra External ID or a
-clinic-issued one-time link; clinicians with Entra ID.
-
 | Route | Purpose |
 | --- | --- |
-| `POST /conversations` | Start: `{mode, audience, clinic_id, consent: {ai_disclosure, tone_adaptation, summary_to_clinician}}` |
-| `POST /conversations/{id}/turns` | Person's turn: `{transcript?, audio_ref?, prosody, interrupted_at_ms?}` → turn contract, `audio_url`, `visemes`, `caption` |
-| `POST /conversations/{id}/say` | Dr Sam speaks a fixed script (disclosure, safety net, read-back) |
-| `POST /conversations/{id}/read-back` | Generate the read-back from the summary so far |
-| `POST /conversations/{id}/end` | Close and finalise the summary |
-| `GET /conversations/{id}` | Conversation with turns, for resume |
-| `GET /conversations/{id}/handover` | Output A: narrative handover, text and optional spoken audio (clinician scope) |
-| `GET /conversations/{id}/coding-document` | Output B: field-structured, provenance-labelled document, diagnosis block empty (clinician scope) |
-| `POST /conversations/{id}/attest` | Clinician's edited document plus signature; creates an attested version; the only exportable form |
-| `POST /conversations/{id}/clinician-questions` | Clinician asks what the patient said about something; answers quote the transcript only |
-| `GET /audio/{turn_id}` | Streams cached audio |
-| `GET /speech-token` | Phase 4: ten-minute Azure Speech token for browser-side STT |
+| `POST /conversations` | `{setting: ed | gp_booking, language, consent: {ai_disclosure, tone_adaptation, summary_to_clinician}, record_prefill}` |
+| `POST /conversations/{id}/turns` | Person's turn: `{transcript?, audio_ref?, prosody, interrupted_at_ms?}`; returns the turn contract, `audio_url`, `visemes`, `caption`, and any alert |
+| `POST /conversations/{id}/say` | Fixed scripts: disclosure, alert wording, read-back, safety-net close |
+| `POST /conversations/{id}/collateral` | Open the linked collateral interview |
+| `POST /conversations/{id}/end` | Close; finalise the handover |
+| `GET /conversations/{id}/handover` | Narrative (text and spoken), structured record, alerts, safety-net record |
+| `GET /conversations/{id}/coding-document` | Provenance-labelled document, diagnosis block empty |
+| `POST /conversations/{id}/clinician-questions` | Answers from slots and verbatim only |
+| `POST /conversations/{id}/attest` | Clinician's edited document plus signature; the only exportable form |
+| `GET /conversations/{id}/export` | The whole record for the study: transcript, turns, slots, logs, versions |
 
 ## Data model
 
-- `clinics`: `id`, `name`, `helplines_override` (JSON), `retention_days`.
-- `people`: `id`, `clinic_id`, identity provider subject, display name, preferences
-  (JSON: avatar, voice, reduced motion, caption size).
-- `conversations`: `id`, `clinic_id`, `person_id`, `mode`, `audience`,
-  `setting` (ed | gp), `language`, `consent` (JSON), `started_at`, `ended_at`,
-  `safety_net_flags` (JSON), `history` (JSON, the structured capture),
-  `handover_ref`, `coding_document_ref`, `is_simulation` (bool),
-  `agent_version`, `prompt_version`, `ruleset_version`.
-- `history_items`: `id`, `conversation_id`, `block` (symptom | condition |
-  medicine | external_cause | risk_factor | social | obstetric), `fields` (JSON),
-  `snomed_concept_id`, `snomed_term`, `provenance` (patient_reported |
-  clinician_confirmed | derived | structural), `transcript_turn_ids`.
-- `attestations`: `id`, `conversation_id`, `clinician_id`, `document_version`,
-  `diagnosis_block` (JSON, clinician-entered), `edits` (JSON diff),
-  `signed_at`.
-- `turns`: `id`, `conversation_id`, `order`, `role`, `text`, `move`, `phase`,
-  `library_item_id`, `phrasing_variant_id`, `expression`, `tone_label`,
-  `tone_confidence` (null unless consent), `prosody` (JSON), `audio_ref`,
-  `viseme_ref`, `asr_confidence`, `model`, `latency_ms` (JSON),
-  `interrupted_at_ms`, `content_safety_result`, `created_at`.
-- `experiments`: registered phrasing or stopping-rule experiments with arms and
-  allocation, so randomised phrasings are analysable (D-34).
-- `audit_events`: who viewed or exported which conversation or summary, when.
-- `ai_cost_events`: reuse from MedExec, with `drsam_turn`, `drsam_tone`,
-  `drsam_stt`, `drsam_tts` event types.
-
-## Voice layer risks
-
-Every automated history-taking result in the evidence is text or form based.
-Voice adds turn-taking, interruption handling, silence tolerance, prosody, speech
-recognition error on symptom vocabulary and accents, and no scroll-back for the
-patient. Consequences for the build:
-
-- Facilitators ("mm-hm") are spoken by Dr Sam while the patient talks, so the
-  capture path must exclude Dr Sam's own audio: acoustic echo cancellation on the
-  microphone stream, and the known synthesised audio subtracted or gated in
-  software before transcription.
-- An ASR accuracy sub-study on symptom vocabulary, accented English and each v1
-  language runs before Stage B; `asr_confidence` is stored per turn and low
-  confidence triggers `clarify` rather than silent acceptance.
-- Silence tolerance in phase 1 is at least three seconds before a facilitator
-  and never a question.
-
-## Multilingual
-
-Azure AI Speech transcribes and synthesises in the languages the pilot needs, and
-the persona model converses in them; the structured capture and both outputs are
-always produced in English for the clinician. The interview language is recorded
-on the conversation so every evaluation measure can be stratified by it. Which
-languages ship in v1 is decision D-29.
+- `conversations`: `id`, `clinic_id`, `person_id`, `setting`, `language`,
+  `consent` (JSON), `is_simulation`, `process_version`, `content_version`
+  (per-module map), `control_version`, `handover_version`, `prompt_versions`
+  (JSON), `parameters_version`, `started_at`, `ended_at`, `bail_out_reason`.
+- `turns`: `id`, `conversation_id`, `order`, `role`, `text`, `text_original_language`,
+  `move`, `phase`, `active_module`, `slot_id`, `phrasing_variant_id`,
+  `expression`, `tone_label`, `tone_confidence` (null without consent), `prosody`,
+  `asr_confidence`, `audio_ref`, `viseme_ref`, `latency_ms`, `interrupted_at_ms`,
+  `content_safety_result`, `created_at`.
+- `slot_values`: `id`, `conversation_id`, `slot_id`, `module`, `module_version`,
+  `value`, `verbatim`, `verbatim_original_language`, `state` (filled | not_asked
+  | unknown | denied), `source` (person | collateral | prefill | delegated_observation),
+  `observer`, `turn_id`, `written_at`. The three-state rule for family history
+  and the "not asked versus negative" rule are enforced here.
+- `alerts`: `id`, `conversation_id`, `rule_id`, `tier`, `fired_at`, `verbatim`,
+  `clock_times` (JSON), `routed_to`, `acknowledged_at`.
+- `handovers`: `id`, `conversation_id`, `version`, `narrative`, `structured_record`
+  (JSON), `coding_document` (JSON), `safety_net_record`, `rendered_at`.
+- `attestations`: `id`, `conversation_id`, `clinician_id`, `handover_version`,
+  `diagnosis_block`, `edits`, `signed_at`.
+- `collateral_interviews`: linked conversations with `informant_relationship`.
+- `experiments`: registered phrasing, stopping-rule and handover-format arms.
+- `audit_events`, `ai_cost_events` as before.
 
 ## Latency budget
 
-Target: Dr Sam begins speaking within two seconds of the person's last word.
+Target: Dr Sam speaks within two seconds of the person's last word. Silence
+end-point 1.2 s; upload and transcribe 0.6 s; controller 0.05 s; persona model
+first sentence 0.8 s streamed; content safety 0.2 s; synthesis 0.4 s; playback
+0.1 s. Immediate-tier alerts fire from the controller on the slot write and do
+not wait for speech.
 
-| Stage | Budget |
-| --- | --- |
-| End-of-utterance silence | 1.2 s (floor; real-time STT in phase 4 removes most of it) |
-| Upload and transcribe the utterance | 0.6 s |
-| Safety net | 0.01 s |
-| Tone classification, parallel with the persona call | 0 s added |
-| Persona model, first sentence streamed | 0.8 s |
-| Content safety on the first sentence | 0.2 s |
-| Synthesis of the first sentence | 0.4 s |
-| Playback start | 0.1 s |
+## Voice layer
 
-A `listening` → `thoughtful` expression change at end of utterance covers the gap.
+Every result behind the design is text or form based. The build carries: echo
+cancellation and gating so spoken facilitators do not pollute transcription; an
+ASR accuracy sub-study on symptom vocabulary, accented English and each v1
+language before Stage B; `asr_confidence` per turn with low confidence routing to
+`clarify`; silence tolerance of at least three seconds before a facilitator;
+per-language lay anchors authored, not translated (D-29).
 
 ## Azure resources
 
-| Resource | Bicep | Notes |
-| --- | --- | --- |
-| Resource group, Log Analytics, Container Apps environment, ACR, PostgreSQL Flexible Server, storage | As in MedExec `infra/azure/main.bicep` | Australia East |
-| Azure OpenAI | `Microsoft.CognitiveServices/accounts` kind `OpenAI`, plus deployments for the persona model and the tone model | Data stays in the region; not used for training; abuse-monitoring exemption can be requested for health data |
-| Azure AI Speech | kind `SpeechServices`, sku `S0` | TTS with visemes; STT per utterance |
-| Azure AI Content Safety | kind `ContentSafety` | Screens model output |
-| Key Vault + user-assigned managed identity | `Microsoft.KeyVault/vaults`, `Microsoft.ManagedIdentity/userAssignedIdentities` | All secrets; container apps read via identity |
-| Blob containers | `audio-cache`, `summaries` | Lifecycle rules: audio 7 days, summaries per clinic retention |
-| Entra External ID | Tenant configured outside Bicep | Patient sign-in; clinicians via Entra ID |
-| Application Insights | Linked to Log Analytics | Per-stage latency traces |
-| Azure Health Data Services (FHIR) | Phase 3 | Summary as a FHIR `Composition` for practice-software integration |
+| Resource | Notes |
+| --- | --- |
+| MedExec base: Container Apps environment, ACR, PostgreSQL Flexible Server, storage, Log Analytics | Australia East |
+| Azure OpenAI | Persona and tone deployments; no training on data |
+| Azure AI Speech | TTS with visemes; STT per utterance; real-time STT token in phase 4 |
+| Azure AI Content Safety | Screens every spoken turn |
+| Key Vault and managed identity | All secrets |
+| Blob containers | Audio cache 7 days; handover documents per clinic retention |
+| Entra External ID | Patient sign-in; clinicians via Entra ID |
+| Application Insights | Per-stage traces |
+| Azure Health Data Services (phase 3) | FHIR export; terminology service if not using Ontoserver |
 
-Container Apps support WebSockets and streaming responses natively, so no SignalR.
-No Redis until sessions are held in memory across replicas.
-
-Environment variables:
-
-```
-AIDOC_MODE_DEFAULT=intake
-MODEL_PROVIDER=azure_openai            # azure_openai | openai | fake
-AZURE_OPENAI_ENDPOINT=
-AZURE_OPENAI_DEPLOYMENT_PERSONA=
-AZURE_OPENAI_DEPLOYMENT_TONE=
-TTS_PROVIDER=azure                     # azure | fake | browser
-STT_PROVIDER=azure                     # azure | fake
-AZURE_SPEECH_REGION=australiaeast
-AZURE_SPEECH_VOICE=                    # chosen after the audition
-CONTENT_SAFETY_PROVIDER=azure          # azure | fake
-TONE_PROVIDER=llm                      # llm | fake
-TONE_THRESHOLD=0.6
-DISTRESS_THRESHOLD=0.4
-SAFETY_NET_RULESET=v1
-AIDOC_HELPLINES=000|Lifeline 13 11 14|Beyond Blue 1300 22 4636|1800RESPECT 1800 737 732|healthdirect 1800 022 222
-AUDIO_CACHE_DAYS=7
-```
-
-Secrets (`AZURE_OPENAI_KEY`, `AZURE_SPEECH_KEY`, `CONTENT_SAFETY_KEY`, database
-credentials, JWT secret) live in Key Vault and are referenced, never copied.
+Environment variables as in the earlier draft, plus `CONTENT_DIR`,
+`PARAMETERS_DEPLOYMENT` (for example `sa_health_regional`),
+`ALERT_ROUTE_ED`, `ALERT_ROUTE_GP`, `MENTAL_HEALTH_SECTION_ENABLED` (false until
+specialist review), `REFUSAL_LIST`.
 
 ## Testing
 
-- Unit: safety-net rules against scripted transcripts (must-trigger and
-  must-not-trigger sets, maintained by the clinical lead); turn-contract
-  validation; response-policy constraints; summary merging; prosody extraction;
-  viseme scheduling.
-- API: conversation lifecycle, consent flags honoured (no tone labels stored when
-  off), safety-net path ends the intake, clinician scope, audit events, cost
-  events, all on fakes.
-- Playwright: patient intake with the fake microphone, assertions on captions,
-  expression attributes, barge-in and the read-back screen; clinician review.
-- Prompt regression: a fixed set of intake transcripts run through the persona
-  prompt on every prompt change, reviewed for boundary violations (any diagnosis,
-  urgency or medication language fails the build).
-- Manual: voice audition; expression review on phone, tablet and desktop; reduced
-  motion; a waiting-room noise test for end-of-utterance detection.
+- Content: the authoring checks above; a scripted transcript per module that
+  must fire each red-flag rule and a benign one that must not.
+- Control: unit tests for saturation counting, module activation by trigger
+  phrasing, coverage sweep, rule evaluation over slots including the
+  unfilled-required-slot case, tier routing per setting, prohibited actions.
+- Process: the P1 to P14 transcript tests run over every stored conversation in
+  CI against the fake providers.
+- Handover: a clause without a slot fails; not-asked never renders as negative;
+  per-slot negative reporting; ordering rules; empty diagnosis block; "I didn't ask".
+- API and Playwright as before, plus the collateral interview and the attestation editor.
+- Prompt regression: fixed transcripts through the persona prompt; any diagnosis,
+  urgency, medication advice, reassurance or stand-down language fails.
 
-## Privacy, security and clinical governance
+## Privacy, security and governance
 
-- Consent is collected in three separate switches: AI disclosure acknowledged,
-  tone adaptation, summary shared with the named clinician. Tone off means no
-  labels stored and no "how the patient seemed" line.
-- Data minimisation: no camera; audio deleted after transcription plus a short
-  cache; prosody stored as aggregates; transcripts retained per clinic setting.
-- Residency: every Azure service in Australia East. Documented per environment.
-- Access: clinicians see only their clinic's conversations; every view and export
-  is audited; patients can request their transcript and deletion.
-- Notifiable Data Breaches: incident runbook before pilot.
-- Clinical governance: a named clinical lead owns the safety-net rule set, the
-  persona prompts and the summary format, and signs off each version. Prompt and
-  rule versions are recorded on every turn.
-- Regulatory: written advice on the v1 boundary before pilot; a v2 pathway
-  document before any triage feature is built.
-- Logging: turn IDs, latencies, providers and versions; never turn text.
+As before (three consent switches, residency, audit, retention, breach runbook,
+scribe-advisory baseline), plus: supplier medication sources need their own
+per-encounter consent; the mental health section is disabled until specialist
+sign-off; the configurable parameters register has a named deployment owner;
+the refusal list has a runtime owner (D-43).

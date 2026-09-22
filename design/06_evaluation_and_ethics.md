@@ -12,7 +12,7 @@ and no health information about a real person is collected.
 
 Materials, owned by the clinical lead:
 
-- A case bank of 20 to 30 simulated presentations covering ED and GP: chest pain,
+- A case bank drawn from the library's presentations, covering ED and GP: chest pain,
   abdominal pain, headache, breathlessness, mental-health presentations, paediatric
   via a parent, an older person with a carer present, low-literacy and
   English-as-a-second-language presentations, and at least five that contain a
@@ -56,13 +56,26 @@ scripts. The evidence review adds the endpoints below at little extra cost.
 | Handover format | Narrative-plus-structured versus structured-alone as a randomised arm, with clinician decision quality as the outcome | Two-arm comparison; unstudied in the literature |
 | Voice accuracy | ASR word error on symptom vocabulary, accented English and each v1 language; disfluency and interruption handling | Sub-study before Stage B |
 | Phrasing and stopping rules | Registered experiments: "something" versus "anything" and other phrasing variants; symptom-saturation stopping versus a fixed comprehensive schedule | Randomised in simulation (D-34) |
+| Process adherence | P1 to P14 transcript tests over every conversation, reported as an audit, not as the outcome | The Framework Specification's table |
+| Truthful pertinent negatives | Every documented negative traces to an asked question; compared with the 73% of documented ROS negatives never asked in practice | Weiner 2020 |
+| ROS stratum | Symptoms elicited by the systems review analysed separately from the presenting complaint | D-37 |
+| Family history | Scored as its own domain against a consultant-taken structured family history on the same simulated patient, not against what the treating doctor documented | Family history evidence base |
+| Medication history | Discrepancies per patient against a pharmacist Best Possible Medication History with severity grading; comparators: doctor-taken history, self-administered form, dispensing record alone; time to a complete history | Medication evidence base; never powered on utilisation |
+| Confabulation | Rate of slot values or narrative clauses with no transcript span; anticoagulant capture tested in both error directions | The prehospital stroke voice-agent prior art |
+| Route yield | Per-route incremental yield for past medical history; free recall versus the named-condition sweep | PMH evidence base |
+| Disclosure direction | Whether patients disclose more or less to the voice agent on stigmatised items (substances, sexual history, sphincter function, risk questions) than to a clinician | Library recurring principle 6 |
+| Equity | Whether elicitation and handover narrow or widen documented under-triage of older patients and of minority patients in abdominal pain; stratified by interview language, age, health literacy | Library cross-cutting question |
 
-Exit criteria for Stage A: zero fabricated history items across the bank; every
+Exit criteria for Stage A: zero narrative clauses or slot values without a transcript span across the bank; every
 red-flag case triggers the safety net and every benign case does not; boundary
 checklist clean (no diagnosis, urgency or medication language; diagnosis block
 empty in every document); history agreement and condition capture at the
 thresholds the clinical lead sets in the protocol; simulated patients rate "felt
 heard" at four of five or better.
+
+Stage A cannot start on the mental health section until its specialist review
+is complete, and cannot start on the GP booking call's Immediate tier until
+D-42 is settled.
 
 ## Stage B: HREC-approved study with ED and GP patients
 

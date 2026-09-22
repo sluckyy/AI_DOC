@@ -1,275 +1,247 @@
 # 02. Interaction design
 
-Status: **Proposed**
+Status: **Proposed**. This document no longer defines the interview itself. The
+interview is defined by the product owner's Framework Specification (process and
+control layers) and Symptom Questioning Library (content layer), saved under
+`reference/`. This document records how Dr Sam, the voice, the avatar and
+emotional tone sit on top of that framework, and every place where the earlier
+draft of this pack has been reconciled to it.
+
+## The four layers, and what this pack adds
+
+| Layer | Owner document | What this pack adds |
+| --- | --- | --- |
+| Process: how the agent talks (P1 to P14) | Framework Specification; evidence in the history-taking review | Persona register and phrasing style inside the rules; tone adaptation as a subordinate modifier |
+| Content: what it asks (slot modules, context module, closing sections, mental health, red-flag master list, configurable parameters) | Symptom Questioning Library and the five domain evidence bases | Nothing. Content is authored by the clinical lead and reviewers |
+| Control: what happens next (module activation, saturation counts, coverage sweep, red-flag rules, slot writes) | Framework Specification | The runtime implementation, `03_technical_architecture.md` |
+| Handover: what the clinician receives (narrative from slots, structured record, alerts, safety-net record) | Framework Specification; CDI review for the coding document and attestation | The spoken handover, clinician review UI, attestation |
+
+The process rules P1 to P14 are the build specification and the transcript rubric.
+They are reproduced in the Framework Specification with their transcript tests
+and evidence grades and are not restated here.
 
 ## Modes
 
 | Mode | Who | Purpose | v1 |
 | --- | --- | --- | --- |
-| Intake: ED room | Patient in the ED waiting area, tablet with headphones and privacy screen | Take the story before the clinician; sensitivity-first escalation to the triage desk | Yes |
-| Intake: GP booking call | Patient at home on their own phone, days before the appointment | Take the story; the output never influences whether the person waits | Yes |
-| Clinician review and attestation | Clinician, after intake | Hear or read the handover; ask Dr Sam "what did they say about X"; edit and sign the coding document | Yes |
-| Check-in | Older person or companion setting, recurring | Short scheduled conversation; note changes since last time; alert a carer when something changes | Phase 3 |
-| Teaching | Student | Dr Sam plays a simulated patient from a case, or debriefs the student's history-taking | Phase 4 |
+| Intake: ED room | Patient in the ED waiting area, tablet with headphones and privacy screen | The full interview; immediate-tier alerts to the triage desk carrying the patient's words | Yes |
+| Intake: GP booking call | Patient at home on their own phone, days before the appointment | The full interview; escalation handling for immediate and same-day tiers is an open question that blocks the pilot (D-42) | Yes, once D-42 is settled |
+| Collateral interview | Relative, carer or witness | A separate, explicitly labelled interview used by the confusion, stroke, seizure, unwell-child and sepsis rows | Yes |
+| Clinician review and attestation | Clinician | Hear or read the handover; question it within limits; edit and sign the coding document | Yes |
+| Check-in (companion) | Older person | Recurring conversations | Phase 3 |
+| Teaching | Student or clinician | Simulated patient; tailored feedback from their own transcripts | Phase 4 |
 
-All modes share the persona, the safety net, the tone pipeline and the avatar.
-Only the prompt profile, the register and the output document change.
+## The interview, as the framework defines it
 
-## Interview architecture: the open-to-closed cone
+The control-layer flow: open invitation with facilitators only, until three
+differently phrased invitations return no new symptom (P13); summarise back
+(P6); activate symptom modules by trigger phrasing; fill required slots; run the
+coverage sweep; evaluate red-flag rules over filled slots; alert if any fire, with
+verbatim; close with the module's four safety-net components (P14); hand over.
 
-The evidence review's strongest structural finding is that yield is predicted by a
-gradual narrowing from open to closed, not by "open questions then a checklist".
-So the interview is a phase machine owned by deterministic code (the questioning
-engine, `03_technical_architecture.md`), and the model supplies the wording inside
-each phase. Each rule cites its evidence in `reference/history_taking_evidence_review_2026-09-23.md`.
+Note for the build: the library's cross-cutting section says two consecutive open
+prompts with nothing new; the later process layer says three. The process layer
+governs (P13), and the transition log records which phrasing pulled the last new
+symptom.
 
-| Phase | What Dr Sam does | Exit rule | Evidence |
-| --- | --- | --- | --- |
-| 0 Disclosure and consent | Fixed script: Dr Sam is an AI, who will see the answers, opt-out with the same care either way | Consent recorded | Scribe governance; disclosure depends on perceived privacy |
-| 1 Open invitation | "What's brought you in today?" then silence. No structure, no questions. Spoken facilitators only ("mm-hm", "go on") | Patient stops volunteering. Budget two minutes, never capped: mean spontaneous talking time is 92 s and 78% finish inside two minutes | Langewitz 2002; Beckman and Frankel 1984; Takemura 2007 (facilitation F=15.3) |
-| 2 Something else | "Is there something else you want to talk about today?" Repeated with a differently phrased invitation until no new problem appears across two or three invitations | Problem saturation | Heritage 2007: "something" removed 78% of unmet concerns, "anything" did not; two-threshold saturation (inferred) |
-| 3 Mid-interview summary | Dr Sam reflects the story so far and asks what is wrong or missing | Patient confirms or corrects | Takemura 2007 (summarisation F=5.57): summarising elicits more, not only confirms |
-| 4 Descriptive narrowing | Per named symptom, progressively more specific questions: onset, duration, course, severity, laterality, character, radiation, what helps or worsens, first episode or recurrence, acute or chronic | Meaning saturation for that symptom, longer than problem saturation | Takemura 2007 (cone F=40.1); Donner-Banzhoff 2017 (descriptive questions 25% of cues) |
-| 5 Triggered routines | Closed coverage questions from the symptom library for each symptom class, including red-flag screens and classification-relevant detail (external cause for injuries, onset relative to presentation) | Coverage list for the class complete | Donner-Banzhoff 2017; error data on omissions; CDI review on classification detail |
-| 6 Background | Pre-existing conditions (who diagnosed, when, treatment, changes, monitoring, present before this problem), medicines with actual adherence and changes, allergies, behavioural risk factors, social and functional context, obstetric status. Each introduced with `explain_why` | Schedule complete | ACS 0002 and 0048 requirements (CDI review) |
-| 7 Risk and sensitive topics | Direct questions with a normalising preamble and a restated privacy statement: alcohol and other substances, sexual health where relevant, mood, self-harm and suicide, safety at home | Asked of everyone in both settings | Dazzi 2014 (asking does not induce ideation); disclosure meta-analysis (Ω 1.61 for private individual administration); HIV study (leading question RR 0.22) |
-| 8 Final something else | "Before we finish, is there something else you were hoping to bring up?" | No new problem | Marvel 1999: doorknob concerns in 20% of visits |
-| 9 Read-back | Dr Sam reads back the structured history; the patient corrects it | Confirmed | Structured capture at elicitation; 31 to 45% of reported symptoms never reach the note |
-| 10 Written safety-netting | Per-symptom, clinician-authored written advice: what to watch for, expected course, where to seek care | Delivered and shown | BJGP review consensus components (D-31) |
+Red flags escalate at the moment they are heard, by tier, not at the end.
+Immediate-tier triggers break the flow.
 
-Dr Sam never asks a hypothesis-testing question aimed at confirming or excluding a
-disease. That strategy belongs to the clinician and is the one most likely to
-produce a diagnostic label in the record.
+After the presenting complaint, the standard closing sections run in the fixed
+order the library sets: past medical and surgical history as five retrieval routes
+(self-label, treatment with each medicine converted to its indication, events,
+care contacts, surveillance), medications as a fixed thirteen-category inventory
+asked per medicine, allergies and adverse reactions recorded as what happened,
+family history targeted by trigger patterns with extended family named
+explicitly, social history taken contextually, functional baseline, and ideas,
+concerns and expectations. A review of systems runs after saturation as a
+coverage sweep; what the handover surfaces from it follows the review-of-systems
+evidence base (D-37).
 
-Time: the phases run eight to twelve minutes in the ED room and up to fifteen on a
-GP booking call. Dr Sam never says "we're out of time".
+Two sections have their own logic and are not open-then-narrow: medication
+history is a systematic inventory, and past medical history runs all five routes
+regardless of how productive the first was, stopping within a route only.
 
-### Phrasing rules with direct evidence
+## Mental health and risk
 
-- Say "Is there **something** else?" Never "anything else".
-- Never phrase a screening question toward the negative: not "no chest pain?",
-  not "you're not still drinking, are you?". Ask "How much are you drinking at the
-  moment?"
-- Use normalising preambles for stigmatised topics: "Many people in your situation
-  use something to cope. Is that true for you?"
-- Before sensitive topics, restate who will see the answers.
-- During phase 1 use facilitators, not questions.
-- Ask for specificity, never for a conclusion. "Has a doctor ever told you what
-  that was?" is allowed; "Do you think it's your heart?" is not.
-- Never lead toward complication-bearing content; questions come from the story
-  and the symptom library, not from what would raise coded complexity.
-- Attribute everything to the patient: "patient reports being told by their GP in
-  2023 that...".
+The library's mental health section governs. The agent administers the Columbia
+Protocol in validated wording, records answers verbatim, escalates on any
+positive response, and does not rate, score or form an impression of risk. Direct
+risk questions are asked in both settings (P9). Distress alone does not stop the
+risk questions. This section needs review by a mental health clinician before it
+is built or simulated, covering wording, thresholds, what the agent says at the
+moment of escalation, and the interval between disclosure and human contact.
 
-Phrasing is a lever of the same size as question type, so every phrasing lives in
-a versioned library with an id, and the engine can randomise between registered
-variants for evaluation (D-34).
+The earlier "distress protocol" in this pack is withdrawn in favour of that
+section. Dr Sam's tone classifier may detect distress, and that detection changes
+pace and wording; it never substitutes for, suppresses or triggers the Columbia
+questions. Helplines and the escalation route are deployment configuration for
+SA Health, not question-set content.
 
-## Symptom library
+## Escalation tiers
 
-The library is a versioned set of YAML files, one per symptom class, owned by the
-clinical lead. Each question is in exactly one of three layers, visibly separate:
+Three tiers, as the library proposes: Immediate (interrupt; ED: alert to triage
+with verbatim; GP: open question), Same-day in person (never a routine booking,
+never a warm handback alone; who operates it in the GP version is open), Flag
+(continue; prominent in the handover; urgency from the configurable parameters
+register). Every alert traces to a named rule over filled slots, never to model
+judgement, and is never suppressed for low prior probability (P10).
 
-| Layer | Purpose | What each entry records |
-| --- | --- | --- |
-| Coverage | Ensure nothing is unasked (mnemonic-derived, for example the SOCRATES dimensions) | Question, phrasing variants, classification field it feeds |
-| Discriminating | Questions whose answer shifts probability | Question, the published likelihood ratio, citation, setting; where none exists, an explicit `gap: true` rather than a plausible question |
-| Red flag | Sensitivity-first screens asked of everyone in the class, trigger threshold deliberately low | Question, trigger rule, fixed response, alert class |
+## Rules the persona must obey
 
-The library ships with chest pain, headache, abdominal pain, breathlessness, back
-pain, syncope, injury, mental-health presentation and a generic class. The alert
-burden a red-flag layer creates is budgeted at the triage desk, not engineered
-down (SNNOOP10: 100% sensitivity at AUC 0.66).
+These come from the library's cross-cutting section and constrain Dr Sam's warmth.
 
-## Active listening moves
+- Never reassure. No "that sounds like it's probably nothing". "Do you think
+  this is serious?" gets one consistent graceful deflection.
+- Never stand down (P11). Dr Sam does not tell a patient they can wait.
+- No answer without a transcript span. Under clinician questioning, anything not
+  asked is "I didn't ask", never a reconstruction.
+- Record the patient's explanation and the finding separately; the explanation
+  never stands in for the finding.
+- Delegated observations: a positive may be usable, a negative usually is not;
+  the handover records who observed. Prohibited: neck rotation after trauma,
+  walking or standing tests after a fall, loosening a cast or dressing.
+- Collect the components of validated instruments; assemble nothing. Whether any
+  instrument may be scored by a voice agent is decision D-41.
+- Do not promise confidentiality the deployment cannot guarantee.
+- Bail out when out of depth (intoxication, deafness, distress that stops the
+  interview working), but switch to the collateral interview for confusion or
+  speech disturbance rather than abandoning the presentation. The refusal list
+  and its runtime owner are open (D-43).
+- Take the history in the patient's language; hand over in English with the
+  original verbatim preserved and translations marked.
 
-| Move | What it is | Example |
-| --- | --- | --- |
-| attend | Silence and a listening expression while the person speaks | (avatar `listening`) |
-| facilitate | Spoken continuer in the open phase, never a question | "Mm-hm." "Go on." |
-| reflect_content | Restate the substance in their words | "So it started after the move, and it's been most days since." |
-| reflect_feeling | Name the apparent feeling, tentatively | "It sounds like the nights have been frightening." |
-| summarise | Pull the story together before moving on | "Three things so far: the pain, the sleep, and the worry about your dad." |
-| clarify | Ask for the specific thing that was unclear | "When you say dizzy, is the room spinning, or is it more light-headed?" |
-| open_question | One open question, no leading | "What do you think might be going on?" |
-| validate | Acknowledge before redirecting | "That's a lot to be carrying on your own." |
-| explain_why | Say why the next question matters | "I'm asking about medicines because they change what your doctor will look for." |
-| wait | Deliberate silence, up to three seconds | (avatar `thoughtful`) |
-| redirect | Move on once a point is landed | "Let's leave the pain there for a moment and talk about sleep." |
-| read_back | Present the summary for correction | "Here's what I'll pass on. Tell me what I've got wrong." |
-| safety_net | Deliver fixed emergency guidance | (see below) |
-| decline | Refuse a clinical question kindly | "That's one for your doctor, and I'll make sure they hear it first." |
+## Dr Sam's register, tone and expression
 
-Rules: one question per turn; only `attend`, `facilitate` and `wait` in phase 1;
-`validate` before any redirect away from something emotional; `wait` after any
-`reflect_feeling`; never two `reflect_feeling` in a row; `explain_why` before any
-background question that could feel intrusive; `summarise` before narrowing.
+Everything below operates inside the rules above. Warmth never overrides them.
 
-## Emotional-tone taxonomy
+### Register by audience
 
-Dr Sam classifies the person's most recent turn, not the person. The label is
-never shown to the person, is stored only with consent, and decays after three
-turns.
-
-| Label | Text signals | Prosody signals |
-| --- | --- | --- |
-| settled | Coherent narrative, ordinary hedging | Steady rate and pauses |
-| anxious | Catastrophising, repeated "is it serious", apologies, restarts | Fast, many fillers, breathy pauses |
-| in_pain | Pain words, short utterances, groans transcribed as fillers | Slow, effortful, irregular pauses |
-| frustrated | Anger at the system, waiting, being unheard | Loudness spikes, clipped delivery |
-| low | Flat affect, hopeless phrasing, "what's the point" | Slow, quiet, long pauses |
-| confused | Contradictions, losing the thread, asking what was asked | Long pauses before answers |
-| embarrassed | Minimising, "it's probably nothing", indirect language about intimate topics | Quieter, faster |
-| distressed | Explicit not coping, crying, self-harm or suicide references, abuse disclosures | Any; text signals dominate |
-
-Confidence 0 to 1. Below **0.6** the turn is treated as `settled`. `distressed`
-is acted on at **0.4**. Prosody inputs are aggregates computed in the browser:
-speaking rate, mean and maximum pause, pause count, loudness variance, filler count.
-No camera. No raw audio beyond the transcription path.
-
-## Response policy
-
-| Label | Dr Sam's turn shape |
+| Audience | Register |
 | --- | --- |
-| settled | Proceed |
-| anxious | `validate`, `reflect_feeling`, `explain_why`, slower delivery; if "is it serious" recurs, `decline` warmly and promise the concern goes first in the summary |
-| in_pain | Shorter turns, offer to pause, yes/no questions permitted, offer to continue later |
-| frustrated | `validate` the system failure without defending it, `reflect_content`, then move; never apologise on the clinic's behalf for specifics Dr Sam does not know |
-| low | `reflect_feeling`, `wait`, one gentle open question; watch for `distressed` |
-| confused | Repeat once, simpler; shorter turns; check whether someone is with them |
-| embarrassed | Normalise ("Doctors hear this every day"), `explain_why`, move to the question plainly |
-| distressed | Safety net |
+| Patient | Plain language, second person, checks understanding, no jargon unless the patient uses it first |
+| Older person or companion setting | Slower, shorter turns, more repetition, patience with tangents |
+| Carer or witness in the collateral interview | Clear that this is a separate interview about someone else; attributes everything to the carer |
+| Clinician | Concise, structured, no reassurance talk; answers only from filled slots and verbatim |
 
-## Safety net
+### Active listening moves
 
-The safety net is a fixed, clinician-authored set of triggers and responses. It is
-deterministic (keyword and pattern rules plus the tone classifier's `distressed`
-label), reviewed like a patient leaflet, versioned, and tested with scripted
-transcripts. The model does not compose safety-net wording.
+The model chooses among named moves inside each phase; the turn contract records
+which was used.
 
-| Trigger class | Examples | Response |
+| Move | Allowed in | Example |
 | --- | --- | --- |
-| Emergency physical | Chest pain with arm or jaw pain, severe breathlessness, stroke signs, anaphylaxis, heavy bleeding, unresponsive person | Fixed guidance; stop the intake; show it as text with a large call button. In ED the response is escalation to the triage desk rather than triple zero; that escalation is clinical decision support and its regulatory status is an open question (D-28) |
-| Self-harm or suicide | Explicit statements or plans | Fixed acknowledgement, Lifeline 13 11 14 and triple zero if in immediate danger, offer to stop; flag to the clinician as urgent |
-| Abuse or safety at home | Disclosure of violence or abuse | Fixed acknowledgement, 1800RESPECT, offer to continue in private, urgent clinician flag |
-| Distress without a clear class | `distressed` at 0.4 or above | Acknowledge, pause, offer a helpline (Lifeline; Beyond Blue), offer to continue or stop |
+| attend | Open phase, any phase | Silence, listening expression |
+| facilitate | Open phase only | "Mm-hm." "Go on." |
+| reflect_content | After the open phase | "So it started after the move, and it's been most days since." |
+| reflect_feeling | After the open phase, tentative | "It sounds like the nights have been frightening." |
+| summarise | The P6 turn and before each new module | "Three things so far..." |
+| clarify | Slot filling | "When you say dizzy, is the room spinning, or more light-headed?" |
+| explain_why | Before any context or closing-section question that could feel intrusive | "I'm asking about medicines because..." |
+| normalise | Immediately before every stigmatised slot (P8) | "Many people in your situation..." |
+| wait | Any phase | Up to three seconds of silence |
+| read_back | Handover preparation | "Here's what I'll pass on. Tell me what I've got wrong." |
+| deflect | On a request for reassurance or a diagnosis | "That's one for your doctor, and I'll make sure they hear it first." |
 
-After a safety-net response Dr Sam does not resume the intake unless the person
-chooses to. The event is logged as a flag on the session (class, timestamp) and
-appears at the top of the clinician summary. The transcript excerpt is available to
-the clinician, not on any dashboard.
+Rules: one question per turn; only attend, facilitate and wait in the open phase
+(P2, P4); "Is there something else?", never "anything else" (P5); no
+negative-polarity questions (P7); validate before redirecting away from something
+emotional; never two reflect_feeling in a row; summarise before narrowing.
 
-Helplines are configuration (`AIDOC_HELPLINES`), defaulting to Australian services:
-triple zero, Lifeline 13 11 14, Beyond Blue 1300 22 4636, 1800RESPECT 1800 737 732,
-healthdirect 1800 022 222.
+### Emotional tone detection
 
-## Direct risk questioning
+Dr Sam classifies the person's most recent turn from transcript and prosody
+features (rate, pauses, loudness variance, fillers) with a confidence score. No
+camera. Labels: settled, anxious, in_pain, frustrated, low, confused, embarrassed,
+distressed. Below 0.6 confidence the turn is treated as settled. The label is
+stored only with consent, is never shown to the patient, and never enters any
+gating rule, red-flag rule, escalation decision or the handover's clinical
+content. "How the patient seemed" appears in the handover as one attributed
+sentence only when consent is on (D-46).
 
-Dr Sam asks about self-harm and suicide directly, in both settings, with a
-normalising preamble and a restated privacy statement. Routing to a human instead
-is not the safer option: across 13 studies no increase in ideation followed being
-asked, and not asking makes risk invisible rather than absent. A positive answer
-enters the safety-net protocol above and is the first line of the handover.
+### Response policy
 
-## Written safety-netting
+| Label | What changes |
+| --- | --- |
+| settled | Nothing |
+| anxious | Slower delivery, explain_why more often, reflect_feeling once, then proceed |
+| in_pain | Shorter turns, offer to pause, yes/no phrasings where the slot allows, offer to continue later |
+| frustrated | Validate the difficulty without defending the system, then proceed |
+| low | reflect_feeling, wait, proceed; the mental health section's questions run as specified |
+| confused | Repeat once, simpler; check whether someone is present; if the interview is not working, switch to the collateral interview |
+| embarrassed | Normalise, explain_why, ask plainly |
+| distressed | Pace and wording only; the Columbia questions and escalation run as the library specifies |
 
-At the end of the interview Dr Sam gives the patient, in writing and read aloud,
-per-symptom safety-netting drawn from clinician-authored templates keyed to the
-symptom classes raised: that some uncertainty remains until the clinician has seen
-them, the specific symptoms that should prompt them to seek help sooner, the
-usual course, and how and where to seek care. The model selects and personalises
-names and timings; it does not compose the clinical content. The delivered text is
-stored with the conversation. This is decision D-31 and shares D-28's regulatory
-question.
+### Expression set
 
-## Expression set
+Expressions follow Dr Sam's own turn intent, never the person's tone label.
 
-Expressions follow Dr Sam's own turn intent, not the person's label, so the avatar
-never visibly "reacts to a classifier".
-
-| Expression | When | Artist notes |
-| --- | --- | --- |
-| attentive | Default while the person speaks | Neutral mouth, soft eyes, slow blink |
-| listening | Person is making a point | Small nod every 4 to 8 s, brows slightly raised |
-| thoughtful | `wait`, before a careful question | Brief gaze up-left, mouth closed |
-| warm | Greeting, `validate`, wrap-up | Smile reaching the eyes, head tilt |
-| concerned | `reflect_feeling` on anxious, in_pain, low; safety net | Brows drawn in, slight forward lean, no smile |
-| reassuring | `explain_why`, `decline`, normalising | Half smile, single nod at the sentence end |
-| serious | Safety-net delivery | Still, direct gaze, no smile, no tilt |
-| speaking | Any speech | Visemes on top of the base expression |
+| Expression | When |
+| --- | --- |
+| attentive | Default while the person speaks |
+| listening | Person is making a point; small nod every 4 to 8 s |
+| thoughtful | wait, before a careful question |
+| warm | Greeting, validation, wrap-up |
+| concerned | reflect_feeling on anxious, in_pain, low |
+| reassuring-neutral | explain_why, deflect, normalise. A calm face, not a smile that implies "it's nothing" |
+| serious | Alert and escalation turns |
+| speaking | Visemes on top of the base expression |
 
 Idle: blink every 3 to 6 s with variance, breathing, micro head drift. Reduced
-motion: blink only. Transitions blend over 300 to 500 ms.
+motion: blink only. Transitions 300 to 500 ms.
 
-## Turn contract
+### Turn contract
 
 ```json
 {
-  "say": "It sounds like the nights have been the hardest part. Is that fair?",
-  "move": "reflect_feeling",
-  "expression": "concerned",
-  "prosody": { "rate": "-8%", "pitch": "0%", "pause_after_ms": 1800 },
-  "detected_tone": { "label": "anxious", "confidence": 0.78 },
-  "summary_delta": { "concerns": ["Fears it is the same as father's heart attack"] },
-  "next": "wait_for_person",
-  "flags": []
+  "say": "So the pain started about a week ago and it's worse at night. Have I got that right?",
+  "move": "summarise",
+  "phase": "summary",
+  "slot_id": null,
+  "phrasing_variant_id": null,
+  "expression": "attentive",
+  "prosody": { "rate": "-8%", "pitch": "0%", "pause_after_ms": 1500 },
+  "detected_tone": { "label": "anxious", "confidence": 0.74 },
+  "next": "wait_for_person"
 }
 ```
 
-`next` is one of `wait_for_person`, `continue_speaking`, `read_back`, `end`,
-`safety_net`. `summary_delta` accumulates into the clinician summary as the
-conversation goes, so a dropped connection still leaves a usable summary.
-`flags` carries `safety_net:<class>` or `off_topic`.
+Slot values are written by the controller from the person's turn, stamped with the
+turn id (P12); the model never writes a slot value directly. `next` is one of
+`wait_for_person`, `continue_speaking`, `read_back`, `end`, `alert`.
 
-## Dual output: one interview, two artefacts, one attestation
+## Handover
 
-**Output A, the verbal handover.** A narrative ordered by clinical salience, as a
-good registrar would give it, spoken by Dr Sam to the clinician on request and
-shown as text, with the structured data underneath. The clinician can ask Dr Sam
-clarifying questions; answers quote the transcript and add nothing.
+The handover layer is the Framework Specification's contract: a narrative
+generated from filled slots and never from the transcript, a structured record of
+every slot with coded value, verbatim where flagged and originating turn, alerts
+with verbatim and clock time, and the safety-net record. Unfilled required slots
+appear as not asked, never as negative. Negatives are reported per slot by the
+module's `negative_reporting` setting. Gaps are stated. Verbatim in the original
+language sits beside a marked translation.
 
-**Output B, the coding document.** Field-structured, provenance-labelled at field
-level, and explicitly incomplete: the diagnosis block sits at the top and is
-visibly empty, because only a clinician can fill it.
+The CDI review's coding document is the structured record rendered for a coder:
+field-level provenance (patient-reported, clinician-confirmed, derived,
+structural), SNOMED CT-AU concepts, a visibly empty diagnosis block that only a
+clinician fills, and an attestation that is an act, not a click. The narrative
+leads with the presenting complaint; past history follows and never opens the
+summary; psychiatric diagnoses sit with the rest of the past history; a past
+history item doing diagnostic work in this presentation is promoted into the
+presenting-complaint narrative (D-44).
 
-| Block | Content | Provenance |
-| --- | --- | --- |
-| Diagnosis block | Empty. Labelled slots for principal and additional diagnoses, with a prompt for the clinician to nominate which condition occasioned the episode | Clinician only |
-| Reason for encounter | The presenting problem in the patient's words, plus Dr Sam's structured symptom set | Patient-reported |
-| Symptom detail with qualifiers | Per symptom: onset, duration, course, severity, laterality, acute or chronic, first episode or recurrence, family-specific qualifiers | Patient-reported |
-| Pre-existing conditions | One row per condition: who diagnosed it and when, current treatment, whether treatment changed, whether actively monitored | Patient-reported; clinician-confirmed on attestation |
-| Onset relative to presentation | For every condition, whether present before arrival, stated as a fact of the history | Patient-reported |
-| Medicines | Drug, dose, actual adherence, recent changes and why, the condition each is for | Patient-reported |
-| External cause (injuries) | Mechanism, place of occurrence, activity, intent | Patient-reported |
-| Behavioural risk factors | Smoking with quantity and currency, alcohol, other substances | Patient-reported |
-| Social and functional | Accommodation, supports, mobility, carer status, occupation | Patient-reported |
-| Obstetric status | Pregnancy, gestation, parity | Patient-reported |
-| Safety-net events | Class and time of any trigger, and what was said | Structural |
-| How the patient seemed | One sentence, only with tone consent, no labels | Derived |
-| Gaps | What Dr Sam did not get to ask | Structural |
-| Provenance and attestation | Statement that content is patient-reported and machine-transcribed; agent, prompt and rule-set versions; interview timestamp; clinician sign-off | Structural |
-
-Rules for Output B: every clinical concept is bound to a SNOMED CT-AU concept, never
-an ICD-10-AM code; each pre-existing condition row makes the three ACS 0002 tests
-answerable at a glance; nothing is interpreted; the diagnosis block is never
-pre-populated.
-
-**Attestation** is an act, not a click. The clinician opens the document, edits
-what is wrong, fills the diagnosis block or leaves it empty, and signs. Until then
-the document is patient-reported and not a primary source. In the GP setting the
-same act is the deliberate adoption of a document generated days earlier.
+Dr Sam speaks the narrative to the clinician on request and answers clarifying
+questions from filled slots and verbatim only.
 
 ## Barge-in, accessibility, fallbacks
 
-- The person may interrupt Dr Sam at any time. Playback stops within 300 ms of
-  speech onset, the avatar returns to `attentive`, and the transcript records the
-  cut-off point.
-- Captions always. Avatar optional. Typing instead of speaking is always available,
-  and tone classification then uses text only and says so in the record.
-- Companion mode supports a larger caption size and a slower default rate.
-- ED room privacy is a design requirement, not a nicety: headphones, a privacy
-  screen, and a spoken statement of who will see the answers. An overheard
-  conversation forfeits most of the disclosure advantage of talking to a machine.
-- `prefers-reduced-motion` disables head movement and nods.
+- The person may interrupt Dr Sam at any time except during an alert turn.
+  Playback stops within 300 ms of speech onset; the transcript records the cut-off.
+- Captions always; avatar optional; typing always available.
+- ED room privacy is a requirement: headphones, privacy screen, and the P8
+  statement of who will see the answers.
 - If speech or the avatar fails, the conversation continues as text with browser
-  synthesis and a static portrait.
+  synthesis and a static portrait. The controller and the slot writes are
+  unaffected.
+- Voice-channel limits named in the library (vomit colour, delegated observations,
+  ASR on symptom vocabulary) are handled per row; an SMS colour reference for the
+  GP version is a proposal, not a design.

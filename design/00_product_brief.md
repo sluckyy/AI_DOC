@@ -81,6 +81,15 @@ twelfth patient. The evaluation is powered for variance, not only mean agreement
 and the protocol says which claim is being made. On the GP booking call the honest
 comparator is the status quo, where none of this information exists at booking.
 
+## Where it will run first
+
+A regional South Australian health network (SA Health), as the library's
+parameters register and the social history evidence base assume. Remoteness is
+the social determinant that matters most there: transport, accommodation for
+accompanying family and the cost of returning for follow-up decide whether a plan
+is executable. Local thresholds, notification pathways and escalation routes are
+deployment configuration with a named owner (D-45).
+
 ## Non-goals for v1
 
 - Diagnosis, urgency scoring, medication advice, any clinical conclusion.
@@ -88,6 +97,8 @@ comparator is the status quo, where none of this information exists at booking.
   (integration is phase 3, and always behind the attestation step).
 - Camera or video analysis of the person.
 - Use outside Australia.
+- Presentations on the refusal list (D-43), and major, penetrating or
+  multi-system trauma, which escalate on disclosure without questioning.
 
 ## Success measures
 
