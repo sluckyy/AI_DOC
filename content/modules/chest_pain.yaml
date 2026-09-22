@@ -1,0 +1,268 @@
+# Chest pain module. Grounded in the Symptom Questioning Library's cardiovascular
+# section and the Framework Specification's worked module. Reviewed by: pending.
+module: chest_pain
+version: 0.1.0
+status: grounded
+setting: both
+activates_on:
+  terms:
+    - chest pain
+    - chest pains
+    - pain in my chest
+    - chest tightness
+    - tightness in my chest
+    - tight chest
+    - pressure in my chest
+    - chest pressure
+    - heaviness in my chest
+    - heavy chest
+    - elephant on my chest
+    - indigestion that won't shift
+    - chest hurts
+    - my chest
+    - chest ache
+slots:
+  - id: cp.current
+    class: red_flag
+    required: true
+    intent: whether the pain is present now, or began recently
+    phrasings:
+      - {id: p1, form: closed, text: "Is the pain there right now?"}
+      - {id: p2, form: closed, text: "Do you have the pain at the moment, or has it settled?"}
+    value: {type: yes_no}
+    extraction:
+      yes_terms: ["yes", still there, right now, at the moment, it's there, it is there, hurts now, still got it, still have it, ongoing, "now"]
+      no_terms: ["no", gone, not now, not at the moment, went away, settled, stopped, eased, better now, "it's gone", passed]
+    verbatim: true
+    negative_reporting: explicit
+
+  - id: cp.onset_clock_time
+    class: coverage
+    required: true
+    intent: when the pain started, as a clock time the clinician can compute an interval from
+    phrasings:
+      - {id: p1, form: open, text: "What time did the pain start? Roughly what time on the clock."}
+      - {id: p2, form: open, text: "When did it start? Try to give me a time of day, even roughly."}
+    value: {type: clock_time}
+    verbatim: true
+    negative_reporting: omit
+
+  - id: cp.onset
+    class: coverage
+    required: true
+    intent: whether the pain began abruptly or built up gradually
+    phrasings:
+      - {id: p1, form: closed, text: "Did it come on suddenly, or build up gradually?"}
+    value:
+      type: enum
+      options:
+        - {id: abrupt, synonyms: [suddenly, sudden, all at once, out of nowhere, abrupt, instantly, in a second, straight away]}
+        - {id: gradual, synonyms: [gradually, gradual, built up, slowly, crept up, over a while, bit by bit]}
+        - {id: unsure, synonyms: [not sure, don't know, unsure, can't say, hard to say]}
+    verbatim: true
+    negative_reporting: omit
+
+  - id: cp.quality
+    class: coverage
+    required: true
+    intent: the character of the pain in the patient's own words
+    phrasings:
+      - {id: p1, form: open, text: "What does the pain feel like? Describe it in your own words."}
+    value:
+      type: enum
+      options:
+        - {id: tearing, synonyms: [tearing, tear, torn]}
+        - {id: ripping, synonyms: [ripping, ripped, rip]}
+        - {id: pressure, synonyms: [pressure, pressing, squeezing, squeezed, crushing, weight, heavy, heaviness, elephant]}
+        - {id: tightness, synonyms: [tight, tightness, band]}
+        - {id: sharp, synonyms: [sharp, knife, stabbing, stab, pricking]}
+        - {id: burning, synonyms: [burning, burn, heartburn, acid]}
+        - {id: aching, synonyms: [ache, aching, dull, sore]}
+    verbatim: true
+    negative_reporting: omit
+
+  - id: cp.radiation
+    class: discriminating
+    required: true
+    intent: whether the pain goes anywhere else, asking about both arms explicitly
+    phrasings:
+      - {id: p1, form: closed, text: "Does the pain go anywhere else? Into your arms, one or both, your jaw, your neck, or through to your back?"}
+    value:
+      type: set
+      options:
+        - {id: both_arms, synonyms: [both arms, both my arms, two arms, each arm, arms]}
+        - {id: left_arm, synonyms: [left arm, my left arm, down my left]}
+        - {id: right_arm, synonyms: [right arm, my right arm, down my right]}
+        - {id: jaw, synonyms: [jaw, my jaw, teeth]}
+        - {id: neck, synonyms: [neck, my neck, throat]}
+        - {id: back, synonyms: [back, my back, between my shoulder blades, shoulder blades, through to the back]}
+        - {id: none, synonyms: [nowhere, doesn't go anywhere, stays put, just my chest, stays in my chest, "no"]}
+    evidence:
+      lr: "radiation to both arms LR+ 2.6 for acute coronary syndrome; also raises 30-day major adverse cardiac events"
+      discriminates: acute coronary syndrome
+      citation: "Rational Clinical Examination systematic review; chest pain history evidence synthesis (Panju 1998; Swap 2005), as tabulated in the Symptom Questioning Library"
+      grade: A
+      population: pooled
+      note: "pooled cohorts under-represent women; no stratified value available"
+    verbatim: true
+    negative_reporting: explicit
+
+  - id: cp.duration_pattern
+    class: discriminating
+    required: true
+    intent: how long each episode lasts, precisely, because seconds, minutes, hours and over a day are three different answers
+    phrasings:
+      - {id: p1, form: open, text: "How long does the pain last each time? Seconds, minutes, hours, or has it been there for more than a day?"}
+      - {id: p2, form: open, text: "When it comes, roughly how long does it stay: a few seconds, some minutes, hours, or longer than a day?"}
+    value:
+      type: enum
+      options:
+        - {id: seconds, synonyms: [seconds, a few seconds, a second, split second, moment, momentary]}
+        - {id: minutes, synonyms: [minutes, a few minutes, ten minutes, twenty minutes, half an hour, minute]}
+        - {id: hours, synonyms: [hours, an hour, couple of hours, few hours, all morning, all afternoon, all evening]}
+        - {id: over_24h, synonyms: [more than a day, over a day, days, all day and night, since yesterday, two days, constant for days, all week]}
+        - {id: unsure, synonyms: [not sure, don't know, varies, hard to say]}
+    evidence:
+      lr: "episodic pain lasting seconds LR 0.0; pain lasting over 24 hours LR 0.1"
+      discriminates: acute coronary syndrome
+      citation: "Rational Clinical Examination systematic review, as tabulated in the Symptom Questioning Library"
+      grade: A
+      population: pooled
+    verbatim: true
+    negative_reporting: explicit
+
+  - id: cp.pleuritic
+    class: discriminating
+    required: true
+    intent: whether the pain is worse on breathing in
+    phrasings:
+      - {id: p1, form: closed, text: "Does breathing in make the pain worse?"}
+    value: {type: yes_no}
+    extraction:
+      yes_terms: ["yes", worse when i breathe, breathing in, when i breathe, catches my breath, deep breath]
+      no_terms: ["no", doesn't change, same, not really, makes no difference]
+    evidence:
+      lr: "pleuritic pain LR 0.2"
+      discriminates: acute coronary syndrome (lowers)
+      citation: "Panju 1998, as tabulated in the Symptom Questioning Library"
+      grade: A
+      population: pooled
+    verbatim: false
+    negative_reporting: explicit
+
+  - id: cp.positional
+    class: discriminating
+    required: true
+    intent: whether the pain changes with position or movement
+    phrasings:
+      - {id: p1, form: closed, text: "Does the pain change when you move or change position?"}
+    value: {type: yes_no}
+    extraction:
+      yes_terms: ["yes", when i move, if i lean, lying down, sitting up, changes when, position, moving]
+      no_terms: ["no", doesn't change, same whatever, not really, makes no difference]
+    evidence:
+      lr: "positional pain LR 0.3"
+      discriminates: acute coronary syndrome (lowers)
+      citation: "Panju 1998, as tabulated in the Symptom Questioning Library"
+      grade: A
+      population: pooled
+    verbatim: false
+    negative_reporting: explicit
+
+  - id: cp.exertional
+    class: coverage
+    required: true
+    intent: whether the pain came on with exertion
+    phrasings:
+      - {id: p1, form: closed, text: "What were you doing when it started? Were you exerting yourself, or resting?"}
+    value:
+      type: enum
+      options:
+        - {id: exertion, synonyms: [walking, running, exercise, exercising, climbing, stairs, lifting, working, gardening, exerting, carrying, gym]}
+        - {id: rest, synonyms: [resting, rest, sitting, lying, sleeping, in bed, watching tv, nothing, doing nothing, asleep]}
+        - {id: unsure, synonyms: [not sure, don't know, can't remember]}
+    verbatim: true
+    negative_reporting: omit
+
+  - id: cp.sweating
+    class: coverage
+    required: true
+    intent: whether sweating accompanied the pain
+    phrasings:
+      - {id: p1, form: closed, text: "Did you break out in a sweat with it?"}
+    value: {type: yes_no}
+    extraction:
+      yes_terms: ["yes", sweat, sweating, sweaty, clammy, drenched]
+      no_terms: ["no", no sweat, not sweaty, didn't sweat, dry]
+    verbatim: false
+    negative_reporting: explicit
+
+  - id: cp.breathlessness
+    class: coverage
+    required: true
+    intent: whether breathlessness accompanied the pain
+    phrasings:
+      - {id: p1, form: closed, text: "Were you short of breath with it?"}
+    value: {type: yes_no}
+    extraction:
+      yes_terms: ["yes", short of breath, breathless, couldn't breathe, puffed, winded, out of breath, gasping]
+      no_terms: ["no", breathing fine, breathing was fine, not breathless, could breathe]
+    verbatim: false
+    negative_reporting: explicit
+
+  - id: cp.prior_cardiac_workup
+    class: discriminating
+    required: true
+    intent: previous cardiac investigations or known vascular disease, which sit in past history and are easy to miss
+    phrasings:
+      - {id: p1, form: open, text: "Has a doctor ever looked into your heart before, for example a stress test, an angiogram or a stent? And have you been told you have poor circulation in your legs?"}
+    value:
+      type: set
+      options:
+        - {id: abnormal_stress_test, synonyms: [stress test, treadmill test, exercise test]}
+        - {id: known_cad, synonyms: [angiogram, stent, stents, bypass, heart attack, angina, blocked arteries, coronary]}
+        - {id: pad, synonyms: [poor circulation, circulation in my legs, claudication, blocked arteries in my legs, leg arteries]}
+        - {id: none, synonyms: ["no", never, nothing like that, not that i know of, none]}
+    evidence:
+      lr: "prior abnormal stress test LR+ 3.1; peripheral arterial disease LR+ 2.7"
+      discriminates: acute coronary syndrome
+      citation: "Rational Clinical Examination systematic review, as tabulated in the Symptom Questioning Library"
+      grade: A
+      population: pooled
+    verbatim: true
+    negative_reporting: explicit
+
+red_flags:
+  - id: rf.chest_pain_current
+    fires_when: "cp.current == 'yes'"
+    tier: immediate
+    alert:
+      include_verbatim: true
+      template: "Current or recent-onset chest pain. Patient said: {verbatim}. Onset {cp.onset_clock_time}."
+    suppressible: false
+    source: "Library: any current or recent-onset chest pain escalates; qualifiers are recorded, not used to gate"
+
+  - id: rf.aortic_dissection_pattern
+    fires_when: "cp.onset == 'abrupt' and cp.quality in ['tearing', 'ripping'] and 'back' in cp.radiation"
+    tier: immediate
+    alert:
+      include_verbatim: true
+      template: "Possible aortic dissection pattern. Patient said: {verbatim}. Onset {cp.onset_clock_time}."
+    suppressible: false
+    source: "Framework Specification worked module"
+
+closing:
+  uncertainty: "I can't tell from talking with you whether this is coming from your heart."
+  watch_for:
+    - pain returning at rest
+    - pain with sweating or vomiting
+    - pain with breathlessness
+  time_course: "Someone will speak with you today."
+  where: "If it comes back before then, call an ambulance rather than waiting."
+
+prohibited:
+  - judging pallor, sweating or distress by appearance
+  - naming a cardiac or non-cardiac cause
+gaps:
+  - "No ECG and no troponin. Every negative in this module is a history negative only."
+  - "Reproducibility of the pain by pressing on the chest is an examination finding and was not assessed."

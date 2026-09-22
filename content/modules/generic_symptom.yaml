@@ -1,0 +1,83 @@
+# Fallback module for a presentation with no grounded module yet. Uses the
+# empirically derived symptom characterisation field set from the library's
+# cross-cutting rules (not SOCRATES). No red flags; negatives never reassure.
+module: generic_symptom
+version: 0.1.0
+status: first_draft
+setting: both
+activates_on:
+  terms: []
+  fallback: true
+slots:
+  - id: gen.onset
+    class: coverage
+    required: true
+    intent: when the symptom started
+    phrasings:
+      - {id: p1, form: open, text: "When did the {problem} start? Give me a date or a time if you can."}
+    value: {type: text}
+    verbatim: true
+    negative_reporting: omit
+  - id: gen.progression
+    class: coverage
+    required: true
+    intent: how it has changed since it started
+    phrasings:
+      - {id: p1, form: open, text: "Since the {problem} started, has it been getting better, worse, or staying the same?"}
+    value:
+      type: enum
+      options:
+        - {id: worse, synonyms: [worse, worsening, getting worse, more, increasing]}
+        - {id: better, synonyms: [better, improving, easing, less, settling]}
+        - {id: same, synonyms: [same, no change, steady, constant, unchanged]}
+        - {id: fluctuating, synonyms: [comes and goes, up and down, varies, on and off]}
+    verbatim: true
+    negative_reporting: omit
+  - id: gen.triggers
+    class: coverage
+    required: true
+    intent: what brings it on or makes it worse
+    phrasings:
+      - {id: p1, form: open, text: "Is there something that brings the {problem} on, or makes it worse?"}
+    value: {type: text}
+    verbatim: true
+    negative_reporting: omit
+  - id: gen.relief
+    class: coverage
+    required: true
+    intent: what eases it, including anything tried
+    phrasings:
+      - {id: p1, form: open, text: "Is there something that eases it? Have you tried anything for it?"}
+    value: {type: text}
+    verbatim: true
+    negative_reporting: omit
+  - id: gen.functional_impact
+    class: coverage
+    required: true
+    intent: what the person has stopped doing because of it
+    phrasings:
+      - {id: p1, form: open, text: "What has the {problem} stopped you doing that you could do a couple of weeks ago?"}
+    value: {type: text}
+    verbatim: true
+    negative_reporting: omit
+  - id: gen.associated
+    class: coverage
+    required: true
+    intent: other symptoms that come with it
+    phrasings:
+      - {id: p1, form: open, text: "Is there something else that comes along with the {problem} when it happens?"}
+    value: {type: text}
+    verbatim: true
+    negative_reporting: omit
+red_flags: []
+closing:
+  uncertainty: "I can't tell from talking with you what is causing this."
+  watch_for:
+    - the symptom getting suddenly worse
+    - new symptoms alongside it
+  time_course: "Someone will speak with you today."
+  where: "If things change quickly before then, call an ambulance rather than waiting."
+prohibited:
+  - naming a cause
+gaps:
+  - "No grounded module exists for this presentation; the eleven-domain field set was used and no red-flag screen was available."

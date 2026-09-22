@@ -1,0 +1,38 @@
+# Configurable parameters register for the first deployment. Thresholds and
+# routes here are policy, not evidence; owner: to be named (D-45). Every
+# conversation records the version of this file.
+deployment: sa_health_regional
+version: 0.1.0
+owner: "to be named"
+languages: [en, vi, it, fr, ms, hi]
+language_names: {en: English, vi: Vietnamese, it: Italian, fr: French, ms: Malay, hi: Hindi}
+continue_after_immediate_alert: false
+escalation:
+  ed:
+    immediate:
+      route: alert_triage
+      patient_message: "I'm going to stop here and let the nurse at the desk know about this straight away. Someone will come to you. Please stay where you are."
+    same_day:
+      route: alert_triage
+      patient_message: "I'm going to make sure the nurse at the desk knows about this today."
+    flag:
+      route: handover_flag
+      patient_message: ""
+  gp_booking:
+    immediate:
+      route: duty_gp_review
+      patient_message: "I'm passing what you've told me to the duty doctor right now, and they will look at it straight away. If the pain is there now or comes back, or you feel worse, call triple zero rather than waiting. Wording pending emergency medicine review."
+    same_day:
+      route: urgent_gp_appointment_today
+      patient_message: "What you've told me needs to be seen in person today. Please come in to the practice for an urgent appointment today; reception will fit you in."
+    flag:
+      route: handover_flag
+      patient_message: ""
+helplines:
+  emergency: "000"
+  lifeline: "13 11 14"
+  beyond_blue: "1300 22 4636"
+  healthdirect: "1800 022 222"
+disclosure:
+  ed: "Hello, I'm Dr Sam. I'm an AI, not a doctor, and I work with the doctors here. Before you see the doctor I'd like to hear, in your own words, what's brought you in today. What you tell me goes to the doctor and nurse looking after you, and to no one else. You can stop at any time and ask for a person instead, and you'll get the same care either way. Is it all right to go on?"
+  gp_booking: "Hello, I'm Dr Sam. I'm an AI, not a doctor, and I work with your practice. Before your appointment I'd like to hear, in your own words, what's going on. What you tell me goes to your GP and to no one else. You can stop at any time and ask for a person instead, and you'll get the same care either way. Is it all right to go on?"

@@ -1,0 +1,28 @@
+# P5: "something else", never "anything else". P7: no negative polarity. Each
+# invitation has an id so the transition log can record which phrasing pulled
+# the last new symptom (P13, D-34).
+opening:
+  - {id: open1, text: "What's brought you in today? Take your time."}
+  - {id: open2, text: "Tell me what's been going on. I'm listening."}
+invitations:
+  - {id: inv1, text: "Is there something else you'd like to tell me about?"}
+  - {id: inv2, text: "Is there something else that's been bothering you, even if it seems unrelated?"}
+  - {id: inv3, text: "Before we go on, is there something else at all, even if it seems small?"}
+  - {id: inv4, text: "Is there something else on your mind about your health today?"}
+facilitators:
+  - {id: fac1, text: "Mm-hm."}
+  - {id: fac2, text: "Go on."}
+  - {id: fac3, text: "I'm listening."}
+  - {id: fac4, text: "Take your time."}
+summary:
+  intro: "Let me make sure I've got this right."
+  check: "Have I got that right? Tell me what I've missed or got wrong."
+read_back:
+  intro: "Here's what I'll pass on to the doctor."
+  check: "Tell me what I've got wrong, or what to add."
+final_something_else: "Before we finish, is there something else you were hoping to bring up?"
+deflect:
+  serious: "I don't make that call, and I'd be guessing if I tried. What I can do is make sure the doctor hears exactly what you've told me, and I'll put the things you're most worried about first."
+  diagnosis: "That's one for the doctor. I'll make sure they hear everything you've told me."
+explain_why:
+  context: "Because of what you've described, I need to ask something specific."
