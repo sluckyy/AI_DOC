@@ -1,0 +1,28 @@
+name: CI
+on:
+  push:
+    branches: [main, "feature/**"]
+  pull_request:
+jobs:
+  content-and-backend:
+    runs-on: ubuntu-latest
+    defaults: { run: { working-directory: backend } }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.11" }
+      - run: pip install -r requirements-test.txt
+      - name: Authoring checks (the eight build-time checks from the Framework Specification)
+        run: CONTENT_DIR=../content python -m app.content.checks
+      - name: Tests
+        run: CONTENT_DIR=../content python -m pytest -q
+  frontend:
+    runs-on: ubuntu-latest
+    defaults: { run: { working-directory: frontend } }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: "22" }
+      - run: npm install --no-audit --no-fund
+      - run: npm run typecheck
+      - run: npm run build

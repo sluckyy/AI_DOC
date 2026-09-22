@@ -252,7 +252,8 @@ class Controller:
     def _close_problem_list(self, state: dict) -> list[AgentTurn]:
         state["problem_list_closed"] = True
         state["phase"] = "summary"
-        terms = [p["term"] for p in state["problems"]]
+        terms = [(p["module"].replace("_", " ") if p.get("module") and p["module"] in self.b.modules and not self.b.modules[p["module"]].activates_on.fallback else p["term"]) for p in state["problems"]]
+        terms = list(dict.fromkeys(terms))
         listed = ", ".join(terms[:-1]) + (" and " + terms[-1] if len(terms) > 1 else (terms[0] if terms else ""))
         pv = state.get("presenting_verbatim") or ""
         body = f"You've told me about {listed}. " if listed else ""

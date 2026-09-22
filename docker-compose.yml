@@ -1,0 +1,18 @@
+services:
+  api:
+    build: { context: ., dockerfile: backend/Dockerfile }
+    env_file: [.env.docker]
+    environment:
+      DATABASE_URL: sqlite:////data/aidoc.sqlite
+      CONTENT_DIR: /content
+      CORS_ALLOWED_ORIGINS: http://127.0.0.1:5173,http://localhost:5173
+    volumes: ["aidoc-data:/data"]
+    ports: ["8000:8000"]
+  web:
+    build: { context: ., dockerfile: frontend/Dockerfile }
+    environment:
+      API_BASE_URL: http://127.0.0.1:8000
+    ports: ["5173:80"]
+    depends_on: [api]
+volumes:
+  aidoc-data: {}
