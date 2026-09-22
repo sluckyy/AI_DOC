@@ -3,6 +3,7 @@
 module: chest_pain
 version: 0.1.0
 status: grounded
+reviewed: false          # HAZ-8: set true only after the clinical reviewer signs this module off
 setting: both
 activates_on:
   terms:

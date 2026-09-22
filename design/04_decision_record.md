@@ -56,7 +56,12 @@ Reply with the ID and "agree", or the change you want. Status moves from
 
 | D-47 | Functional and situational history | Universal short core (Lawton IADL, Katz ADL, mobility, falls, who lives there, who helps, services) with deeper questioning on trigger; capture the delta from two weeks ago; output the inputs, never a frailty score; a situational domain is asked only where a named recipient for a positive answer exists; the written record is a separate consent with per-item pass-on for social items; three or four lines near the top of the handover | Exhaustive inventory; a frailty grade; automatic structured social profile | The functional and situational evidence base: prognostic weight sits in a few items, collection only helps when someone acts on it, 37% of people with multiple needs object to it entering the record, and the Clinical Frailty Scale carries a licence condition | Proposed, from the functional evidence base |
 
+| D-48 | Saturation count | Open. The Build Specification F-8 says two consecutive empty open prompts; the Framework Specification P13 says three differently phrased invitations. The controller reads `saturation_invitations` from the parameters register, default 3 | Two | Three elicits more and is the later document; two is the vendor contract | Open, owner to settle |
+| D-49 | Interview after an immediate alert | The interview stops after an immediate-tier alert and the handover is marked partial; a parameter `continue_after_immediate_alert` allows a site to continue instead | Continue by default | Build Specification tier table ("interrupt"); the handover must never read as complete | Proposed |
+
 ## Open questions for the product owner
+
+The Build Specification's gates and [TBC] items are tracked in `08_build_spec_traceability.md` and summarised in the README's "What we need from the product owner".
 
 1. Clinical lead: the product owner (agreed 2026-09-22).
 2. Which ED and which GP practice will host the HREC study, and what practice software do they use (for phase 3)?

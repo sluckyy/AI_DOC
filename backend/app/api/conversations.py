@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 import uuid
 from typing import Any
 
@@ -112,11 +113,13 @@ def _sync_alerts_and_slots(db: Session, conv: Conversation) -> None:
 
 
 def _maybe_generate_handover(db: Session, conv: Conversation) -> None:
-    if conv.state.get("phase") != "ended" or conv.state.get("bail_out_reason"):
+    if conv.state.get("phase") != "ended":
         return
     if db.query(Handover).filter(Handover.conversation_id == conv.id).count():
         return
-    doc = generate(conv.state, get_bundle(), terminology=get_terminology_provider(), versions=conv.versions)
+    metadata = {"model_provider": get_extraction_provider().name, "tts_provider": get_speech_provider().name,
+                "model_deployment": os.getenv("AZURE_OPENAI_DEPLOYMENT_PERSONA", "") or None}
+    doc = generate(conv.state, get_bundle(), terminology=get_terminology_provider(), versions=conv.versions, metadata=metadata)
     db.add(Handover(conversation_id=conv.id, version=1, document=doc))
     from app.db import utcnow
     conv.ended_at = utcnow()
@@ -129,6 +132,10 @@ def start_conversation(req: StartRequest, db: Session = Depends(get_db)):
         raise HTTPException(400, f"language {req.language} is not configured; allowed: {bundle.parameters.languages}")
     ctrl = _controller()
     state = new_state(req.setting, req.language, req.consent.model_dump(), req.persona_register, req.record_prefill)
+    from app.db import utcnow
+    state["consent_timestamp"] = utcnow().isoformat()
+    state["is_simulation"] = req.is_simulation
+    state["saturation_invitations"] = bundle.parameters.saturation_invitations
     for sid, val in req.record_prefill.items():
         slot = bundle.context.slot(sid)
         if slot and not slot.confirm:
@@ -169,7 +176,49 @@ def person_turn(cid: str, req: TurnRequest, db: Session = Depends(get_db)):
     db.commit()
     return {"person_turn_id": person_tid, "agent_turns": agent, "phase": state["phase"],
             "detected_tone": ({"label": state.get("_last_tone"), "stored": bool(tone)}),
-            "alerts": [a for a in state.get("alerts", []) if a.get("turn_id") == person_tid]}
+            "alerts": [{**a, "alert_id": f"{conv.id}-{a['id']}"} for a in state.get("alerts", []) if a.get("turn_id") == person_tid]}
+
+
+class AckRequest(BaseModel):
+    acknowledged_by: str
+
+
+@router.post("/alerts/{alert_id}/acknowledge")
+def acknowledge_alert(alert_id: str, req: AckRequest, db: Session = Depends(get_db)):
+    """S-4: every alert requires positive acknowledgement by a named human."""
+    a = db.get(Alert, alert_id)
+    if a is None:
+        raise HTTPException(404, "alert not found")
+    if not req.acknowledged_by.strip():
+        raise HTTPException(400, "acknowledgement requires a name")
+    from app.db import utcnow
+    a.acknowledged_at = utcnow()
+    db.add(AuditEvent(conversation_id=a.conversation_id, actor=req.acknowledged_by.strip(), action="alert_acknowledged", detail={"alert_id": alert_id, "rule_id": a.rule_id}))
+    db.commit()
+    return {"alert_id": alert_id, "acknowledged_at": a.acknowledged_at.isoformat(), "acknowledged_by": req.acknowledged_by.strip()}
+
+
+@router.get("/alerts/unacknowledged")
+def unacknowledged_alerts(db: Session = Depends(get_db)):
+    """S-4 / N-33: what a triage desk or duty GP dashboard polls; anything older than the
+    configured timeout is flagged for further escalation."""
+    from datetime import timedelta
+    from app.db import utcnow
+    timeout = get_bundle().parameters.alert_acknowledgement_timeout_s
+    rows = db.query(Alert).filter(Alert.acknowledged_at.is_(None)).all()
+    now = utcnow()
+    out = []
+    for a in rows:
+        fired = None
+        try:
+            from datetime import datetime
+            fired = datetime.fromisoformat(a.fired_at) if a.fired_at else None
+        except Exception:
+            fired = None
+        overdue = bool(fired and (now - fired.replace(tzinfo=None) if fired.tzinfo is None else now - fired) > timedelta(seconds=timeout))
+        out.append({"alert_id": a.id, "conversation_id": a.conversation_id, "tier": a.tier, "route": a.route, "rule_id": a.rule_id,
+                    "text": a.text, "fired_at": a.fired_at, "overdue_for_further_escalation": overdue})
+    return {"timeout_s": timeout, "alerts": out}
 
 
 @router.get("/audio/{turn_id}")
@@ -206,7 +255,8 @@ def get_handover(cid: str, db: Session = Depends(get_db)):
     db.commit()
     doc = h.document
     return {"version": h.version, "narrative": doc["narrative"], "structured_record": doc["structured_record"],
-            "alerts": doc["alerts"], "safety_net_record": doc["safety_net_record"], "versions": doc["versions"], "generated_at": doc["generated_at"]}
+            "alerts": doc["alerts"], "safety_net_record": doc["safety_net_record"], "versions": doc["versions"],
+            "generated_at": doc["generated_at"], "partial": doc.get("partial"), "metadata": doc.get("metadata", {})}
 
 
 @router.get("/conversations/{cid}/coding-document")

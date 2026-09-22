@@ -13,6 +13,7 @@ The product owner's design documents, extracted from their Claude Docs on 2026-0
 | family_history_2026-09-23.md | Comprehensive Family History — Evidence Base | Trigger-based elicitation, extended family wording, three-state recording, GP asynchronous second pass |
 | social_history_2026-09-23.md | Evidence Base for the Comprehensive Social History | Contextual probing over checklists, local-response rule, remoteness for regional SA |
 | functional_situational_history_2026-09-23.md | Functional & Situational History — Evidence Base | Universal core of function and situation, the delta from baseline, inputs not scores, named recipient per domain, separate consent for the written record |
+| build_specification_2026-09-23.md | AI History-Taking Agent — Build Specification | Numbered F, S and N requirements, invariants, gates, hazard log. The vendor contract; traced in `../08_build_spec_traceability.md` |
 | review_of_systems_2026-09-23.md | Evidence Base for the Comprehensive Review of Systems | ROS after saturation, handover surfacing rule, truthful-negatives endpoint, separate stratum |
 
 Nothing here is treated as agreed until it is reflected in `../04_decision_record.md`.

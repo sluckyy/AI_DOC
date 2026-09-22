@@ -49,15 +49,18 @@ class AzureOpenAIWording:
         self.api_version = os.getenv("AZURE_OPENAI_API_VERSION", "2024-10-21")
 
     def word(self, template_text: str, *, register: str = "patient", language: str = "en", intent: str = "") -> str:
-        if not (self.endpoint and self.key and self.deployment):
+        # N-30: stored wording is delivered verbatim. Generation is permitted only to render a
+        # stored line in another language while authored phrasings do not yet exist, and the
+        # turn is then marked as a machine translation, not validated (F-32, N-13).
+        if not (self.endpoint and self.key and self.deployment) or language == "en":
             return template_text
-        if language == "en" and register == "patient":
+        if os.getenv("ALLOW_MACHINE_TRANSLATION", "false").lower() != "true":
             return template_text
         import httpx
 
         system = (
-            "You are Dr Sam, an AI history-taking assistant (they/them). Rewrite the given line so it keeps exactly "
-            f"the same intent and asks exactly the same thing, in {language}, register: {REGISTERS.get(register, register)}. "
+            "You are a translator for Dr Sam, an AI history-taking assistant (they/them). Translate the given line into "
+            f"{language} keeping exactly the same meaning and asking exactly the same thing; register: {REGISTERS.get(register, register)}. "
             "Rules: say 'something else' never 'anything else'; never phrase a question toward the negative; never reassure; "
             "never suggest a diagnosis or that the person can wait; one question at most. Return the line only."
         )

@@ -81,7 +81,8 @@ def check_transcript(turns: list[dict], slot_values: list[dict], alerts: list[di
         if not a.get("rule_id"):
             v.append(Violation("P10", None, "alert without a rule id"))
     used = state.get("invitations_used", [])
-    if state.get("problem_list_closed") and len(set(used)) < 3 and not state.get("closed_by_alert"):
+    needed = state.get("saturation_invitations", 3)
+    if state.get("problem_list_closed") and len(set(used)) < needed and not state.get("closed_by_alert"):
         v.append(Violation("P13", None, f"problem list closed after {len(set(used))} distinct invitations"))
     if state.get("phase") in ("handover", "ended") and not state.get("closed_by_alert"):
         closing = state.get("closing_delivered") or {}

@@ -6,7 +6,10 @@ version: 0.1.0
 owner: "to be named"
 languages: [en, vi, it, fr, ms, hi]
 language_names: {en: English, vi: Vietnamese, it: Italian, fr: French, ms: Malay, hi: Hindi}
-continue_after_immediate_alert: false
+continue_after_immediate_alert: false      # D-49
+saturation_invitations: 3                  # D-48: Build Spec F-8 says 2, Framework P13 says 3
+silence_end_of_turn_ms: 1200               # N-3: adjustable per deployment
+alert_acknowledgement_timeout_s: 120       # S-4: unacknowledged alerts escalate further after this
 escalation:
   ed:
     immediate:

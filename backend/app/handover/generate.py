@@ -33,12 +33,27 @@ def _tone_sentence(state: dict) -> str | None:
     return f"Seemed {top.replace('_', ' ')} at times during the interview (derived from wording and pace; not a clinical finding)."
 
 
-def generate(state: dict, bundle: ContentBundle, terminology: TerminologyProvider | None = None, versions: dict | None = None) -> dict:
+def generate(state: dict, bundle: ContentBundle, terminology: TerminologyProvider | None = None, versions: dict | None = None, metadata: dict | None = None) -> dict:
     terminology = terminology or FakeTerminology()
-    modules = [bundle.modules[n] for n in state["module_queue"]]
+    modules = [bundle.modules[n] for n in state["module_queue"] if n in bundle.modules]
     alerts = state.get("alerts", [])
     structured: list[dict] = []
     narrative: list[str] = []
+    partial_reason = None
+    if state.get("bail_out_reason"):
+        partial_reason = f"interview did not run: {state['bail_out_reason'].replace('_', ' ')}"
+    elif state.get("closed_by_alert"):
+        partial_reason = "interview stopped by an immediate-tier alert"
+    elif state.get("phase") != "ended":
+        partial_reason = f"interview incomplete; stopped in phase {state.get('phase')}"
+    if partial_reason:
+        narrative.append(f"PARTIAL HISTORY: {partial_reason}. Everything not listed below was not asked. No examination was performed. This must not be read as a complete assessment.")
+    ctx = state.get("slot_values", {})
+    demo = [f"age {ctx['ctx.age']['value']}" for _ in [0] if ctx.get("ctx.age", {}).get("value") is not None]
+    if ctx.get("ctx.sex_recorded", {}).get("value"):
+        demo.append(f"recorded sex {ctx['ctx.sex_recorded']['value']}")
+    if demo:
+        narrative.append("Context from the record: " + ", ".join(demo) + ".")
 
     # 1. Alerts first
     if alerts:
@@ -109,6 +124,10 @@ def generate(state: dict, bundle: ContentBundle, terminology: TerminologyProvide
         narrative.append(tone)
     if state.get("closed_by_alert"):
         narrative.append("The interview was stopped by an immediate-tier alert; everything after that point is not asked.")
+    lang = state.get("language", "en")
+    narrative.append(f"Interview language: {lang}. " + ("Quoted words are in the language spoken; no translation was applied." if lang == "en" else "Quoted words are as transcribed in the interview language; any translation is marked in the structured record and is not validated."))
+    if state.get("is_simulation"):
+        narrative.append("RESEARCH RECORD: this interview was run in simulation mode and is not for clinical use.")
     narrative.append("Nothing in this handover is a clinician's finding. Everything is patient-reported and machine-transcribed until a clinician attests it.")
 
     # Coding document (CDI review specification)
@@ -143,8 +162,12 @@ def generate(state: dict, bundle: ContentBundle, terminology: TerminologyProvide
         "alerts": alerts,
         "safety_net_record": state.get("closing_delivered") or {},
         "coding_document": coding_document,
+        "partial": partial_reason,
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "versions": versions or {},
+        "metadata": {**(metadata or {}), "language": state.get("language"), "setting": state.get("setting"),
+                     "consent": state.get("consent"), "consent_timestamp": state.get("consent_timestamp"),
+                     "is_simulation": bool(state.get("is_simulation")), "saturation_invitations": state.get("saturation_invitations")},
     }
 
 

@@ -241,7 +241,8 @@ class Controller:
             return [self._say(state, fac.text, "facilitate", phrasing_variant_id=fac.id)]
         state["consecutive_empty_invitations"] += 1
         distinct = len(set(state["invitations_used"]))
-        if state["consecutive_empty_invitations"] >= 3 and distinct >= 3:
+        needed = max(1, self.b.parameters.saturation_invitations)
+        if state["consecutive_empty_invitations"] >= needed and distinct >= needed:
             return self._close_problem_list(state)
         unused = [p for p in self.b.phrasings.invitations if p.id not in state["invitations_used"]]
         inv = unused[0] if unused else self.b.phrasings.invitations[len(state["invitations_used"]) % len(self.b.phrasings.invitations)]

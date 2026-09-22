@@ -25,8 +25,11 @@ def load_bundle(root: Path | None = None, deployment: str | None = None) -> Cont
     root = root or content_dir()
     deployment = deployment or os.getenv("PARAMETERS_DEPLOYMENT", "sa_health_regional")
     modules: dict[str, Module] = {}
+    require_reviewed = os.getenv("REQUIRE_REVIEWED_CONTENT", "false").lower() == "true"
     for path in sorted((root / "modules").glob("*.yaml")):
         m = Module.model_validate(_read(path))
+        if require_reviewed and not m.reviewed:
+            raise RuntimeError(f"HAZ-8: module {m.module} v{m.version} is not marked reviewed; refusing to start (REQUIRE_REVIEWED_CONTENT=true)")
         modules[m.module] = m
     context = ContextModule.model_validate(_read(root / "context.yaml"))
     parameters = Parameters.model_validate(_read(root / "parameters" / f"{deployment}.yaml"))

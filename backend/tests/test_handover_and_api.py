@@ -95,3 +95,53 @@ def test_api_end_to_end(client):
 def test_api_rejects_unconfigured_language(client):
     r = client.post("/conversations", json={"setting": "ed", "language": "de"})
     assert r.status_code == 400
+
+
+def test_partial_handover_is_marked(bundle):
+    from app.control.controller import Controller, new_state
+    ctrl = Controller(bundle)
+    state = new_state("ed", "en", {"ai_disclosure": True, "tone_adaptation": False, "summary_to_clinician": True})
+    ctrl.start(state)
+    ctrl.person_turn(state, "No, I want a person.")
+    doc = generate(state, bundle)
+    assert doc["partial"] and doc["narrative"][0].startswith("PARTIAL HISTORY")
+    state, _ = run(bundle, ["I've got chest pain right now."], SETTLED_ANSWERS)
+    doc = generate(state, bundle)
+    assert "immediate-tier alert" in doc["partial"]
+
+
+def test_alert_acknowledgement_flow(client):
+    r = client.post("/conversations", json={"setting": "gp_booking", "language": "en"})
+    cid = r.json()["conversation_id"]
+    last = r.json()["agent_turns"][-1]
+    alert_id = None
+    for line in ["Yes.", "I've got a tight pain in my chest right now.", "No.", "No.", "No.", "No.", "Yes that's right."]:
+        r = client.post(f"/conversations/{cid}/turns", json={"transcript": line})
+        assert r.status_code == 200, r.text
+        if r.json()["alerts"]:
+            alert_id = r.json()["alerts"][0]["alert_id"]
+        if r.json()["phase"] == "ended":
+            break
+    assert alert_id
+    un = client.get("/alerts/unacknowledged").json()
+    assert any(a["alert_id"] == alert_id for a in un["alerts"])
+    assert client.post(f"/alerts/{alert_id}/acknowledge", json={"acknowledged_by": ""}).status_code == 400
+    ack = client.post(f"/alerts/{alert_id}/acknowledge", json={"acknowledged_by": "Duty GP Dr Nguyen"})
+    assert ack.status_code == 200
+    un = client.get("/alerts/unacknowledged").json()
+    assert not any(a["alert_id"] == alert_id for a in un["alerts"])
+    h = client.get(f"/conversations/{cid}/handover").json()
+    assert h["partial"] and h["metadata"]["consent_timestamp"] and h["metadata"]["language"] == "en"
+
+
+def test_reviewed_content_guard(bundle, monkeypatch):
+    import pathlib as _p
+    from app.content.loader import load_bundle
+    monkeypatch.setenv("REQUIRE_REVIEWED_CONTENT", "true")
+    root = _p.Path(__file__).resolve().parents[2] / "content"
+    try:
+        load_bundle(root)
+        raised = False
+    except RuntimeError as e:
+        raised = "HAZ-8" in str(e)
+    assert raised

@@ -104,6 +104,7 @@ class Module(BaseModel):
     module: str
     version: str
     status: Literal["grounded", "first_draft"]
+    reviewed: bool = False
     setting: Literal["ed", "gp_booking", "both"] = "both"
     activates_on: Activation = Field(default_factory=Activation)
     slots: list[Slot]
@@ -138,6 +139,9 @@ class Parameters(BaseModel):
     languages: list[str]
     language_names: dict[str, str] = Field(default_factory=dict)
     continue_after_immediate_alert: bool = False
+    saturation_invitations: int = 3
+    silence_end_of_turn_ms: int = 1200
+    alert_acknowledgement_timeout_s: int = 120
     escalation: dict[str, dict[str, EscalationRoute]]
     helplines: dict[str, str] = Field(default_factory=dict)
     disclosure: dict[str, str]
