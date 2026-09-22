@@ -1,0 +1,114 @@
+# Weakness, altered sensation, speech and visual disturbance converge on one time-critical question.
+# Last known well and symptom onset are two fields, never cross-populated (F-15).
+module: stroke_cluster
+display_name: sudden weakness, numbness, speech or vision change
+version: 0.1.0
+status: grounded
+reviewed: false
+review_notes: ["The collateral-history branch for dysphasia", "GP-version handling of immediate escalation", "Closing block is a first draft"]
+setting: both
+activates_on:
+  terms: [weak, weakness, can't move, arm won't work, dragging my leg, face drooping, droopy face, numb, numbness, pins and needles, tingling, slurred, can't find words, talking funny, gibberish, lost vision, curtain across my eye, can't see out of one eye, blurred in one eye]
+slots:
+  - id: st.last_known_well
+    class: coverage
+    required: true
+    intent: last time known to be completely well, as a clock time; separate from symptom onset
+    phrasings:
+      - {id: p1, form: open, text: "What time were you last completely normal, with none of this? Give me a clock time if you can."}
+    value: {type: clock_time}
+    absolute_time: true
+    verbatim: true
+    negative_reporting: omit
+  - id: st.symptom_onset
+    class: coverage
+    required: true
+    intent: time the symptoms were first noticed, as a clock time; separate from last known well
+    phrasings:
+      - {id: p1, form: open, text: "And what time did you first notice the symptoms? That can be different from when you were last well."}
+    value: {type: clock_time}
+    absolute_time: true
+    verbatim: true
+    negative_reporting: omit
+  - id: st.symptoms
+    class: red_flag
+    required: true
+    intent: which symptoms, in the patient's words
+    phrasings:
+      - {id: p1, form: open, text: "Tell me exactly what you noticed: weakness, numbness, your face, your speech, your vision, or your balance."}
+    value:
+      type: set
+      options:
+        - {id: weakness, synonyms: [weak, weakness, can't move, heavy, dragging, won't work, droop, drooping]}
+        - {id: numbness, synonyms: [numb, numbness, pins and needles, tingling, dead]}
+        - {id: speech, synonyms: [slurred, speech, words, talking, gibberish, can't say]}
+        - {id: vision, synonyms: [vision, see, sight, curtain, blurred, blind, one eye]}
+        - {id: balance, synonyms: [balance, unsteady, falling to one side, clumsy]}
+    verbatim: true
+    negative_reporting: omit
+  - id: st.laterality
+    class: coverage
+    required: true
+    intent: which side, and whether the face is involved
+    phrasings:
+      - {id: p1, form: closed, text: "Which side of your body? Is your face affected?"}
+    value: {type: text}
+    verbatim: true
+    negative_reporting: omit
+  - id: st.resolved
+    class: red_flag
+    required: true
+    intent: whether any symptom has already resolved; resolved symptoms still count
+    phrasings:
+      - {id: p1, form: closed, text: "Has any of it gone away already, or is it all still there?"}
+    value:
+      type: enum
+      options:
+        - {id: resolved, synonyms: [gone, went away, resolved, better now, passed, back to normal]}
+        - {id: ongoing, synonyms: [still there, ongoing, still, hasn't gone, same]}
+        - {id: partly, synonyms: [partly, some of it, mostly]}
+    verbatim: true
+    negative_reporting: omit
+  - id: st.anticoagulant_named
+    class: coverage
+    required: true
+    intent: anticoagulant asked by name and indication, never inferred from an adjacent mention
+    phrasings:
+      - {id: p1, form: closed, text: "Do you take a blood thinner: warfarin, apixaban, rivaroxaban, dabigatran, or clexane injections? What is it for?"}
+    value: {type: yes_no}
+    extraction: {yes_terms: [warfarin, apixaban, eliquis, rivaroxaban, xarelto, dabigatran, pradaxa, clexane, heparin, blood thinner], no_terms: ["no", none, nothing like that, don't take]}
+    verbatim: true
+    negative_reporting: explicit
+  - id: st.witness
+    class: coverage
+    required: true
+    intent: whether someone saw the onset and can give a collateral account
+    phrasings:
+      - {id: p1, form: closed, text: "Was anyone with you when it started? Could they speak to me?"}
+    value: {type: text}
+    verbatim: true
+    negative_reporting: omit
+  - id: st.seizure_or_loc
+    class: coverage
+    required: true
+    intent: loss of consciousness or seizure activity, the ROSIER mimic items, collected not scored
+    phrasings:
+      - {id: p1, form: closed, text: "Did you black out, or was there any shaking or fitting?"}
+    value: {type: yes_no}
+    extraction: {yes_terms: ["yes", blacked out, passed out, fit, seizure, shaking, convulsion], no_terms: ["no", stayed awake, no shaking, nothing like that]}
+    verbatim: true
+    negative_reporting: explicit
+red_flags:
+  - id: rf.stroke_symptoms
+    fires_when: "'weakness' in st.symptoms or 'numbness' in st.symptoms or 'speech' in st.symptoms or 'vision' in st.symptoms"
+    tier: immediate
+    alert: {include_verbatim: true, template: "New focal weakness, numbness, speech or visual disturbance (resolved symptoms still count). Last known well {st.last_known_well}; symptom onset {st.symptom_onset}. Patient said: {verbatim}."}
+    suppressible: false
+    source: "Master list: new focal weakness, numbness, speech or visual disturbance, including resolved"
+closing:
+  uncertainty: "I can't tell from talking with you what has caused this."
+  watch_for: [any return or worsening of weakness or numbness, trouble speaking, loss of vision]
+  time_course: "Someone is coming to you now."
+  where: "If you are at home and anything returns or worsens, call triple zero immediately."
+prohibited: [populating last known well from symptom onset or the reverse, inferring an anticoagulant from any other medicine, assembling ROSIER or FAST]
+gaps: ["No examination of face, arm, leg or visual fields. Onset time is unknown in about a quarter of patients; where the two time fields differ both are handed over."]

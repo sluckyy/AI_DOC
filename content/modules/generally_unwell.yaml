@@ -1,0 +1,163 @@
+# A routing module. No single question carries the weight; the constellation does, so the open phase runs to saturation and every symptom elicited is reported with the count.
+module: generally_unwell
+display_name: feeling generally unwell
+version: 0.1.0
+status: grounded
+reviewed: false
+review_notes: ["Whether SA Health has a non-specific-symptom cancer pathway to feed", "Whether acute functional deterioration should fire for every age or carry an age qualifier (currently fires for all, with age in the alert)", "Adult conviction that something is seriously wrong is recorded and flagged, not asserted; candidate for the comparative study", "Closing block is a first draft"]
+setting: both
+activates_on:
+  terms: [just not right, not right, feel terrible, something's wrong, something is wrong, feel awful, generally unwell, unwell, off colour, not well, feel rotten, under the weather, no good]
+slots:
+  - id: gu.meaning
+    class: coverage
+    required: true
+    intent: what "unwell" means in the patient's own words, open and verbatim; the start of the saturation run
+    phrasings:
+      - {id: p1, form: open, text: "Tell me what feeling unwell is like for you. What have you noticed?"}
+      - {id: p2, form: open, text: "What else have you noticed, even if it seems small or unrelated?", use_when: "the patient has given one or more symptoms and the open phase has not yet saturated"}
+    value: {type: text}
+    verbatim: true
+    negative_reporting: omit
+  - id: gu.onset_date
+    class: coverage
+    required: true
+    intent: start date, asked first to separate acute from subacute; days routes to the fever and sepsis module, weeks or months stays here
+    phrasings:
+      - {id: p1, form: open, text: "When did this start? Give me a date, even roughly."}
+    value: {type: text}
+    verbatim: true
+    negative_reporting: omit
+  - id: gu.course
+    class: coverage
+    required: true
+    intent: acute over days versus subacute over weeks or months, for routing
+    phrasings:
+      - {id: p1, form: open, text: "So has this been a matter of days, or weeks and months?"}
+    value:
+      type: enum
+      options:
+        - {id: days, synonyms: [days, a day or two, this week, since yesterday, few days, suddenly]}
+        - {id: weeks_months, synonyms: [weeks, months, a month, ages, long time, gradually, since christmas]}
+    verbatim: true
+    negative_reporting: omit
+  - id: gu.fever
+    class: coverage
+    required: true
+    intent: fever or feeling feverish; a positive routes to the fever and sepsis module
+    phrasings:
+      - {id: p1, form: closed, text: "Have you had a fever, or felt hot and shivery?"}
+    value: {type: yes_no}
+    extraction: {yes_terms: ["yes", fever, temperature, hot, shivery, shivers, chills, sweats, burning up], no_terms: ["no", no fever, no temperature, not hot, nothing like that]}
+    verbatim: true
+    negative_reporting: explicit
+  - id: gu.appetite_fluids
+    class: coverage
+    required: true
+    intent: eating and drinking compared with usual
+    phrasings:
+      - {id: p1, form: open, text: "How are you managing to eat and drink? Compared with usual, how much have you had today?"}
+    value: {type: text}
+    verbatim: true
+    negative_reporting: omit
+  - id: gu.urine_last_pass
+    class: coverage
+    required: true
+    intent: clock time of the last pass of urine, confirmed as an interval; same rule as the fever and sepsis module
+    phrasings:
+      - {id: p1, form: open, text: "When did you last pass urine? I need a clock time, even roughly, not just how long ago."}
+    value: {type: clock_time}
+    absolute_time: true
+    verbatim: true
+    negative_reporting: omit
+  - id: gu.urine_18h
+    class: red_flag
+    required: true
+    intent: confirmed interval of 18 hours or more since the last pass of urine, derived from the clock time and read back to the patient
+    phrasings:
+      - {id: p1, form: closed, text: "From the time you gave me, that would be more than 18 hours since you last passed urine. Is that right?"}
+    value: {type: yes_no}
+    extraction: {yes_terms: ["yes", that's right, correct, about that, more than that, longer, all day, since yesterday morning], no_terms: ["no", less than that, sooner, went since then, this morning, a few hours ago]}
+    prefill_from: [gu.urine_last_pass]
+    confirm: true
+    verbatim: true
+    negative_reporting: explicit
+  - id: gu.new_confusion
+    class: red_flag
+    required: true
+    intent: new confusion or altered behaviour reported by someone with the patient; a positive routes to the confusion module's collateral interview
+    phrasings:
+      - {id: p1, form: closed, text: "Is there someone with you? Have they said you seem more muddled, drowsy or not yourself since this started?"}
+    value: {type: yes_no}
+    extraction: {yes_terms: ["yes", muddled, confused, drowsy, not myself, not herself, not himself, rambling, not making sense, forgetful], no_terms: ["no", nobody with me, same as usual, thinking clearly, nothing like that]}
+    verbatim: true
+    negative_reporting: explicit
+  - id: gu.functional_deterioration
+    class: red_flag
+    required: true
+    intent: acute deterioration of functional ability or mobility, compared with the patient's usual
+    phrasings:
+      - {id: p1, form: closed, text: "Compared with a week ago, has there been a sudden change in how you are managing: getting about, washing, dressing, getting up from a chair or bed?"}
+    value: {type: yes_no}
+    extraction: {yes_terms: ["yes", can't get up, can't stand, stuck in bed, off my legs, can't manage, too weak, needs help now, falling], no_terms: ["no", managing fine, same as usual, getting about, no change]}
+    verbatim: true
+    negative_reporting: explicit
+  - id: gu.constitutional
+    class: coverage
+    required: true
+    intent: weight loss, tiredness and night sweats, asked in every interview in this module because they dominate referrals to non-specific-symptom pathways; each populates its own module
+    phrasings:
+      - {id: p1, form: closed, text: "Have you lost weight without trying, been unusually tired, or had sweats that soak the bed at night?"}
+    value:
+      type: set
+      options:
+        - {id: weight_loss, synonyms: [weight loss, lost weight, losing weight, clothes are loose]}
+        - {id: fatigue, synonyms: [tired, tiredness, exhausted, no energy, worn out, fatigue]}
+        - {id: night_sweats, synonyms: [night sweats, sweats at night, soak the bed, drenched]}
+        - {id: none, synonyms: [none, "no", nothing, none of those, nothing like that]}
+    verbatim: true
+    negative_reporting: explicit
+  - id: gu.recent_presentations
+    class: coverage
+    required: true
+    intent: whether the patient has already seen a GP or hospital about this illness, and when, by date, recorded verbatim
+    phrasings:
+      - {id: p1, form: open, text: "Have you already seen a doctor, or been to a hospital, about this? On what dates?"}
+    value: {type: text}
+    verbatim: true
+    negative_reporting: explicit
+  - id: gu.conviction
+    class: coverage
+    required: false
+    intent: the patient's or carer's own sense that something is seriously wrong, or that this illness is different from previous ones, recorded verbatim and attributed, never asserted
+    phrasings:
+      - {id: p1, form: open, text: "Does this feel different from other times you've been unwell? What makes you say that?"}
+    value: {type: text}
+    verbatim: true
+    negative_reporting: omit
+red_flags:
+  - id: rf.unwell_new_confusion
+    fires_when: "gu.new_confusion == 'yes'"
+    tier: immediate
+    alert: {include_verbatim: true, template: "Feeling generally unwell with new confusion or altered behaviour reported by someone with the patient; routed to the confusion collateral interview. Patient said: {verbatim}."}
+    suppressible: false
+    source: "NICE sepsis guidance: new altered behaviour or mental state reported by patient, friend or relative; generally unwell row routes acute illness to the fever and sepsis row"
+  - id: rf.unwell_no_urine_18h
+    fires_when: "gu.urine_18h == 'yes'"
+    tier: immediate
+    alert: {include_verbatim: true, template: "Feeling generally unwell with no urine passed for 18 hours or more. Last passed urine {gu.urine_last_pass}. Patient said: {verbatim}."}
+    suppressible: false
+    source: "NICE sepsis guidance: not passing urine in the previous 18 hours is a high-risk criterion"
+  - id: rf.unwell_functional_deterioration
+    fires_when: "gu.functional_deterioration == 'yes'"
+    tier: same_day
+    alert: {include_verbatim: true, template: "Acute deterioration of functional ability in a patient feeling generally unwell. Age {ctx.age}. Onset {gu.onset_date}. Patient said: {verbatim}."}
+    suppressible: false
+    source: "NICE sepsis guidance: acute deterioration of functional ability is a history criterion; particularly in an older person, per the routing row"
+closing:
+  uncertainty: "I can't tell from talking with you what is causing you to feel unwell."
+  watch_for: [passing little or no urine, becoming muddled or drowsy, a fever, being unable to get up or manage as usual, losing weight or drenching night sweats, feeling that you are getting rapidly worse]
+  time_course: "Someone will speak with you today."
+  where: "If you become muddled or drowsy, or feel you are getting rapidly worse before then, call an ambulance rather than waiting."
+prohibited: [interpreting the constellation of symptoms or suggesting a cause, "summarising the presentation as non-specific or vague without listing every symptom and the count", asserting the patient's conviction that something is wrong as a finding rather than recording it verbatim and attributed, closing the open phase before the patient stops producing new symptoms]
+gaps: ["No history instrument exists for non-specific presentations: no single non-specific symptom predicts cancer in referred patients, and age and blood tests outperform symptoms; both belong to the clinician", "Whether SA Health has a non-specific-symptom pathway to feed is unconfirmed", "Adult conviction that something is seriously wrong has no evidence base found in this pass; it is recorded verbatim and attributed as a candidate for the comparative study"]

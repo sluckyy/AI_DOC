@@ -1,0 +1,51 @@
+# DISABLED PLACEHOLDER (D-50). The mental health section is forwarded to a specialist for wording, thresholds,
+# escalation and the disclosure-to-contact interval. Not live until sign-off. The loader skips this module.
+module: mental_health
+display_name: how you have been feeling in yourself
+version: 0.1.0
+status: first_draft
+enabled: false
+reviewed: false
+review_notes: ["Forwarded to a mental health specialist for wording, thresholds, escalation and disclosure-to-contact interval; not live until sign-off (D-50)", "Columbia Protocol wording must be administered exactly; not yet transcribed", "Direct risk questions are asked in both settings per the library — the specialist decides wording"]
+setting: both
+activates_on:
+  terms: [feeling low, depressed, anxious, can't cope, want to end it, self harm, suicidal, panic, panicking, not myself, low mood, hopeless, hurting myself]
+slots:
+  - id: mh.presenting
+    class: coverage
+    required: true
+    intent: the patient's account of how they have been feeling, in their own words, before any structured question
+    phrasings:
+      - {id: p1, form: open, text: "Tell me in your own words how you've been feeling."}
+    value: {type: text}
+    stigmatised: true
+    preamble: "Lots of people talk to us about how they are feeling in themselves. What you say goes only to the clinician looking after you."
+    verbatim: true
+    negative_reporting: omit
+  - id: mh.risk_direct
+    class: red_flag
+    required: true
+    intent: the direct risk question, asked plainly in both settings and never deferred to a human; the agent administers and escalates, it does not judge
+    phrasings:
+      - {id: p1, form: closed, text: "Some people who feel this way have thoughts of ending their life. Have you had thoughts like that?"}
+    value: {type: yes_no}
+    extraction: {yes_terms: ["yes", sometimes, thought about it, end it, ending my life, kill myself, better off dead, not be here, suicidal], no_terms: ["no", never, nothing like that, not that]}
+    stigmatised: true
+    preamble: "I'm going to ask a direct question that we ask everyone who tells us they've been feeling this way. Only the clinician looking after you sees the answer."
+    disclosure_group: risk
+    verbatim: true
+    negative_reporting: explicit
+red_flags:
+  - id: rf.mh_risk_direct_positive
+    fires_when: "mh.risk_direct == 'yes'"
+    tier: immediate
+    alert: {include_verbatim: true, template: "Patient answered yes to the direct question about thoughts of ending their life. The agent stays with the patient and gives Lifeline 13 11 14 and emergency 000. No score has been assembled; the Columbia Protocol is named for the clinician to complete. Patient said: {verbatim}."}
+    suppressible: false
+    source: "Mental health row: any positive escalates per the mental health section; P9: risk questions asked directly in both settings. Tier and wording are placeholders pending specialist sign-off"
+closing:
+  uncertainty: "I can't tell from talking with you what is behind how you've been feeling."
+  watch_for: [thoughts of ending your life or of harming yourself, feeling unable to keep yourself safe, feeling unable to get through the next few hours]
+  time_course: "Someone will speak with you today."
+  where: "If you feel you cannot keep yourself safe before then, call 000 or Lifeline on 13 11 14 rather than waiting."
+prohibited: [diagnosing, scoring, minimising, deferring risk questions to a human]
+gaps: ["The specialist must supply: the Columbia Protocol wording administered exactly; the thresholds and escalation route for each answer; plan, means and intent items and their routing; the disclosure-to-contact interval; safe-messaging wording for the closing block; the GP-version escalation route.", "No score is assembled and no diagnosis is made; the handover lists the answers given and names the instrument for a trained clinician to complete."]

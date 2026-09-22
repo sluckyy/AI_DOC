@@ -1,0 +1,115 @@
+module: joint_pain
+display_name: joint pain or swelling
+version: 0.1.0
+status: grounded
+reviewed: false
+review_notes: ["Wording and placement of the sexual history question", "Closing block is a first draft"]
+setting: both
+activates_on:
+  terms: [sore joint, swollen knee, swollen joint, arthritis flare, can't bend it, joint pain, my knee is hot, hot joint, swollen ankle, swollen elbow, my hip hurts]
+slots:
+  - id: jt.single_or_multiple
+    class: coverage
+    required: true
+    intent: one joint or several
+    phrasings:
+      - {id: p1, form: closed, text: "Is it one joint, or several?"}
+    value:
+      type: enum
+      options:
+        - {id: single, synonyms: [one, one joint, just my knee, just the one, single]}
+        - {id: multiple, synonyms: [several, many, lots, both knees, hands and feet, all over]}
+    verbatim: true
+    negative_reporting: omit
+  - id: jt.hot_swollen
+    class: red_flag
+    required: true
+    intent: hot swollen joint
+    phrasings:
+      - {id: p1, form: closed, text: "Is the joint hot and swollen?"}
+    value: {type: yes_no}
+    extraction: {yes_terms: ["yes", hot, warm, swollen, red, puffy], no_terms: ["no", not hot, not swollen, just sore]}
+    verbatim: true
+    negative_reporting: explicit
+  - id: jt.prosthesis_skin
+    class: discriminating
+    required: true
+    intent: joint replacement, and separately any skin infection or wound near it
+    phrasings:
+      - {id: p1, form: closed, text: "Do you have a joint replacement there? If so, is there any redness, wound or infection on the skin near it?"}
+    value: {type: yes_no}
+    extraction: {yes_terms: [replacement and, redness, wound, infection near, sore on the skin, "yes"], no_terms: ["no", no replacement, skin is fine, no wound]}
+    evidence: {lr: "prosthetic joint with overlying skin infection LR+ 15; joint surgery within 3 months LR+ 6.9; age over 80 LR+ 3.5", discriminates: septic arthritis, citation: "septic arthritis history predictors, as tabulated in the Symptom Questioning Library", grade: A, population: ED monoarthritis}
+    verbatim: true
+    negative_reporting: explicit
+  - id: jt.recent_procedure_date
+    class: discriminating
+    required: true
+    intent: date of any joint surgery, injection or aspiration
+    phrasings:
+      - {id: p1, form: open, text: "Has that joint had surgery, an injection or fluid drawn off? On what date?"}
+    value: {type: text}
+    evidence: {lr: "joint surgery within the preceding 3 months LR+ 6.9; 42% of adult septic arthritis was iatrogenic in one series", discriminates: septic arthritis, citation: "as above", grade: A, population: ED monoarthritis}
+    verbatim: true
+    negative_reporting: explicit
+  - id: jt.fever
+    class: coverage
+    required: true
+    intent: fever, recorded but never read as evidence against infection
+    phrasings:
+      - {id: p1, form: closed, text: "Have you had a fever or shivers?"}
+    value: {type: yes_no}
+    extraction: {yes_terms: ["yes", fever, shivers, hot, temperature], no_terms: ["no", no fever]}
+    verbatim: false
+    negative_reporting: explicit
+  - id: jt.weight_bear
+    class: red_flag
+    required: true
+    intent: ability to weight bear or move the joint
+    phrasings:
+      - {id: p1, form: closed, text: "Can you put weight on it, or move it at all?"}
+    value: {type: yes_no}
+    extraction: {yes_terms: [can walk, can move, "yes", able to], no_terms: [can't, unable, can't move it, can't walk, "no", won't bear weight]}
+    verbatim: true
+    negative_reporting: explicit
+  - id: jt.immunosuppression
+    class: coverage
+    required: true
+    intent: diabetes, rheumatoid arthritis, immunosuppressive medicines by name
+    phrasings:
+      - {id: p1, form: closed, text: "Do you have diabetes or rheumatoid arthritis? Do you take steroids, methotrexate, or an injection or infusion for your immune system?"}
+    value: {type: text}
+    verbatim: true
+    negative_reporting: explicit
+  - id: jt.sexual_history
+    class: coverage
+    required: false
+    intent: recent new sexual partner or symptoms, for gonococcal arthritis
+    phrasings:
+      - {id: p1, form: closed, text: "Doctors ask everyone with a hot joint this: have you had a new sexual partner recently, or any discharge or burning?"}
+    value: {type: text}
+    stigmatised: true
+    preamble: "This next question is personal, and it is asked of everyone with a hot joint. Only the clinician looking after you sees the answer."
+    disclosure_group: sexual
+    verbatim: true
+    negative_reporting: omit
+red_flags:
+  - id: rf.septic_joint_risk
+    fires_when: "jt.hot_swollen == 'yes' and (jt.prosthesis_skin == 'yes' or jt.recent_procedure_date != '')"
+    tier: same_day
+    alert: {include_verbatim: true, template: "Hot swollen joint with a prosthesis and skin infection, or a recent procedure ({jt.recent_procedure_date}). Patient said: {verbatim}."}
+    suppressible: false
+    source: "Master list: hot swollen joint with a prosthesis and skin infection over it, or joint surgery or injection within three months"
+  - id: rf.hot_joint_cannot_weight_bear
+    fires_when: "jt.hot_swollen == 'yes' and jt.weight_bear == 'no'"
+    tier: same_day
+    alert: {include_verbatim: true, template: "Hot swollen joint, unable to weight bear. Patient said: {verbatim}."}
+    suppressible: false
+    source: "MSK table: inability to weight bear; tier proposed for review"
+closing:
+  uncertainty: "I can't tell from talking with you what is causing the joint problem."
+  watch_for: [the joint becoming hot and red, fever, being unable to move it or put weight on it]
+  time_course: "Someone will speak with you today."
+  where: "If the joint becomes hot and you cannot move it, seek care the same day rather than waiting."
+prohibited: [letting "no fever" read as evidence against infection, naming gout or any cause]
+gaps: ["Fever is absent in 43% of septic joints. Aspiration decides; history raises suspicion and cannot lower it."]

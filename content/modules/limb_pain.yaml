@@ -1,0 +1,105 @@
+# The five Ps are late signs and are not a screening checklist.
+module: limb_pain
+display_name: limb pain
+version: 0.1.0
+status: grounded
+reviewed: false
+review_notes: ["Whether the agent may ever mention loosening a cast (currently prohibited)", "Ordinary musculoskeletal limb pain handled by the generic field set", "Vascular review of rest pain", "Closing block is a first draft"]
+setting: both
+activates_on:
+  terms: [leg hurts, arm aching, calf pain, dead arm, my leg is agony, pain in my leg, pain in my arm, leg pain, arm pain, my foot is agony, cramp in my calf when i walk]
+slots:
+  - id: lp.context
+    class: coverage
+    required: true
+    intent: "context before the pain: fracture, cast, tight bandage, crush, burn, drip site, recent vascular surgery"
+    phrasings:
+      - {id: p1, form: open, text: "What happened before this started? Any injury, a cast or tight bandage, a crush, a burn, a drip, or an operation on your blood vessels?"}
+    value: {type: text}
+    verbatim: true
+    negative_reporting: omit
+  - id: lp.trajectory
+    class: red_flag
+    required: true
+    intent: pain rising despite painkillers, against clock times
+    phrasings:
+      - {id: p1, form: closed, text: "Is the pain getting worse despite painkillers? Have you needed more, or stronger ones, since it started?"}
+    value: {type: yes_no}
+    extraction: {yes_terms: ["yes", worse, getting worse, more painkillers, stronger, not touching it, out of proportion], no_terms: ["no", settling, better, painkillers work, same]}
+    verbatim: true
+    negative_reporting: explicit
+  - id: lp.onset_clock_time
+    class: coverage
+    required: true
+    intent: clock time of onset
+    phrasings:
+      - {id: p1, form: open, text: "What time did the pain start, on the clock?"}
+    value: {type: clock_time}
+    absolute_time: true
+    verbatim: true
+    negative_reporting: omit
+  - id: lp.paraesthesia_weakness
+    class: red_flag
+    required: true
+    intent: new tingling, numbness or weakness in the painful limb
+    phrasings:
+      - {id: p1, form: closed, text: "Is there any new tingling, numbness or weakness in that limb?"}
+    value: {type: yes_no}
+    extraction: {yes_terms: ["yes", tingling, numb, pins and needles, weak, can't move it, heavy], no_terms: ["no", feels normal otherwise, no tingling, moves fine]}
+    verbatim: true
+    negative_reporting: explicit
+  - id: lp.sudden_af
+    class: red_flag
+    required: true
+    intent: sudden onset, and atrial fibrillation or an irregular heartbeat
+    phrasings:
+      - {id: p1, form: closed, text: "Did it come on suddenly? Have you been told your heart beats irregularly, or that you have atrial fibrillation?"}
+    value: {type: yes_no}
+    extraction: {yes_terms: [suddenly and, atrial fibrillation, af, irregular, "yes"], no_terms: ["no", gradual, heart is fine, never told]}
+    verbatim: true
+    negative_reporting: explicit
+  - id: lp.colour_temperature
+    class: coverage
+    required: false
+    intent: coldness or pallor, late delegated observations whose negatives are misleading
+    phrasings:
+      - {id: p1, form: closed, text: "Compared with the other side, does the limb look pale or feel cold?"}
+    value: {type: text}
+    delegated_observation: true
+    verbatim: true
+    negative_reporting: omit
+  - id: lp.claudication
+    class: coverage
+    required: false
+    intent: pain on walking that eases with rest, distance, uphill, and pain at rest or a non-healing foot wound
+    phrasings:
+      - {id: p1, form: open, text: "Does the pain come on when you walk and ease within about ten minutes of stopping? How far can you walk before it starts? Does it hurt at rest or at night? Any wound on the foot that won't heal?"}
+    value: {type: text}
+    verbatim: true
+    negative_reporting: omit
+red_flags:
+  - id: rf.compartment_pattern
+    fires_when: "lp.trajectory == 'yes' or lp.paraesthesia_weakness == 'yes'"
+    tier: immediate
+    alert: {include_verbatim: true, template: "Painful limb with rising pain despite painkillers, or new numbness, tingling or weakness. Context: {lp.context}. Onset {lp.onset_clock_time}. Patient said: {verbatim}."}
+    suppressible: false
+    source: "Master list: painful limb with new numbness, tingling or weakness; or limb pain rising despite painkillers after injury, cast, crush, burn or surgery"
+  - id: rf.acute_limb_af
+    fires_when: "lp.sudden_af == 'yes'"
+    tier: immediate
+    alert: {include_verbatim: true, template: "Sudden limb pain in a patient with atrial fibrillation. Patient said: {verbatim}."}
+    suppressible: false
+    source: "Master list: sudden painful limb in a patient with atrial fibrillation"
+  - id: rf.claudication_flag
+    fires_when: "lp.claudication != ''"
+    tier: flag
+    alert: {include_verbatim: true, template: "Leg pain on walking or at rest reported: {lp.claudication}. Patient said: {verbatim}."}
+    suppressible: false
+    source: "Master list: leg pain on walking that eases with rest (flag); rest pain or non-healing foot wound (same-day proposed, ungrounded, vascular review)"
+closing:
+  uncertainty: "I can't tell from talking with you what is causing the pain."
+  watch_for: [pain getting worse despite painkillers, new numbness or tingling or weakness, the limb going pale or cold]
+  time_course: "Someone will speak with you today."
+  where: "If the pain keeps rising or numbness starts, call an ambulance rather than waiting."
+prohibited: [advising removal or loosening of a cast or dressing, recording a warm normal-coloured limb as reassuring, working through the five Ps as a checklist]
+gaps: ["Pulses and capillary refill remain normal in most early compartment syndrome; negatives here are actively misleading. Damage may be irreversible within six hours."]

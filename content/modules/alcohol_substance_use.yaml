@@ -1,0 +1,148 @@
+module: alcohol_substance_use
+display_name: drinking or drug use
+version: 0.1.0
+status: grounded
+reviewed: false
+review_notes: ["D-41: whether the agent may score the AUDIT-C and the single-item screens at all; the library proposes that instruments validated for self-administration with no examination, witness or judgement items may be scored, but the claudication row's finding on administration mode leaves it unsettled. Until decided, the agent records answers and their option ids only.", "AUDIT-C item wording is the standard published wording; the library instructs exact validated wording but does not reproduce it, so reviewers should confirm against the licensed text.", "Australian standard drink definition to be confirmed and used consistently in item two.", "AUDIT-C positivity threshold varies by sex and setting (4 or more for both sexes, or 5 men and 4 women); a parameter, not module content, and the module has no sex field to apply it to.", "Cannabis single-item wording to be confirmed by reviewers; the library cites the validation but not the text.", "Whether patients disclose more or less to a voice agent than to a clinician is a research question for the comparative study.", "Closing block is a first draft."]
+setting: both
+activates_on:
+  terms: [drinking too much, drink too much, my drinking, using, using drugs, drugs, drug use, withdrawal, the shakes, shakes, hungover, hangover, cannabis, weed, ice, meth, pills, i'm an alcoholic, want to cut down, want to stop drinking, need help to stop]
+slots:
+  - id: au.audit_frequency
+    class: discriminating
+    required: true
+    intent: "AUDIT-C item one, frequency of drinking, recorded as the answer's option id and never as a score in-module"
+    phrasings:
+      - {id: p1, form: closed, text: "How often do you have a drink containing alcohol? Never, monthly or less, two to four times a month, two to three times a week, or four or more times a week?"}
+    value:
+      type: enum
+      options:
+        - {id: never, synonyms: [never, i don't drink, don't drink, teetotal, not at all]}
+        - {id: monthly_or_less, synonyms: [monthly or less, once a month, less than once a month, rarely, hardly ever, special occasions]}
+        - {id: two_to_four_per_month, synonyms: ["two to four times a month", "2 to 4 times a month", "2-4 times a month", every couple of weeks, a few times a month, most weekends]}
+        - {id: two_to_three_per_week, synonyms: ["two to three times a week", "2 to 3 times a week", "2-3 times a week", couple of times a week, a few times a week]}
+        - {id: four_or_more_per_week, synonyms: ["four or more times a week", "4 or more times a week", most days, every day, daily, nearly every day, every night]}
+    evidence: {gap: true, gap_reason: "The library gives the AUDIT-C as three items scored 0 to 12 with more than three points positive in one primary care validation, but tabulates no likelihood ratio per item; scoring itself is an open owner decision (D-41)"}
+    stigmatised: true
+    preamble: "I'm going to ask a few questions about alcohol that are asked of everyone, whatever they answer. There are no right or wrong answers, and only the clinician looking after you sees them."
+    disclosure_group: substance
+    verbatim: true
+    negative_reporting: explicit
+  - id: au.audit_typical_day
+    class: discriminating
+    required: true
+    intent: "AUDIT-C item two, standard drinks on a typical drinking day, recorded as the answer's option id; the unit of a standard drink is a deployment parameter"
+    phrasings:
+      - {id: p1, form: closed, text: "How many standard drinks containing alcohol do you have on a typical day when you are drinking? One or two, three or four, five or six, seven to nine, or ten or more?"}
+    value:
+      type: enum
+      options:
+        - {id: one_or_two, synonyms: ["one or two", "1 or 2", "one", "two", just one, a couple, one glass, a glass of wine]}
+        - {id: three_or_four, synonyms: ["three or four", "3 or 4", "three", "four", a few]}
+        - {id: five_or_six, synonyms: ["five or six", "5 or 6", "five", "six", half a dozen]}
+        - {id: seven_to_nine, synonyms: ["seven to nine", "7 to 9", "seven", "eight", "nine"]}
+        - {id: ten_or_more, synonyms: ["ten or more", "10 or more", "ten", a bottle of spirits, a carton, a slab, a cask, more than ten, lost count]}
+    evidence: {gap: true, gap_reason: "As for item one; no per-item likelihood ratio in the library and scoring is an open owner decision (D-41)"}
+    stigmatised: true
+    preamble: "Same as before: this is asked of everyone, and there is no judgement in it."
+    disclosure_group: substance
+    verbatim: true
+    negative_reporting: explicit
+  - id: au.audit_six_or_more
+    class: discriminating
+    required: true
+    intent: "AUDIT-C item three, frequency of six or more drinks on one occasion, recorded as the answer's option id"
+    phrasings:
+      - {id: p1, form: closed, text: "How often do you have six or more drinks on one occasion? Never, less than monthly, monthly, weekly, or daily or almost daily?"}
+    value:
+      type: enum
+      options:
+        - {id: never, synonyms: [never, not ever, no never]}
+        - {id: less_than_monthly, synonyms: [less than monthly, less than once a month, rarely, once in a blue moon, a few times a year, christmas]}
+        - {id: monthly, synonyms: [monthly, once a month, about once a month]}
+        - {id: weekly, synonyms: [weekly, once a week, every weekend, most weekends, saturdays]}
+        - {id: daily_or_almost_daily, synonyms: [daily, almost daily, every day, most days, every night, nearly every day]}
+    evidence: {gap: true, gap_reason: "As for item one; no per-item likelihood ratio in the library and scoring is an open owner decision (D-41)"}
+    stigmatised: true
+    preamble: "Last one about alcohol, and again it is the same question everyone gets."
+    disclosure_group: substance
+    verbatim: true
+    negative_reporting: explicit
+  - id: au.drug_single_item
+    class: discriminating
+    required: true
+    intent: "single-item drug use screen, validated wording, recorded as the patient's number of times in the past year"
+    phrasings:
+      - {id: p1, form: closed, text: "How many times in the past year have you used an illegal drug or used a prescription medication for non-medical reasons?"}
+    value: {type: text}
+    evidence: {lr: "self-reported current use: sensitivity 82.8%, specificity 93.6%, LR+ 12.9, LR− 0.2; drug problem or use disorder: sensitivity 87.0%, specificity 92.8%, LR+ 12.0, LR− 0.1; test characteristics affected very little by demographic characteristics", discriminates: current drug use and drug use disorder, citation: "single-item drug use screen, Smith 2010, as tabulated in the Symptom Questioning Library", grade: B, population: primary care}
+    stigmatised: true
+    preamble: "The next question is about drugs. It is asked of everyone in exactly these words, and a straight answer helps the clinician look after you safely, for example with the medicines they choose."
+    disclosure_group: substance
+    verbatim: true
+    negative_reporting: explicit
+  - id: au.cannabis_single_item
+    class: discriminating
+    required: true
+    intent: "single past-year cannabis question, recorded as the patient's number of times in the past year"
+    phrasings:
+      - {id: p1, form: closed, text: "How many times in the past year have you used cannabis, also called marijuana or weed?"}
+    value: {type: text}
+    evidence: {gap: true, gap_reason: "The library states a single past-year cannabis question has been validated as a screen for cannabis use disorder but tabulates no likelihood ratio and does not reproduce the item wording; reviewers to confirm both"}
+    stigmatised: true
+    preamble: "Cannabis is asked about separately, because it is so common; again there is no judgement in the question."
+    disclosure_group: substance
+    verbatim: true
+    negative_reporting: explicit
+  - id: au.substances_named
+    class: coverage
+    required: false
+    intent: "which substances and by what route, in the patient's own words, when the drug or cannabis answer is more than never"
+    phrasings:
+      - {id: p1, form: open, text: "Which ones, and how do you take them? Your own words are fine."}
+    value: {type: text}
+    stigmatised: true
+    preamble: "Knowing what it is matters for the clinician, not for anyone else."
+    disclosure_group: substance
+    verbatim: true
+    negative_reporting: omit
+  - id: au.last_use_clock_time
+    class: coverage
+    required: true
+    intent: "clock time of the last drink or last use, confirmed as an interval, because withdrawal timing and interaction with treatment both depend on it"
+    phrasings:
+      - {id: p1, form: open, text: "When did you last have a drink or use? I need a clock time, even roughly, rather than just how long ago."}
+    value: {type: clock_time}
+    absolute_time: true
+    stigmatised: true
+    preamble: "The timing helps the clinician, whatever the answer is."
+    disclosure_group: substance
+    verbatim: true
+    negative_reporting: omit
+  - id: au.wants_help_to_stop
+    class: red_flag
+    required: true
+    intent: "whether the patient is asking for help to stop or cut down, in their own words, for routing to addiction medicine"
+    phrasings:
+      - {id: p1, form: closed, text: "Is part of why you are calling that you would like help to stop or cut down?"}
+    value: {type: yes_no}
+    extraction: {yes_terms: ["yes", want to stop, want to cut down, need help, help me stop, get off it, quit, want to quit, can't stop on my own], no_terms: ["no", not really, not today, i'm fine with it, no thanks]}
+    stigmatised: true
+    preamble: "Plenty of people call for exactly this reason, and it is a reasonable thing to ask for."
+    disclosure_group: substance
+    verbatim: true
+    negative_reporting: explicit
+red_flags:
+  - id: rf.wants_help_to_stop
+    fires_when: "au.wants_help_to_stop == 'yes'"
+    tier: flag
+    alert: {include_verbatim: true, template: "Patient is asking for help to stop or cut down; route to addiction medicine. Last use {au.last_use_clock_time}. Patient said: {verbatim}."}
+    suppressible: false
+    source: "Library alcohol and substance row: patients who call specifically seeking help to stop are flagged for addiction medicine review"
+closing:
+  uncertainty: "I can't tell from talking with you what your drinking or drug use means for your health; that is for the clinician to look at with you."
+  watch_for: [shaking or sweating after stopping, seeing or hearing things that are not there, confusion, a fit, chest pain or trouble breathing after using]
+  time_course: "Someone will speak with you today."
+  where: "If you have a fit, become confused, or start seeing or hearing things, call an ambulance rather than waiting."
+prohibited: [judging or commenting on the amount, advising the patient to cut down or stop, diagnosing dependence or using a label such as alcohol dependence, computing or reporting an AUDIT-C score in-module, treating a positive screen as a diagnosis]
+gaps: ["The agent records answers and option ids only; whether the agent may compute and report the AUDIT-C score or the single-item screen result is an owner decision (D-41) not yet made.", "Australian standard drink definition (10 g of alcohol) is a configurable deployment parameter to be confirmed by reviewers and used consistently in item two; the wording says 'standard drinks' and does not define them.", "AUDIT-C positivity threshold is a configurable parameter that varies by sex and setting; the module has no sex field to apply it to.", "Current intoxication severe enough to prevent a history is a cross-cutting bail-out, handled outside this module.", "Withdrawal risk is covered by the alcohol_withdrawal module, not here.", "No physical examination, breath alcohol or blood tests."]

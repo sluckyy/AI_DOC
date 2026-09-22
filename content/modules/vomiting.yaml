@@ -1,0 +1,117 @@
+module: vomiting
+display_name: vomiting
+version: 0.1.0
+status: grounded
+reviewed: false
+review_notes: ["Paediatric surgical review of the colour rules", "Whether an SMS colour reference is feasible", "The adult half is thin", "Closing block is a first draft"]
+setting: both
+activates_on:
+  terms: [vomiting, throwing up, being sick, been sick, heaving, queasy, nausea, nauseous, vomited, baby is vomiting, spewing]
+slots:
+  - id: vo.who
+    class: coverage
+    required: true
+    intent: adult or child, and whether an infant
+    phrasings:
+      - {id: p1, form: closed, text: "Is this you, or a child? If a child, how old are they?"}
+    value: {type: text}
+    verbatim: true
+    negative_reporting: omit
+  - id: vo.true_vomiting
+    class: coverage
+    required: true
+    intent: distinguish forceful vomiting from effortless regurgitation
+    phrasings:
+      - {id: p1, form: open, text: "Describe what actually happens: is it forceful, or does it just come up without effort?"}
+    value: {type: text}
+    verbatim: true
+    negative_reporting: omit
+  - id: vo.colour_verbatim
+    class: red_flag
+    required: true
+    intent: colour in the carer's or patient's own words, never normalised
+    phrasings:
+      - {id: p1, form: open, text: "What colour is it? Describe it exactly, for example bright yellow like a highlighter, green, brown, red."}
+    value:
+      type: enum
+      options:
+        - {id: green, synonyms: [green, greenish, dark green]}
+        - {id: yellow, synonyms: [yellow, bright yellow, highlighter, yellowish]}
+        - {id: red_blood, synonyms: [red, blood, bloody, coffee grounds, brown like coffee]}
+        - {id: other, synonyms: [clear, milk, food, white, brown, normal]}
+    verbatim: true
+    negative_reporting: omit
+  - id: vo.frequency_timing
+    class: coverage
+    required: true
+    intent: frequency, timing including on waking, relation to food
+    phrasings:
+      - {id: p1, form: open, text: "How many times today? Is it worse first thing in the morning, or after food?"}
+    value: {type: text}
+    verbatim: true
+    negative_reporting: omit
+  - id: vo.red_flags_child
+    class: red_flag
+    required: false
+    intent: lethargy, bulging fontanelle (delegated), neck stiffness, photophobia, fever
+    phrasings:
+      - {id: p1, form: closed, text: "Is the child unusually sleepy or floppy? If a baby, does the soft spot on the head look bulging? Any fever, stiff neck, or dislike of light?"}
+    value: {type: yes_no}
+    extraction: {yes_terms: ["yes", sleepy, floppy, bulging, fever, stiff neck, light hurts, drowsy], no_terms: ["no", alert, normal, none of those]}
+    delegated_observation: true
+    verbatim: true
+    negative_reporting: explicit
+  - id: vo.hydration
+    class: coverage
+    required: true
+    intent: urine output and oral intake
+    phrasings:
+      - {id: p1, form: open, text: "When did they last pass urine, and how many wet nappies or trips to the toilet today? Are they keeping fluids down?"}
+    value: {type: text}
+    verbatim: true
+    negative_reporting: omit
+  - id: vo.abdominal_pain_headache
+    class: coverage
+    required: true
+    intent: associated severe abdominal pain or headache
+    phrasings:
+      - {id: p1, form: closed, text: "Is there severe tummy pain, or a headache, with it?"}
+    value: {type: text}
+    verbatim: true
+    negative_reporting: explicit
+  - id: vo.pregnancy_possible
+    class: context
+    required: false
+    intent: possible early pregnancy in an adult
+    phrasings:
+      - {id: p1, form: closed, text: "Is there any chance you could be pregnant?"}
+    value: {type: yes_no}
+    extraction: {yes_terms: ["yes", could be, maybe, pregnant, late period], no_terms: ["no", no chance, not possible, can't be]}
+    verbatim: true
+    negative_reporting: explicit
+red_flags:
+  - id: rf.bilious_vomit_infant
+    fires_when: "vo.colour_verbatim in ['green', 'yellow']"
+    tier: immediate
+    alert: {include_verbatim: true, template: "Green or bright yellow vomit reported. Carer's words: {verbatim}. Age: {vo.who}."}
+    suppressible: false
+    source: "Master list: green or bright yellow vomit in an infant; yellow is not resolved by further questioning (age gate to be applied when ctx.age is configured)"
+  - id: rf.vomit_blood
+    fires_when: "vo.colour_verbatim == 'red_blood'"
+    tier: immediate
+    alert: {include_verbatim: true, template: "Blood in vomit; routes to GI bleeding. Patient said: {verbatim}."}
+    suppressible: false
+    source: "Vomiting row: blood routes to the GI bleeding row"
+  - id: rf.vomiting_child_red_flags
+    fires_when: "vo.red_flags_child == 'yes'"
+    tier: immediate
+    alert: {include_verbatim: true, template: "Vomiting child with drowsiness, bulging fontanelle, fever, neck stiffness or photophobia. Carer said: {verbatim}."}
+    suppressible: false
+    source: "Vomiting row routing to the unwell child and headache rows"
+closing:
+  uncertainty: "I can't tell from talking with you what is causing the vomiting."
+  watch_for: [green or bright yellow vomit, blood, unusual sleepiness, no wet nappies or no urine for many hours]
+  time_course: "Someone will speak with you today."
+  where: "If any of those happen before then, call an ambulance rather than waiting."
+prohibited: [normalising the colour description, reassuring on the basis of passed meconium or a soft tummy]
+gaps: ["Colour cannot be verified by voice; an SMS colour reference is a proposal only."]

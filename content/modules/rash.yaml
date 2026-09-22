@@ -1,0 +1,110 @@
+module: rash
+display_name: rash
+version: 0.1.0
+status: grounded
+reviewed: false
+review_notes: ["Glass-test instruction wording", "The lighter-skin-area prompts", "Closing block is a first draft"]
+setting: both
+activates_on:
+  terms: [rash, spots, come out in a rash, itchy patches, hives, blotches, red marks, my skin has, purple spots, blisters]
+slots:
+  - id: rs.fever
+    class: red_flag
+    required: true
+    intent: fever with the rash
+    phrasings:
+      - {id: p1, form: closed, text: "Is there a fever with it, or has the person been unwell?"}
+    value: {type: yes_no}
+    extraction: {yes_terms: ["yes", fever, temperature, hot, unwell, shivers], no_terms: ["no", no fever, otherwise well]}
+    verbatim: true
+    negative_reporting: explicit
+  - id: rs.glass_test
+    class: red_flag
+    required: true
+    intent: the glass test as a delegated observation, with what they did and what they saw
+    phrasings:
+      - {id: p1, form: open, text: "Press the side of a clear glass firmly against the rash. Tell me what you did, and whether the spots are still visible through the glass or fade."}
+    value:
+      type: enum
+      options:
+        - {id: non_blanching, synonyms: [still there, still visible, doesn't fade, didn't fade, can still see, stays]}
+        - {id: blanching, synonyms: [fades, faded, disappears, goes away, went white]}
+        - {id: not_done, synonyms: [can't, no glass, haven't, not done, couldn't]}
+    delegated_observation: true
+    verbatim: true
+    negative_reporting: omit
+  - id: rs.lighter_areas
+    class: coverage
+    required: true
+    intent: check of palms, soles, inside the eyelids and roof of the mouth, prompted for every patient
+    phrasings:
+      - {id: p1, form: closed, text: "Please also check the palms, the soles of the feet, inside the lower eyelids and the roof of the mouth. Are there any spots there?"}
+    value: {type: text}
+    delegated_observation: true
+    verbatim: true
+    negative_reporting: omit
+  - id: rs.distribution_onset
+    class: coverage
+    required: true
+    intent: where it started, where it is now, how fast it is spreading
+    phrasings:
+      - {id: p1, form: open, text: "Where did it start, where is it now, and how quickly is it spreading?"}
+    value: {type: text}
+    verbatim: true
+    negative_reporting: omit
+  - id: rs.mucosa_blister_swelling
+    class: red_flag
+    required: true
+    intent: mouth or eye involvement, blistering or peeling, swelling of lips or face, breathing difficulty
+    phrasings:
+      - {id: p1, form: closed, text: "Is the rash in the mouth or eyes? Any blisters or peeling skin? Any swelling of the lips, tongue or face, or trouble breathing?"}
+    value: {type: yes_no}
+    extraction: {yes_terms: ["yes", mouth, eyes, blisters, peeling, swelling, lips, tongue, breathing], no_terms: ["no", none of those, just the skin]}
+    verbatim: true
+    negative_reporting: explicit
+  - id: rs.exposures_itch
+    class: coverage
+    required: true
+    intent: itch, new medicines, foods, contacts, travel
+    phrasings:
+      - {id: p1, form: open, text: "Is it itchy? Any new medicines, foods, animals or travel? Has anyone around you had the same?"}
+    value: {type: text}
+    verbatim: true
+    negative_reporting: omit
+  - id: rs.getting_worse
+    class: red_flag
+    required: true
+    intent: whether the person is ill and getting worse, which drives escalation regardless of the glass test
+    phrasings:
+      - {id: p1, form: closed, text: "Is the person getting worse: drowsy, very pale or mottled, cold hands and feet, or breathing fast?"}
+    value: {type: yes_no}
+    extraction: {yes_terms: ["yes", worse, drowsy, mottled, pale, cold hands, breathing fast, floppy], no_terms: ["no", stable, same, bright, fine in themselves]}
+    delegated_observation: true
+    verbatim: true
+    negative_reporting: explicit
+red_flags:
+  - id: rf.non_blanching_with_fever
+    fires_when: "rs.fever == 'yes' and rs.glass_test == 'non_blanching'"
+    tier: immediate
+    alert: {include_verbatim: true, template: "Non-blanching rash with fever, as reported by the patient or carer. They said: {verbatim}."}
+    suppressible: false
+    source: "Master list: non-blanching rash with fever, as reported by patient or carer"
+  - id: rf.rash_ill_and_worsening
+    fires_when: "rs.getting_worse == 'yes'"
+    tier: immediate
+    alert: {include_verbatim: true, template: "Rash with the person ill and getting worse. They said: {verbatim}."}
+    suppressible: false
+    source: "Rash row: escalation is driven by the illness picture, not the rash finding"
+  - id: rf.rash_mucosal_blistering
+    fires_when: "rs.mucosa_blister_swelling == 'yes'"
+    tier: immediate
+    alert: {include_verbatim: true, template: "Rash with mucosal involvement, blistering, peeling, swelling or breathing difficulty. They said: {verbatim}."}
+    suppressible: false
+    source: "Master list first-draft trigger, no tier set; immediate proposed pending dermatology and emergency medicine review"
+closing:
+  uncertainty: "I can't tell from talking with you what the rash is."
+  watch_for: [spots that do not fade under a glass, a fever, getting drowsy or mottled, swelling of the lips or trouble breathing]
+  time_course: "Someone will speak with you today."
+  where: "If any of those happen, call an ambulance rather than waiting; do not wait for the rash to change."
+prohibited: [scoring the glass test, lowering the tier on a negative glass test]
+gaps: ["A negative glass test is near worthless: the rash appears late and may blanch early. On darker skin the lighter-area check is mandatory for every patient."]

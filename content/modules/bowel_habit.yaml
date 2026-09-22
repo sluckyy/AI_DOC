@@ -1,0 +1,89 @@
+module: bowel_habit
+display_name: change in bowel habit or rectal bleeding
+version: 0.1.0
+status: grounded
+reviewed: false
+review_notes: ["Whether repeated low-risk presentations should raise priority", "Setting-specific weighting", "Closing block is a first draft"]
+setting: both
+activates_on:
+  terms: [constipated, constipation, diarrhoea, loose stools, going more often, can't go, blood when i wipe, blood in the toilet, blood in my stool, bowels have changed, rectal bleeding, bleeding from the back passage]
+slots:
+  - id: bh.change_concrete
+    class: coverage
+    required: true
+    intent: frequency, consistency, direction of change and duration as a number
+    phrasings:
+      - {id: p1, form: open, text: "How often are you going now compared with before, and how are the stools: harder, looser? How many weeks has that been?"}
+    value: {type: text}
+    verbatim: true
+    negative_reporting: omit
+  - id: bh.rectal_bleeding
+    class: red_flag
+    required: true
+    intent: rectal bleeding, asked in every bowel interview
+    phrasings:
+      - {id: p1, form: closed, text: "Have you seen any blood: on the paper, in the toilet, or mixed in with the stool?"}
+    value: {type: yes_no}
+    extraction: {yes_terms: ["yes", blood, on the paper, in the toilet, mixed in, red], no_terms: ["no", no blood, never, none]}
+    verbatim: true
+    negative_reporting: explicit
+  - id: bh.patient_explanation
+    class: coverage
+    required: false
+    intent: the patient's own explanation for the bleeding, recorded separately from the finding
+    phrasings:
+      - {id: p1, form: open, text: "What do you think the bleeding is from?"}
+    value: {type: text}
+    verbatim: true
+    negative_reporting: omit
+  - id: bh.weight_loss
+    class: discriminating
+    required: true
+    intent: unexpected weight loss, which with bleeding raises risk
+    phrasings:
+      - {id: p1, form: closed, text: "Have you lost weight without trying?"}
+    value: {type: yes_no}
+    extraction: {yes_terms: ["yes", lost weight, clothes loose, kilos], no_terms: ["no", weight is stable, same weight]}
+    evidence: {lr: "rectal bleeding with weight loss pooled LR+ 1.9; with change in bowel habit 1.8; with abdominal pain, diarrhoea or constipation LR 1 or less", discriminates: colorectal cancer, citation: "primary care case-control study of 5,477 colorectal cancers, as tabulated in the Symptom Questioning Library", grade: A, population: primary care}
+    verbatim: true
+    negative_reporting: explicit
+  - id: bh.absolute_constipation
+    class: red_flag
+    required: true
+    intent: complete constipation with vomiting
+    phrasings:
+      - {id: p1, form: closed, text: "Are you passing no stool and no wind at all, and vomiting?"}
+    value: {type: yes_no}
+    extraction: {yes_terms: ["yes", no wind, nothing at all, and vomiting, completely blocked], no_terms: ["no", still passing wind, some stool, not vomiting]}
+    verbatim: true
+    negative_reporting: explicit
+  - id: bh.faint
+    class: coverage
+    required: true
+    intent: dizziness or faintness with bleeding
+    phrasings:
+      - {id: p1, form: closed, text: "Have you felt dizzy or faint?"}
+    value: {type: yes_no}
+    extraction: {yes_terms: ["yes", dizzy, faint, light-headed], no_terms: ["no", not dizzy, fine]}
+    verbatim: false
+    negative_reporting: explicit
+red_flags:
+  - id: rf.absolute_constipation_vomiting
+    fires_when: "bh.absolute_constipation == 'yes'"
+    tier: immediate
+    alert: {include_verbatim: true, template: "Absolute constipation with vomiting. Patient said: {verbatim}."}
+    suppressible: false
+    source: "Master list first-draft trigger, no tier set; immediate proposed pending surgical review"
+  - id: rf.rectal_bleeding_or_change
+    fires_when: "bh.rectal_bleeding == 'yes' or bh.change_concrete != ''"
+    tier: flag
+    alert: {include_verbatim: true, template: "Rectal bleeding or change in bowel habit; weight loss {bh.weight_loss}. Patient said: {verbatim}."}
+    suppressible: false
+    source: "Master list: rectal bleeding or change in bowel habit; thresholds configurable"
+closing:
+  uncertainty: "I can't tell from talking with you what is causing this."
+  watch_for: [more bleeding, feeling faint, being unable to pass stool or wind with vomiting]
+  time_course: "Someone will speak with you today."
+  where: "If you feel faint or cannot pass anything and are vomiting, seek care the same day rather than waiting."
+prohibited: [letting the patient's explanation stand in for the finding, embedding a referral age threshold]
+gaps: ["Only 27% of colorectal cancers present with the two higher-risk symptoms; low-risk symptoms are recorded in full. Age and sex travel with this finding."]

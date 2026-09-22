@@ -1,0 +1,69 @@
+module: testicular_pain
+display_name: testicular or scrotal pain
+version: 0.1.0
+status: grounded
+reviewed: false
+review_notes: ["Whether clock-time capture and confirmation works by voice", "That long duration never de-escalates", "Closing block is a first draft"]
+setting: both
+activates_on:
+  terms: [pain in my balls, pain in my testicle, testicle pain, testicular pain, groin pain, swelling down there, my testicle, scrotum, pain in my scrotum, ball pain]
+slots:
+  - id: tt.onset_clock_time
+    class: coverage
+    required: true
+    intent: clock time of onset, confirmed as an interval; the highest-stakes field in the library
+    phrasings:
+      - {id: p1, form: open, text: "What time did the pain start? I need a clock time, even roughly, not just how long ago."}
+    value: {type: clock_time}
+    absolute_time: true
+    verbatim: true
+    negative_reporting: omit
+  - id: tt.acute
+    class: red_flag
+    required: true
+    intent: acute onset pain, constant or intermittent, including previous self-resolving episodes
+    phrasings:
+      - {id: p1, form: open, text: "Did the pain come on suddenly? Is it constant, or does it come and go? Has it happened before and settled by itself?"}
+    value: {type: yes_no}
+    extraction: {yes_terms: ["yes", sudden, suddenly, constant, comes and goes, happened before, out of nowhere, woke me], no_terms: ["no", gradual, weeks, slowly, ache for months]}
+    verbatim: true
+    negative_reporting: explicit
+  - id: tt.nausea
+    class: coverage
+    required: true
+    intent: associated nausea or vomiting and radiation to the groin or abdomen
+    phrasings:
+      - {id: p1, form: closed, text: "Have you felt sick or vomited with it? Does the pain go into your groin or tummy?"}
+    value: {type: text}
+    verbatim: true
+    negative_reporting: explicit
+  - id: tt.lump_swelling
+    class: red_flag
+    required: true
+    intent: new lump or swelling, even if painful, and any previous diagnosis of epididymitis that has not resolved
+    phrasings:
+      - {id: p1, form: closed, text: "Is there a new lump or swelling? Have you been told before it was an infection, and did that settle?"}
+    value: {type: yes_no}
+    extraction: {yes_terms: ["yes", lump, swelling, swollen, bigger, hard, told it was an infection, didn't settle], no_terms: ["no", no lump, no swelling, same size]}
+    verbatim: true
+    negative_reporting: explicit
+red_flags:
+  - id: rf.acute_testicular_pain
+    fires_when: "tt.acute == 'yes'"
+    tier: immediate
+    alert: {include_verbatim: true, template: "Acute testicular pain, including intermittent, whatever the time elapsed. Onset {tt.onset_clock_time}. Patient said: {verbatim}."}
+    suppressible: false
+    source: "Master list: acute testicular pain, including intermittent, whatever the time elapsed since onset"
+  - id: rf.testicular_lump
+    fires_when: "tt.lump_swelling == 'yes'"
+    tier: flag
+    alert: {include_verbatim: true, template: "New testicular lump or swelling, including if painful or previously called epididymitis. Patient said: {verbatim}."}
+    suppressible: false
+    source: "Master list: new testicular lump or swelling in a young man"
+closing:
+  uncertainty: "I can't tell from talking with you what is causing the pain."
+  watch_for: [the pain returning or worsening, swelling, vomiting]
+  time_course: "Someone is coming to you now."
+  where: "If you are at home, this needs to be seen today; if the pain returns suddenly, call an ambulance rather than waiting."
+prohibited: [scoring TWIST, lowering urgency because of elapsed time]
+gaps: ["No examination. Salvage falls from 90% within six hours to 18% beyond 24 hours, and a long interval never reduces the tier."]

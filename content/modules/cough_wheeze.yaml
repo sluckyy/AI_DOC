@@ -1,0 +1,157 @@
+module: cough_wheeze
+display_name: cough or wheeze
+version: 0.1.0
+status: grounded
+reviewed: false
+review_notes: ["Anchored on weaker evidence than its neighbours", "Whether the no-diagnosis-naming rule is enforceable", "Paediatric choking question wording", "Closing block is a first draft"]
+setting: both
+activates_on:
+  terms: [cough, coughing, chesty, hacking, bringing stuff up, wheezy, wheeze, whistling, chest tight, asthma playing up, my chest is tight, croaky cough]
+slots:
+  - id: cw.duration
+    class: coverage
+    required: true
+    intent: acute, subacute or chronic, which determines the question set
+    phrasings:
+      - {id: p1, form: open, text: "How long have you had the cough: days, a few weeks, or longer than two months?"}
+    value:
+      type: enum
+      options:
+        - {id: acute, synonyms: [days, a few days, this week, a week, ten days]}
+        - {id: subacute, synonyms: [few weeks, three weeks, four weeks, a month, six weeks]}
+        - {id: chronic, synonyms: [months, over two months, longer, ages, years]}
+    verbatim: true
+    negative_reporting: omit
+  - id: cw.productive
+    class: coverage
+    required: true
+    intent: dry or productive, and sputum character
+    phrasings:
+      - {id: p1, form: open, text: "Is it a dry cough, or are you bringing anything up? What colour is it?"}
+    value: {type: text}
+    verbatim: true
+    negative_reporting: omit
+  - id: cw.haemoptysis_screen
+    class: red_flag
+    required: true
+    intent: any blood, screened in every cough interview and routing to the haemoptysis module
+    phrasings:
+      - {id: p1, form: closed, text: "Have you seen any blood in what you cough up, even streaks?"}
+    value: {type: yes_no}
+    extraction: {yes_terms: ["yes", blood, streaks, pink, red], no_terms: ["no", no blood, never, clear, white, green, yellow]}
+    verbatim: true
+    negative_reporting: explicit
+  - id: cw.periodicity
+    class: coverage
+    required: true
+    intent: symptomatic periodicity, worse at night, early morning, on exertion, seasonal, better away from home or work
+    phrasings:
+      - {id: p1, form: open, text: "When is it worst: at night, early morning, when you exert yourself, at certain times of year? Is it better when you're away from home or work?"}
+    value: {type: text}
+    verbatim: true
+    negative_reporting: omit
+  - id: cw.triggers_atopy
+    class: coverage
+    required: true
+    intent: triggers and any history of allergy or atopy
+    phrasings:
+      - {id: p1, form: open, text: "Does anything set it off, like cold air, dust, pets or exercise? Do you get hay fever or eczema?"}
+    value: {type: text}
+    verbatim: true
+    negative_reporting: omit
+  - id: cw.reliever_response
+    class: red_flag
+    required: true
+    intent: reliever use and whether it is working
+    phrasings:
+      - {id: p1, form: open, text: "Do you use a reliever puffer? How often have you needed it, and is it working?"}
+    value:
+      type: enum
+      options:
+        - {id: not_working, synonyms: [not working, isn't working, doesn't help, no help, not helping, using it constantly, every hour]}
+        - {id: working, synonyms: [works, helps, working, settles it]}
+        - {id: none, synonyms: [don't have one, no puffer, "no", none]}
+    verbatim: true
+    negative_reporting: explicit
+  - id: cw.sentences
+    class: red_flag
+    required: true
+    intent: whether the person can complete sentences
+    phrasings:
+      - {id: p1, form: closed, text: "Right now, can you finish a full sentence in one breath?"}
+    value: {type: yes_no}
+    extraction: {yes_terms: ["yes", can, fine, full sentence, no trouble], no_terms: ["no", can't, struggling, few words, single words, gasping]}
+    verbatim: true
+    negative_reporting: explicit
+  - id: cw.exacerbation_history
+    class: coverage
+    required: true
+    intent: previous exacerbations, admissions, and any intensive care admission for asthma
+    phrasings:
+      - {id: p1, form: closed, text: "Have you been in hospital with your chest before? Ever in intensive care for asthma?"}
+    value:
+      type: set
+      options:
+        - {id: icu, synonyms: [intensive care, icu, ventilated, breathing tube]}
+        - {id: admission, synonyms: [hospital, admitted, ward, emergency]}
+        - {id: none, synonyms: [never, "no", none]}
+    verbatim: true
+    negative_reporting: explicit
+  - id: cw.smoking
+    class: coverage
+    required: true
+    intent: smoking status with quantity and years
+    phrasings:
+      - {id: p1, form: open, text: "Do you smoke, or did you? How many a day, and for how long?"}
+    value: {type: text}
+    verbatim: true
+    negative_reporting: explicit
+  - id: cw.choking_child
+    class: discriminating
+    required: false
+    intent: witnessed choking or swallowing episode in a child, where a negative history is informative
+    phrasings:
+      - {id: p1, form: closed, text: "Was there a moment where the child choked, or was seen putting something in their mouth, just before the cough started?"}
+    value: {type: yes_no}
+    extraction: {yes_terms: ["yes", choked, choking, put something in, swallowed something, peanut, coin, toy], no_terms: ["no", nothing like that, didn't choke, wasn't eating]}
+    evidence: {lr: "history of a choking episode sensitivity 90.5% with specificity 24.1% for foreign body aspiration; a negative history does useful work", discriminates: foreign body aspiration in children, citation: "paediatric foreign body aspiration studies, as tabulated in the Symptom Questioning Library", grade: A, population: paediatric}
+    verbatim: true
+    negative_reporting: explicit
+red_flags:
+  - id: rf.cough_cannot_complete_sentences
+    fires_when: "cw.sentences == 'no'"
+    tier: immediate
+    alert: {include_verbatim: true, template: "Unable to complete sentences. Patient said: {verbatim}."}
+    suppressible: false
+    source: "Cardiovascular table: unable to complete sentences"
+  - id: rf.reliever_not_working
+    fires_when: "cw.reliever_response == 'not_working'"
+    tier: same_day
+    alert: {include_verbatim: true, template: "Reliever not working. Patient said: {verbatim}."}
+    suppressible: false
+    source: "Master list first-draft trigger, no tier set; same-day proposed pending respiratory review"
+  - id: rf.previous_icu_asthma
+    fires_when: "'icu' in cw.exacerbation_history"
+    tier: flag
+    alert: {include_verbatim: true, template: "Previous intensive care admission for asthma. Patient said: {verbatim}."}
+    suppressible: false
+    source: "Master list first-draft trigger, no tier set; flag proposed pending respiratory review"
+  - id: rf.cough_with_blood
+    fires_when: "cw.haemoptysis_screen == 'yes'"
+    tier: flag
+    alert: {include_verbatim: true, template: "Blood in sputum reported during a cough interview; routes to haemoptysis. Patient said: {verbatim}."}
+    suppressible: false
+    source: "Cough row: haemoptysis screened in every cough interview"
+  - id: rf.choking_episode_child
+    fires_when: "cw.choking_child == 'yes'"
+    tier: flag
+    alert: {include_verbatim: true, template: "Choking or witnessed swallowing episode in a child with cough. Carer said: {verbatim}."}
+    suppressible: false
+    source: "Master list: choking or witnessed swallowing episode in a child with cough"
+closing:
+  uncertainty: "I can't tell from talking with you what is causing the cough."
+  watch_for: [being unable to finish a sentence, the reliever not working, blue lips, coughing up blood]
+  time_course: "Someone will speak with you today."
+  where: "If any of those happen before then, call an ambulance rather than waiting."
+prohibited: [naming asthma or COPD or any obstructive diagnosis, summarising a symptom cluster as suggestive of one]
+gaps: ["No spirometry or oxygen saturation. Symptoms alone must not support an obstructive diagnosis in either direction."]

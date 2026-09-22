@@ -1,0 +1,275 @@
+# Carer-reported throughout: the respondent is the carer, not the child. The carer holds the trajectory
+# (features since the onset of fever that have since resolved) and carer concern is data, carried verbatim.
+module: unwell_child
+display_name: an unwell child
+version: 0.1.0
+status: grounded
+reviewed: false
+review_notes: ["Paediatric review (gate): escalation thresholds are not inherited from the adult pathway", "Whether carer concern should itself trigger escalation; drafted as same_day, routing up never down", "Whether an abnormal cry (high-pitched or weak) should route on its own as a NICE red feature", "Glass-test and breathing observation wording for a carer by voice", "Closing block is a first draft"]
+setting: both
+activates_on:
+  terms: [my child, my baby, my son, my daughter, my toddler, not feeding, floppy, crying differently, hot and floppy, unwell child, sick child, baby is hot, baby has a fever, child has a fever, won't feed, not drinking, no wet nappies, baby has a rash, child has a rash]
+slots:
+  - id: uc.child_age
+    class: coverage
+    required: true
+    intent: the child's age in the carer's words, banded for the under-3-months and 3-to-6-months fever thresholds
+    phrasings:
+      - {id: p1, form: open, text: "How old is your child? If they are under a year, tell me in weeks or months."}
+    value:
+      type: enum
+      options:
+        - {id: under_3_months, synonyms: [newborn, days old, a week old, two weeks, three weeks, four weeks, five weeks, six weeks, seven weeks, eight weeks, one month, two months, ten weeks, eleven weeks, twelve weeks]}
+        - {id: "3_to_6_months", synonyms: [three months, four months, five months, fourteen weeks, sixteen weeks, twenty weeks]}
+        - {id: over_6_months, synonyms: [six months, seven months, eight months, nine months, ten months, eleven months, one year, a year, years old, toddler, two, three, four, five, six, seven, eight, nine, ten]}
+    verbatim: true
+    negative_reporting: omit
+  - id: uc.carer_concern_different
+    class: red_flag
+    required: true
+    intent: whether the carer thinks this illness is different from the child's previous illnesses; recorded verbatim and carried into the handover in the carer's own words
+    phrasings:
+      - {id: p1, form: closed, text: "Are you worried this is different from other illnesses your child has had?"}
+    value: {type: yes_no}
+    extraction: {yes_terms: ["yes", different, never seen them like this, not like before, worried, something is wrong, not right, not themselves], no_terms: ["no", same as before, like last time, seen this before, usual cold]}
+    evidence: {lr: "no pooled likelihood ratio; parental concern that this illness is different is a recurrent antecedent in root cause analyses of fatal paediatric sepsis, and parental assessment has received little attention as a discriminator of sepsis from mild infection", discriminates: paediatric sepsis (routes up, never down), citation: "literature review on parental concerns in paediatric sepsis, as cited in the Symptom Questioning Library", grade: B, population: paediatric primary care and emergency department}
+    verbatim: true
+    negative_reporting: explicit
+  - id: uc.fever
+    class: red_flag
+    required: true
+    intent: whether the child has or has had a fever in this illness
+    phrasings:
+      - {id: p1, form: closed, text: "Has your child had a fever, or felt hot to touch, during this illness?"}
+    value: {type: yes_no}
+    extraction: {yes_terms: ["yes", fever, temperature, hot, burning up, thirty eight, thirty nine, forty], no_terms: ["no", no fever, normal temperature, cool]}
+    verbatim: true
+    negative_reporting: explicit
+  - id: uc.fever_onset_peak
+    class: coverage
+    required: true
+    intent: when the fever started and the highest temperature the carer measured, if any, recorded as measured or felt
+    phrasings:
+      - {id: p1, form: open, text: "When did the fever start? If you measured it, what was the highest reading, and how did you measure it?"}
+    value: {type: text}
+    verbatim: true
+    negative_reporting: omit
+  - id: uc.resolved_features
+    class: coverage
+    required: true
+    intent: features present since the onset of the illness that have now settled, reported as historical and not current
+    phrasings:
+      - {id: p1, form: open, text: "Since this started, has there been anything that has now settled: a rash, being floppy or hard to wake, breathing fast, or refusing feeds? Tell me even if it has gone now."}
+    value: {type: text}
+    verbatim: true
+    negative_reporting: explicit
+  - id: uc.fluid_intake
+    class: coverage
+    required: true
+    intent: feeding or drinking as a fraction of normal, in the carer's own words
+    phrasings:
+      - {id: p1, form: open, text: "Compared with a normal day, how much is your child drinking or feeding? Tell me roughly as a fraction, for example about half of normal."}
+    value: {type: text}
+    verbatim: true
+    negative_reporting: omit
+  - id: uc.last_wet_nappy
+    class: coverage
+    required: true
+    intent: clock time of the last wet nappy or the last time the child passed urine
+    phrasings:
+      - {id: p1, form: open, text: "When was the last wet nappy, or the last time they passed urine? I need a clock time, even roughly, not just how long ago."}
+    value: {type: clock_time}
+    absolute_time: true
+    verbatim: true
+    negative_reporting: omit
+  - id: uc.no_urine_12h
+    class: red_flag
+    required: true
+    intent: whether it has been more than 12 hours since a wet nappy or passing urine
+    phrasings:
+      - {id: p1, form: closed, text: "Has it been more than 12 hours since a wet nappy, or since they last passed urine?"}
+    value: {type: yes_no}
+    extraction: {yes_terms: ["yes", more than twelve hours, since yesterday, since last night, all day, none today, dry nappies], no_terms: ["no", this morning, a few hours ago, an hour ago, wet nappy today, normal amount]}
+    verbatim: true
+    negative_reporting: explicit
+  - id: uc.drowsy_responsiveness
+    class: red_flag
+    required: true
+    intent: drowsiness, difficulty waking, or not responding to the carer normally, as a delegated observation
+    phrasings:
+      - {id: p1, form: closed, text: "Look at your child now. Are they drowsy, hard to wake, or not responding to you the way they normally do?"}
+    value: {type: yes_no}
+    extraction: {yes_terms: ["yes", drowsy, hard to wake, won't wake, floppy, not responding, staring, limp, out of it, can't rouse], no_terms: ["no", awake, alert, playing, responding normally, looking at me, smiling]}
+    delegated_observation: true
+    verbatim: true
+    negative_reporting: explicit
+  - id: uc.cry
+    class: red_flag
+    required: true
+    intent: a cry that is inconsolable, high-pitched or weak, as a delegated observation
+    phrasings:
+      - {id: p1, form: closed, text: "Is the crying different from usual: impossible to settle, high-pitched, or weak and quiet?"}
+    value: {type: yes_no}
+    extraction: {yes_terms: ["yes", inconsolable, can't settle, won't settle, high-pitched, high pitched, screaming, weak cry, whimpering, moaning, different cry], no_terms: ["no", normal cry, settles, consolable, same as usual, not crying]}
+    delegated_observation: true
+    verbatim: true
+    negative_reporting: explicit
+  - id: uc.breathing
+    class: red_flag
+    required: true
+    intent: fast breathing, grunting, or sucking in under or between the ribs, as a delegated observation with what the carer did and saw
+    phrasings:
+      - {id: p1, form: open, text: "Watch your child breathe for a moment, with their chest uncovered if you can. Are they breathing fast, making a grunting noise with each breath, or sucking in under the ribs or between them? Tell me what you see."}
+    value: {type: yes_no}
+    extraction: {yes_terms: ["yes", fast, panting, grunting, sucking in, ribs, working hard, struggling, wheezing, noisy], no_terms: ["no", normal breathing, breathing fine, calm, easy]}
+    delegated_observation: true
+    verbatim: true
+    negative_reporting: explicit
+  - id: uc.rash_glass_test
+    class: red_flag
+    required: true
+    intent: any rash, and whether it stays visible under a clear glass pressed firmly against it, as a delegated observation with what the carer did and saw
+    phrasings:
+      - {id: p1, form: open, text: "Is there a rash? If there is, press the side of a clear glass firmly against it. Tell me what you did, and whether the spots are still visible through the glass or fade."}
+    value:
+      type: enum
+      options:
+        - {id: non_blanching, synonyms: [still there, still visible, stays, can still see, purple, bruise-like, did not fade]}
+        - {id: blanching, synonyms: [fades, faded, goes away, went white, disappears]}
+        - {id: no_rash, synonyms: [no rash, no spots, skin is clear, nothing on the skin]}
+        - {id: not_done, synonyms: [no glass, haven't, couldn't, not done, can't do that]}
+    delegated_observation: true
+    verbatim: true
+    negative_reporting: explicit
+  - id: uc.colour
+    class: red_flag
+    required: true
+    intent: pale, mottled or blue colour, as a delegated observation
+    phrasings:
+      - {id: p1, form: closed, text: "Look at your child's colour, including the lips and tongue. Are they very pale, mottled or blotchy, or are the lips or tongue blue or grey?"}
+    value: {type: yes_no}
+    extraction: {yes_terms: ["yes", pale, white, mottled, blotchy, blue, grey, dusky, ashen], no_terms: ["no", normal colour, pink, looks fine, good colour]}
+    delegated_observation: true
+    verbatim: true
+    negative_reporting: explicit
+  - id: uc.vomit_colour
+    class: red_flag
+    required: true
+    intent: vomiting and its colour, asked for green and blood by name
+    phrasings:
+      - {id: p1, form: open, text: "Has your child vomited? What colour was it: green, with blood in it, or milky or like the food they had?"}
+    value:
+      type: enum
+      options:
+        - {id: green, synonyms: [green, dark green, bile, yellow-green]}
+        - {id: blood, synonyms: [blood, bloody, red, coffee grounds, brown flecks]}
+        - {id: other, synonyms: [milky, milk, food, clear, yellow, normal vomit]}
+        - {id: none, synonyms: [no vomiting, not vomited, hasn't vomited, kept everything down, "no"]}
+    verbatim: true
+    negative_reporting: explicit
+  - id: uc.seizure
+    class: red_flag
+    required: true
+    intent: any fit or seizure in this illness
+    phrasings:
+      - {id: p1, form: closed, text: "Has your child had a fit or seizure: shaking, going stiff, or going floppy and unresponsive for a spell?"}
+    value: {type: yes_no}
+    extraction: {yes_terms: ["yes", fit, seizure, convulsion, shaking, jerking, went stiff, eyes rolled, febrile convulsion], no_terms: ["no", no fit, nothing like that, no shaking]}
+    verbatim: true
+    negative_reporting: explicit
+  - id: uc.immunisations
+    class: coverage
+    required: true
+    intent: immunisation status in the carer's words, never recorded as up to date unless the carer says so
+    phrasings:
+      - {id: p1, form: open, text: "Are your child's immunisations up to date? Tell me in your own words, including if any were missed or delayed."}
+    value: {type: text}
+    verbatim: true
+    negative_reporting: explicit
+  - id: uc.recent_presentations
+    class: coverage
+    required: true
+    intent: previous presentations for this illness, by date, with what was said; recurrent presentations are a documented antecedent of missed paediatric sepsis
+    phrasings:
+      - {id: p1, form: open, text: "Has your child already been seen by a doctor, a nurse or a hospital for this illness? On which dates, and what were you told?"}
+    value: {type: text}
+    verbatim: true
+    negative_reporting: explicit
+  - id: uc.travel
+    class: coverage
+    required: true
+    intent: recent travel abroad, asked routinely in feverish illness
+    phrasings:
+      - {id: p1, form: closed, text: "Has your child travelled overseas in the last few months?"}
+    value: {type: yes_no}
+    extraction: {yes_terms: ["yes", overseas, abroad, travelled, flew, holiday in], no_terms: ["no", no travel, stayed home, never left]}
+    verbatim: true
+    negative_reporting: explicit
+red_flags:
+  - id: rf.child_hard_to_wake
+    fires_when: "uc.drowsy_responsiveness == 'yes'"
+    tier: immediate
+    alert: {include_verbatim: true, template: "Child drowsy, hard to wake or not responding normally, as observed by the carer. Age {uc.child_age}. Carer said: {verbatim}."}
+    suppressible: false
+    source: "Unwell child row: drowsiness; NICE red feature (no response to social cues, does not wake or does not stay awake)"
+  - id: rf.child_non_blanching_rash
+    fires_when: "uc.rash_glass_test == 'non_blanching'"
+    tier: immediate
+    alert: {include_verbatim: true, template: "Non-blanching rash in a child, as observed by the carer under a glass. Fever: {uc.fever}. Carer said: {verbatim}."}
+    suppressible: false
+    source: "Unwell child section: non-blanching rash, immediate escalation; consider meningococcal disease"
+  - id: rf.child_breathing_difficulty
+    fires_when: "uc.breathing == 'yes'"
+    tier: immediate
+    alert: {include_verbatim: true, template: "Child with fast breathing, grunting or chest recession, as observed by the carer. Age {uc.child_age}. Carer said: {verbatim}."}
+    suppressible: false
+    source: "Unwell child section: breathing as a core carer-reported field; NICE red feature (grunting, moderate or severe chest indrawing)"
+  - id: rf.child_colour
+    fires_when: "uc.colour == 'yes'"
+    tier: immediate
+    alert: {include_verbatim: true, template: "Child pale, mottled or blue, as observed by the carer. Carer said: {verbatim}."}
+    suppressible: false
+    source: "NICE red feature (pale, mottled, ashen or blue) as tabulated in the Symptom Questioning Library"
+  - id: rf.child_seizure
+    fires_when: "uc.seizure == 'yes'"
+    tier: immediate
+    alert: {include_verbatim: true, template: "Seizure in an unwell child. Fever: {uc.fever}. Carer said: {verbatim}."}
+    suppressible: false
+    source: "Master list: seizure in a febrile child; first-draft tier, immediate proposed pending paediatric review"
+  - id: rf.child_green_or_bloody_vomit
+    fires_when: "uc.vomit_colour in ['green', 'blood']"
+    tier: immediate
+    alert: {include_verbatim: true, template: "Green or blood-stained vomit in a child. Colour reported: {uc.vomit_colour}. Carer said: {verbatim}."}
+    suppressible: false
+    source: "Vomiting row colour rules: green (bilious) or blood-stained vomit in a child"
+  - id: rf.infant_fever_with_other_feature
+    fires_when: "uc.child_age == 'under_3_months' and uc.fever == 'yes' and (uc.no_urine_12h == 'yes' or uc.carer_concern_different == 'yes' or uc.cry == 'yes')"
+    tier: immediate
+    alert: {include_verbatim: true, template: "Infant under 3 months with fever and a further feature (reduced urine output, abnormal cry or carer concern). Age {uc.child_age}. Carer said: {verbatim}."}
+    suppressible: false
+    source: "Unwell child section: under 3 months with temperature 38 or above is a NICE red feature; any additional feature routes immediate"
+  - id: rf.infant_fever
+    fires_when: "uc.child_age == 'under_3_months' and uc.fever == 'yes'"
+    tier: same_day
+    alert: {include_verbatim: true, template: "Infant under 3 months with fever. Age {uc.child_age}. Fever details: {uc.fever_onset_peak}. Carer said: {verbatim}."}
+    suppressible: false
+    source: "Unwell child row: any infant under three months with fever; NICE: under 3 months with temperature 38 or above is red"
+  - id: rf.child_no_urine_12h
+    fires_when: "uc.no_urine_12h == 'yes'"
+    tier: same_day
+    alert: {include_verbatim: true, template: "No wet nappy or urine for more than 12 hours. Last wet nappy {uc.last_wet_nappy}. Intake: {uc.fluid_intake}. Carer said: {verbatim}."}
+    suppressible: false
+    source: "Unwell child row: reduced feeding or wet nappies; NICE amber feature (reduced urine output)"
+  - id: rf.carer_concern
+    fires_when: "uc.carer_concern_different == 'yes'"
+    tier: same_day
+    alert: {include_verbatim: true, template: "Carer says this illness is different from the child's previous illnesses. Carer concern routes up, never down. Carer said: {verbatim}."}
+    suppressible: false
+    source: "Unwell child section: carer concern as data; parental concern review in paediatric sepsis. Tier is a first draft pending paediatric review"
+closing:
+  uncertainty: "I can't tell from talking with you how unwell your child is; that needs someone to see them."
+  watch_for: [becoming drowsy, floppy or hard to wake, a rash that stays visible under a glass, breathing fast or grunting, pale or mottled skin or blue lips, a fit, green or bloody vomit, no wet nappies]
+  time_course: "Someone will speak with you today."
+  where: "If any of those happen before then, call an ambulance rather than waiting; do not wait to see whether it settles."
+prohibited: [assigning a traffic-light category, reassuring on any negative delegated observation, lowering the tier because a feature has resolved, recording a temperature the carer did not measure]
+gaps: ["No vital signs, no capillary refill, no examination. Features the carer reports as resolved are historical and are reported as such, not as absent. Carer concern routes up and never down; the paediatric escalation threshold is a deployment parameter that must be set deliberately rather than inherited from the adult pathway."]

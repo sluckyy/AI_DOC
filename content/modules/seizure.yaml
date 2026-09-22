@@ -1,0 +1,124 @@
+module: seizure
+display_name: seizure or shaking episode
+version: 0.1.0
+status: grounded
+reviewed: false
+review_notes: ["Whether refusing to assemble a purely historical instrument (Sheldon) is the right call", "The seizure row set no tier for first seizure, prolonged seizure, seizure in pregnancy or failure to return to baseline: neurology to confirm", "Closing block is a first draft"]
+setting: both
+activates_on:
+  terms: [fit, seizure, convulsion, shaking episode, blanked out, had a fit, epileptic, shaking all over, jerking]
+slots:
+  - id: sz.first_or_known
+    class: coverage
+    required: true
+    intent: first seizure or known epilepsy
+    phrasings:
+      - {id: p1, form: closed, text: "Is this the first time this has ever happened, or do you have epilepsy or a history of seizures?"}
+    value:
+      type: enum
+      options:
+        - {id: first, synonyms: [first time, never before, first, never had]}
+        - {id: known, synonyms: [epilepsy, epileptic, had them before, known, history of fits, on medication for]}
+    verbatim: true
+    negative_reporting: omit
+  - id: sz.tongue_bite_location
+    class: discriminating
+    required: true
+    intent: tongue bite and where on the tongue, recorded verbatim
+    phrasings:
+      - {id: p1, form: closed, text: "Did you bite your tongue? If so, where: on the side, or the tip?"}
+    value:
+      type: enum
+      options:
+        - {id: lateral, synonyms: [side, sides, side of my tongue, lateral, edge]}
+        - {id: tip, synonyms: [tip, front, end of my tongue]}
+        - {id: none, synonyms: ["no", didn't bite, no bite, not that i know]}
+    evidence: {lr: "lateral tongue biting LR+ 49.3 for epileptic seizure with specificity 99.8%; sensitivity about 11%, negative LR about 0.85, so absence tells almost nothing", discriminates: epileptic seizure versus syncope, citation: "pooled tongue-bite analysis, as tabulated in the Symptom Questioning Library", grade: A, population: pooled}
+    verbatim: true
+    negative_reporting: omit
+  - id: sz.prodrome
+    class: coverage
+    required: true
+    intent: any warning, including déjà vu, presyncope, sweating before, or prolonged standing
+    phrasings:
+      - {id: p1, form: open, text: "Was there any warning before it: a strange familiar feeling, feeling faint, sweating, or had you been standing a long time?"}
+    value: {type: text}
+    verbatim: true
+    negative_reporting: omit
+  - id: sz.afterwards
+    class: coverage
+    required: true
+    intent: state afterwards, including confusion, and whether back to baseline now
+    phrasings:
+      - {id: p1, form: open, text: "How were you afterwards: confused, sleepy, sore? Are you fully back to normal now?"}
+    value: {type: text}
+    verbatim: true
+    negative_reporting: omit
+  - id: sz.duration_repeat
+    class: red_flag
+    required: true
+    intent: how long it lasted and whether it has happened more than once today
+    phrasings:
+      - {id: p1, form: open, text: "How long did it last, and has it happened more than once today?"}
+    value:
+      type: enum
+      options:
+        - {id: brief_single, synonyms: [seconds, a minute, couple of minutes, once, just the one, brief]}
+        - {id: prolonged_or_repeated, synonyms: [five minutes, ten minutes, longer, ages, twice, again, more than once, several, kept going]}
+    verbatim: true
+    negative_reporting: omit
+  - id: sz.head_injury
+    class: coverage
+    required: true
+    intent: head injury during the event
+    phrasings:
+      - {id: p1, form: closed, text: "Did you hit your head when it happened?"}
+    value: {type: yes_no}
+    extraction: {yes_terms: ["yes", hit my head, banged, head, fell onto], no_terms: ["no", didn't hit, no injury, someone caught me]}
+    verbatim: true
+    negative_reporting: explicit
+  - id: sz.witness
+    class: coverage
+    required: true
+    intent: a witness for head turning, posturing and behaviour, as a separate labelled interview
+    phrasings:
+      - {id: p1, form: closed, text: "Did anyone see it? Could they tell me what they saw, especially whether your head turned to one side or your body stiffened?"}
+    value: {type: text}
+    verbatim: true
+    negative_reporting: omit
+  - id: sz.pregnancy_possible
+    class: context
+    required: false
+    intent: pregnancy, since seizure in pregnancy is a first-draft red flag awaiting a tier
+    phrasings:
+      - {id: p1, form: closed, text: "Because of what happened I need to ask: is there any chance you could be pregnant?"}
+    value: {type: yes_no}
+    extraction: {yes_terms: ["yes", pregnant, could be, maybe, weeks], no_terms: ["no", not possible, no chance]}
+    verbatim: true
+    negative_reporting: explicit
+red_flags:
+  - id: rf.seizure_prolonged_or_repeated
+    fires_when: "sz.duration_repeat == 'prolonged_or_repeated'"
+    tier: immediate
+    alert: {include_verbatim: true, template: "Prolonged or repeated seizure. Patient said: {verbatim}."}
+    suppressible: false
+    source: "Master list first-draft trigger, no tier set; immediate proposed pending neurology review"
+  - id: rf.first_seizure
+    fires_when: "sz.first_or_known == 'first'"
+    tier: same_day
+    alert: {include_verbatim: true, template: "First seizure. Patient said: {verbatim}."}
+    suppressible: false
+    source: "Master list first-draft trigger, no tier set; same-day proposed pending neurology review"
+  - id: rf.seizure_head_injury
+    fires_when: "sz.head_injury == 'yes'"
+    tier: flag
+    alert: {include_verbatim: true, template: "Head injury during a seizure; routes to trauma. Patient said: {verbatim}."}
+    suppressible: false
+    source: "Neurological table"
+closing:
+  uncertainty: "I can't tell from talking with you what caused this."
+  watch_for: [another episode, one lasting more than five minutes, not waking properly afterwards, a head injury]
+  time_course: "Someone will speak with you today."
+  where: "If another one happens or lasts more than five minutes, call an ambulance rather than waiting."
+prohibited: [scoring the Sheldon rule, deciding seizure versus syncope]
+gaps: ["Head turning, posturing and behaviour during the event need a witness; the patient is usually amnesic. No score is assembled."]

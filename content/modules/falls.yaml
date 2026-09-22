@@ -1,0 +1,111 @@
+module: falls
+display_name: a fall
+version: 0.1.0
+status: grounded
+reviewed: false
+review_notes: ["Geriatric review", "Whether the full World Falls Guidelines set runs in the GP version", "Closing block is a first draft"]
+setting: both
+activates_on:
+  terms: [had a fall, went down, keep falling, legs gave way, fell over, i fell, my mum fell, fallen, took a tumble]
+slots:
+  - id: fa.syncope_fork
+    class: red_flag
+    required: true
+    intent: any loss of consciousness, gap in memory for the fall, or warning symptoms; the syncope fork comes first
+    phrasings:
+      - {id: p1, form: closed, text: "Do you remember the moment of falling? Did you black out, or feel dizzy or faint just before?"}
+    value: {type: yes_no}
+    extraction: {yes_terms: [blacked out, don't remember, can't remember falling, dizzy before, faint, passed out, gap, "yes"], no_terms: [remember it, tripped, caught my foot, slipped, "no", didn't black out]}
+    verbatim: true
+    negative_reporting: explicit
+  - id: fa.head_strike
+    class: coverage
+    required: true
+    intent: head strike, routing to the trauma module
+    phrasings:
+      - {id: p1, form: closed, text: "Did you hit your head?"}
+    value: {type: yes_no}
+    extraction: {yes_terms: ["yes", hit my head, banged, head], no_terms: ["no", didn't hit my head]}
+    verbatim: true
+    negative_reporting: explicit
+  - id: fa.injury
+    class: coverage
+    required: true
+    intent: injury requiring medical treatment
+    phrasings:
+      - {id: p1, form: open, text: "Did you hurt yourself? Where, and can you move it and put weight on it?"}
+    value: {type: text}
+    verbatim: true
+    negative_reporting: explicit
+  - id: fa.long_lie_duration
+    class: coverage
+    required: true
+    intent: time on the floor, as a duration
+    phrasings:
+      - {id: p1, form: open, text: "How long were you on the floor before you got up or were helped up? In minutes or hours."}
+    value: {type: text}
+    verbatim: true
+    negative_reporting: omit
+  - id: fa.previous_falls
+    class: coverage
+    required: true
+    intent: falls in the previous twelve months, count
+    phrasings:
+      - {id: p1, form: open, text: "How many times have you fallen in the last twelve months, counting this one?"}
+    value: {type: text}
+    verbatim: true
+    negative_reporting: explicit
+  - id: fa.anticoagulant_named
+    class: coverage
+    required: true
+    intent: anticoagulant by name
+    phrasings:
+      - {id: p1, form: closed, text: "Do you take a blood thinner: warfarin, apixaban, rivaroxaban, dabigatran, or clexane injections?"}
+    value: {type: yes_no}
+    extraction: {yes_terms: [warfarin, apixaban, eliquis, rivaroxaban, xarelto, dabigatran, pradaxa, clexane, blood thinner, "yes"], no_terms: ["no", none, nothing like that]}
+    verbatim: true
+    negative_reporting: explicit
+  - id: fa.three_questions
+    class: coverage
+    required: true
+    intent: worried about falling, unsteady when standing or walking, fallen in the past year; each answer separately
+    phrasings:
+      - {id: p1, form: closed, text: "Three quick ones: are you worried about falling? Do you feel unsteady when you stand or walk? Have you fallen in the past year?"}
+    value: {type: text}
+    verbatim: true
+    negative_reporting: explicit
+  - id: fa.sensory_frailty
+    class: coverage
+    required: true
+    intent: hearing, vision, dizziness, mobility aids, known frailty
+    phrasings:
+      - {id: p1, form: open, text: "How is your hearing and your eyesight? Do you use a stick or a frame? Has anyone said you are frail?"}
+    value: {type: text}
+    verbatim: true
+    negative_reporting: omit
+red_flags:
+  - id: rf.fall_with_loc
+    fires_when: "fa.syncope_fork == 'yes'"
+    tier: same_day
+    alert: {include_verbatim: true, template: "Fall with suspected loss of consciousness; routes to syncope. Patient said: {verbatim}."}
+    suppressible: false
+    source: "Master list: fall with suspected loss of consciousness"
+  - id: rf.fall_head_strike_anticoagulated
+    fires_when: "fa.head_strike == 'yes' and fa.anticoagulant_named == 'yes'"
+    tier: same_day
+    alert: {include_verbatim: true, template: "Fall with head strike on an anticoagulant; routes to head injury. Patient said: {verbatim}."}
+    suppressible: false
+    source: "Trauma row: anticoagulated head injury"
+  - id: rf.fall_high_risk
+    fires_when: "fa.injury != '' or fa.long_lie_duration != '' or fa.previous_falls != ''"
+    tier: flag
+    alert: {include_verbatim: true, template: "Fall: injury {fa.injury}; time on floor {fa.long_lie_duration}; falls in 12 months {fa.previous_falls}. Patient said: {verbatim}."}
+    suppressible: false
+    source: "Master list: fall with injury, long lie over an hour, frailty, or two or more falls in a year (high-risk criteria per World Falls Guidelines; reported as inputs)"
+closing:
+  uncertainty: "I can't tell from talking with you why you fell."
+  watch_for: [another fall, a head knock especially on a blood thinner, being unable to get up, new weakness]
+  time_course: "Someone will speak with you today."
+  where: "If you fall again and cannot get up, or hit your head on a blood thinner, call an ambulance rather than waiting."
+prohibited: [asking the patient to walk or stand as a test, reporting "no previous falls" as low risk]
+gaps: ["Gait speed and Timed Up and Go are physical tests and were not attempted. Sensitivity of the high-risk classification is 26 to 52%, so negatives do not reassure."]

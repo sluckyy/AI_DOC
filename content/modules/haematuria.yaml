@@ -1,0 +1,90 @@
+module: haematuria
+display_name: blood in the urine
+version: 0.1.0
+status: grounded
+reviewed: false
+review_notes: ["Age threshold for referral is a configurable parameter", "Urology review", "Closing block is a first draft"]
+setting: both
+activates_on:
+  terms: [blood in my urine, blood in my wee, urine gone red, urine is brown, red urine, peeing blood, blood when i pee, pink urine]
+slots:
+  - id: hu.painless
+    class: coverage
+    required: true
+    intent: whether the bleeding was painless, recorded verbatim; painful does not close the question
+    phrasings:
+      - {id: p1, form: closed, text: "Was there any pain when you passed the blood, or was it painless?"}
+    value:
+      type: enum
+      options:
+        - {id: painless, synonyms: [painless, no pain, didn't hurt, nothing]}
+        - {id: painful, synonyms: [painful, burning, stinging, hurt, pain]}
+    verbatim: true
+    negative_reporting: omit
+  - id: hu.timing_clots
+    class: coverage
+    required: true
+    intent: visible blood, timing in the stream, clots
+    phrasings:
+      - {id: p1, form: open, text: "Was the blood at the start, at the end, or all the way through? Were there any clots? Can you pass urine normally?"}
+    value: {type: text}
+    verbatim: true
+    negative_reporting: omit
+  - id: hu.recurrent_after_infection
+    class: coverage
+    required: true
+    intent: previous episodes, and blood that came back after antibiotics for a urine infection
+    phrasings:
+      - {id: p1, form: closed, text: "Has this happened before? Did it come back after antibiotics for a urine infection?"}
+    value: {type: yes_no}
+    extraction: {yes_terms: ["yes", before, again, came back, after antibiotics, second time], no_terms: ["no", first time, never before]}
+    verbatim: true
+    negative_reporting: explicit
+  - id: hu.smoking_pack_years
+    class: coverage
+    required: true
+    intent: smoking as components for pack-years
+    phrasings:
+      - {id: p1, form: open, text: "Do you smoke, or did you? How many a day, and for how many years?"}
+    value: {type: text}
+    verbatim: true
+    negative_reporting: explicit
+  - id: hu.occupation
+    class: coverage
+    required: true
+    intent: past and current occupation, since urothelial carcinogen exposure is routinely omitted
+    phrasings:
+      - {id: p1, form: open, text: "What work do you do, and what work have you done in the past? For example metal work, painting, or rubber manufacturing."}
+    value: {type: text}
+    verbatim: true
+    negative_reporting: omit
+  - id: hu.retention
+    class: red_flag
+    required: true
+    intent: inability to pass urine or clot retention
+    phrasings:
+      - {id: p1, form: closed, text: "Are you able to pass urine at the moment, or is it blocked?"}
+    value: {type: yes_no}
+    extraction: {yes_terms: [can pass, passing fine, "yes", able to], no_terms: [blocked, can't pass, can't go, retention, nothing coming out, "no"]}
+    verbatim: true
+    negative_reporting: explicit
+red_flags:
+  - id: rf.urinary_retention
+    fires_when: "hu.retention == 'no'"
+    tier: immediate
+    alert: {include_verbatim: true, template: "Unable to pass urine (possible clot retention). Patient said: {verbatim}."}
+    suppressible: false
+    source: "Master list first-draft trigger: acute urinary retention, clot retention; immediate proposed pending urology review"
+  - id: rf.visible_haematuria
+    fires_when: "hu.painless in ['painless', 'painful']"
+    tier: flag
+    alert: {include_verbatim: true, template: "Visible haematuria, {hu.painless}. Recurrent after treated infection: {hu.recurrent_after_infection}. Patient said: {verbatim}."}
+    suppressible: false
+    source: "Master list: visible haematuria, painless or recurring after a treated infection; age and sex thresholds configurable"
+closing:
+  uncertainty: "I can't tell from talking with you what is causing the blood."
+  watch_for: [being unable to pass urine, passing clots, feeling faint]
+  time_course: "Someone will speak with you today."
+  where: "If you cannot pass urine at all, seek care the same day rather than waiting."
+prohibited: [embedding a referral age threshold, naming a cause]
+gaps: ["Non-visible haematuria is a laboratory finding and is not covered. Age and sex must travel with this finding in the handover."]

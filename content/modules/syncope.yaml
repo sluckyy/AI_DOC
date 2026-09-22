@@ -1,0 +1,151 @@
+module: syncope
+display_name: syncope or collapse
+version: 0.1.0
+status: grounded
+reviewed: false
+review_notes: ["Whether patients can estimate prodrome duration reliably enough for the 2.5 minute versus 3 second distinction", "Closing block is a first draft"]
+setting: both
+activates_on:
+  terms: [blacked out, fainted, passed out, went down, came over funny, collapsed, lost consciousness, blackout, faint]
+slots:
+  - id: sy.prodrome_duration
+    class: discriminating
+    required: true
+    intent: warning before the episode and how long it lasted, as a number
+    phrasings:
+      - {id: p1, form: open, text: "Did you have any warning at all before you went, and roughly how long: a few seconds, or a couple of minutes?"}
+    value:
+      type: enum
+      options:
+        - {id: none, synonyms: [no warning, none, nothing, just went, out like a light]}
+        - {id: seconds, synonyms: [seconds, a second, few seconds, split second, moment]}
+        - {id: minutes, synonyms: [minute, minutes, a couple of minutes, a while, felt it coming]}
+    evidence: {lr: "prodrome averages about 2.5 minutes in vasovagal syncope and about 3 seconds in arrhythmic cardiac syncope", discriminates: cardiac versus vasovagal syncope, citation: "syncope prodrome duration study, as tabulated in the Symptom Questioning Library", grade: A, population: pooled}
+    verbatim: true
+    negative_reporting: explicit
+  - id: sy.position
+    class: discriminating
+    required: true
+    intent: position at onset
+    phrasings:
+      - {id: p1, form: closed, text: "What were you doing when it happened: standing, sitting, or lying down?"}
+    value:
+      type: enum
+      options:
+        - {id: standing, synonyms: [standing, stood up, on my feet, queue, walking]}
+        - {id: sitting, synonyms: [sitting, sat, in a chair, at the table]}
+        - {id: lying, synonyms: [lying, lying down, in bed, asleep]}
+    evidence: {lr: "standing suggests vasovagal; supine onset or no prodrome suggests a cardiac cause; syncope lying down excludes orthostatic hypotension", discriminates: cause of syncope, citation: "ED syncope evaluation guidance, as tabulated in the Symptom Questioning Library", grade: B, population: pooled}
+    verbatim: true
+    negative_reporting: omit
+  - id: sy.exertion
+    class: red_flag
+    required: true
+    intent: relation to exertion, during versus after
+    phrasings:
+      - {id: p1, form: closed, text: "Did it happen while you were exerting yourself, or just after you stopped, or neither?"}
+    value:
+      type: enum
+      options:
+        - {id: during, synonyms: [during, while exercising, while running, mid-run, while i was, playing sport]}
+        - {id: after, synonyms: [after, just after, when i stopped, afterwards]}
+        - {id: neither, synonyms: [neither, "no", not exercising, resting, nothing like that]}
+    verbatim: true
+    negative_reporting: explicit
+  - id: sy.palpitations_before
+    class: red_flag
+    required: true
+    intent: palpitations before the loss of consciousness
+    phrasings:
+      - {id: p1, form: closed, text: "Just before it, was your heart racing, pounding or fluttering?"}
+    value: {type: yes_no}
+    extraction: {yes_terms: ["yes", racing, pounding, fluttering, palpitations, heart going], no_terms: ["no", nothing, normal, didn't notice]}
+    evidence: {lr: "in the absence of known heart disease, absence of palpitations allows a cardiac cause to be excluded", discriminates: cardiac syncope, citation: "ED syncope evaluation guidance, as tabulated in the Symptom Questioning Library", grade: B, population: pooled}
+    verbatim: true
+    negative_reporting: explicit
+  - id: sy.chest_pain
+    class: red_flag
+    required: true
+    intent: associated chest pain
+    phrasings:
+      - {id: p1, form: closed, text: "Was there any chest pain around the time it happened?"}
+    value: {type: yes_no}
+    extraction: {yes_terms: ["yes", chest pain, tight chest, pressure], no_terms: ["no", no pain, nothing in my chest]}
+    verbatim: true
+    negative_reporting: explicit
+  - id: sy.injury
+    class: coverage
+    required: true
+    intent: injury sustained in the fall
+    phrasings:
+      - {id: p1, form: closed, text: "Did you hurt yourself when you went down? Did you hit your head?"}
+    value: {type: text}
+    verbatim: true
+    negative_reporting: explicit
+  - id: sy.witness
+    class: coverage
+    required: true
+    intent: whether anyone saw it and is available to describe it
+    phrasings:
+      - {id: p1, form: closed, text: "Did anyone see it happen? Are they with you, or could they speak to me?"}
+    value: {type: text}
+    verbatim: true
+    negative_reporting: omit
+  - id: sy.family_sudden_death
+    class: red_flag
+    required: true
+    intent: family history of early sudden death, recurrent syncope, or events described as seizures, including unexplained drowning and single-vehicle crashes
+    phrasings:
+      - {id: p1, form: closed, text: "Has anyone in your family died suddenly or unexpectedly at a young age, including drowning or a single-car crash? Does anyone in your family faint a lot or have seizures?"}
+    value: {type: yes_no}
+    extraction: {yes_terms: ["yes", died suddenly, sudden death, drowned, car crash, my brother, my father died young, faints, seizures in the family], no_terms: ["no", nobody, not that i know, no one]}
+    verbatim: true
+    negative_reporting: explicit
+  - id: sy.pregnancy_possible
+    class: context
+    required: false
+    intent: possible pregnancy, because syncope can be a ruptured ectopic pregnancy
+    phrasings:
+      - {id: p1, form: closed, text: "Because of what you've described, I need to ask: is there any chance you could be pregnant?"}
+    value: {type: yes_no}
+    extraction: {yes_terms: ["yes", could be, maybe, possibly, late period, missed period, pregnant], no_terms: ["no", not possible, no chance, can't be, menopause, hysterectomy]}
+    verbatim: true
+    negative_reporting: explicit
+red_flags:
+  - id: rf.exertional_syncope
+    fires_when: "sy.exertion == 'during'"
+    tier: immediate
+    alert: {include_verbatim: true, template: "Syncope during exertion. Patient said: {verbatim}."}
+    suppressible: false
+    source: "Master list: syncope during exertion"
+  - id: rf.syncope_with_palpitations
+    fires_when: "sy.palpitations_before == 'yes'"
+    tier: immediate
+    alert: {include_verbatim: true, template: "Syncope with palpitations beforehand. Patient said: {verbatim}."}
+    suppressible: false
+    source: "Master list: syncope with palpitations"
+  - id: rf.syncope_family_sudden_death
+    fires_when: "sy.family_sudden_death == 'yes'"
+    tier: immediate
+    alert: {include_verbatim: true, template: "Syncope with a family history of early sudden death. Patient said: {verbatim}."}
+    suppressible: false
+    source: "Master list: syncope with family history of early sudden death"
+  - id: rf.syncope_chest_pain
+    fires_when: "sy.chest_pain == 'yes'"
+    tier: immediate
+    alert: {include_verbatim: true, template: "Syncope with chest pain. Patient said: {verbatim}."}
+    suppressible: false
+    source: "Cardiovascular table red flags"
+  - id: rf.syncope_no_prodrome
+    fires_when: "sy.prodrome_duration == 'none'"
+    tier: flag
+    alert: {include_verbatim: true, template: "Syncope with no prodrome. Patient said: {verbatim}."}
+    suppressible: false
+    source: "Cardiovascular table red flags: no prodrome"
+closing:
+  uncertainty: "I can't tell from talking with you why you blacked out."
+  watch_for: [another blackout, chest pain, your heart racing, blacking out during exercise]
+  time_course: "Someone will speak with you today."
+  where: "If any of those happen before then, call an ambulance rather than waiting."
+prohibited: [classifying the syncope as vasovagal or cardiac]
+gaps: ["No ECG, no lying and standing blood pressure. The patient cannot report the event itself; a witness account is a separate interview."]

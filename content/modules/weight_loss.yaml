@@ -1,0 +1,126 @@
+# The operative word is "unexpected". Amount and period stay in the patient's own terms; the sex-and-age investigation thresholds are configurable and no rule here applies one.
+module: weight_loss
+display_name: losing weight without trying
+version: 0.1.0
+status: grounded
+reviewed: false
+review_notes: ["Sex-and-age investigation thresholds are configurable parameters to be set from the Australian (Victorian) replication, not the English data", "Check no figures from the retracted 2020 BMJ study are quoted anywhere in this module", "Whether smoking should be re-asked here or taken from context", "Closing block is a first draft"]
+setting: both
+activates_on:
+  terms: [losing weight, lost weight, weight loss, clothes are loose, clothes are looser, dropped weight, weight is falling off, belt is loose, getting thinner, wasting away]
+slots:
+  - id: wl.intended
+    class: red_flag
+    required: true
+    intent: whether the weight loss was intended; asked first, before anything else, and a dieting patient who lost more than expected counts as unintended
+    phrasings:
+      - {id: p1, form: open, text: "Did you mean to lose this weight? Were you dieting or exercising to lose it, or has it come off without you trying? If you were trying, is it more than you expected?"}
+    value:
+      type: enum
+      options:
+        - {id: intended, synonyms: [meant to, on purpose, dieting, trying to, deliberate, about what i expected, planned]}
+        - {id: unintended, synonyms: [without trying, not trying, just fell off, didn't mean to, no idea why, more than i expected, more than expected, wasn't dieting]}
+        - {id: unsure, synonyms: [not sure, hard to say, maybe, partly]}
+    verbatim: true
+    negative_reporting: omit
+  - id: wl.how_known
+    class: coverage
+    required: true
+    intent: how the patient knows, since measured weight and looser clothes are different findings; self-weighing is a delegated observation
+    phrasings:
+      - {id: p1, form: open, text: "How do you know you've lost weight? Have you weighed yourself, has someone else noticed, or is it from how your clothes fit?"}
+    value:
+      type: enum
+      options:
+        - {id: scales, synonyms: [scales, weighed myself, weighed, at the chemist, at the doctor, on the scales]}
+        - {id: clothes, synonyms: [clothes, trousers, belt, loose, looser, rings, watch]}
+        - {id: told_by_someone, synonyms: [someone said, people have noticed, my wife, my husband, my daughter, my son, family noticed]}
+        - {id: unsure, synonyms: [not sure, just feel thinner, hard to say]}
+    delegated_observation: true
+    verbatim: true
+    negative_reporting: omit
+  - id: wl.amount_period
+    class: coverage
+    required: true
+    intent: amount lost, over what period, and the starting weight if known, in the patient's own terms; never converted to a percentage or rounded into a number
+    phrasings:
+      - {id: p1, form: open, text: "How much have you lost, and over how long? Tell me in your own words, and what you weighed before if you know."}
+    value: {type: text}
+    verbatim: true
+    negative_reporting: omit
+  - id: wl.clothes_fit
+    class: coverage
+    required: true
+    intent: clothes, belt or ring fit as a proxy for the amount, in the patient's words
+    phrasings:
+      - {id: p1, form: open, text: "How do your clothes fit now compared with before? Have you had to take your belt in, or do rings or a watch feel loose?"}
+    value: {type: text}
+    verbatim: true
+    negative_reporting: omit
+  - id: wl.appetite
+    class: coverage
+    required: true
+    intent: appetite and eating compared with usual, and any reason the patient gives
+    phrasings:
+      - {id: p1, form: open, text: "How is your appetite? Are you eating the same as usual, less, or more? Has anything put you off food?"}
+    value: {type: text}
+    verbatim: true
+    negative_reporting: omit
+  - id: wl.associated
+    class: red_flag
+    required: true
+    intent: associated features that make weight loss a marker of several cancer types; each also populates its own module
+    phrasings:
+      - {id: p1, form: closed, text: "Along with the weight loss, have you had any of these: sweats that soak the bed at night, a new lump anywhere, bleeding from anywhere, food sticking when you swallow, a change in your bowel habit, or a cough that has lasted?"}
+    value:
+      type: set
+      options:
+        - {id: night_sweats, synonyms: [night sweats, sweats at night, soak the bed, drenched, wake up wet]}
+        - {id: lumps, synonyms: [lump, lumps, swelling, gland, lump in my neck, lump in my breast, lump in my armpit]}
+        - {id: bleeding, synonyms: [bleeding, blood, blood in my urine, blood in my poo, coughing up blood, bleeding down below, black stools]}
+        - {id: dysphagia, synonyms: [food sticking, sticks, hard to swallow, trouble swallowing, gets stuck]}
+        - {id: bowel_habit_change, synonyms: [bowels changed, bowel habit, diarrhoea, constipation, looser, going more often]}
+        - {id: cough, synonyms: [cough, coughing, cough that won't go, chesty for weeks]}
+        - {id: none, synonyms: [none, "no", nothing, none of those, nothing like that]}
+    verbatim: true
+    negative_reporting: explicit
+  - id: wl.age_verbatim
+    class: coverage
+    required: true
+    intent: age as the patient states it, recorded verbatim for the configurable sex-and-age investigation thresholds; no rule in this module applies a threshold
+    phrasings:
+      - {id: p1, form: open, text: "Because weight loss matters differently at different ages, can I check how old you are?"}
+    value: {type: text}
+    prefill_from: [ctx.age]
+    confirm: true
+    verbatim: true
+    negative_reporting: omit
+  - id: wl.smoking
+    class: coverage
+    required: false
+    intent: smoking status, which stratifies risk in the evidence base; cigarettes per day and years for pack-years with components shown
+    phrasings:
+      - {id: p1, form: open, text: "Do you smoke, or did you? Roughly how many a day, and for how many years?"}
+    value: {type: text}
+    verbatim: true
+    negative_reporting: explicit
+red_flags:
+  - id: rf_weight_loss_unintended_with_feature
+    fires_when: "wl.intended == 'unintended' and 'none' not in wl.associated"
+    tier: same_day
+    alert: {include_verbatim: true, template: "Unintended weight loss with an associated feature: {wl.associated}. Amount and period in the patient's words: {wl.amount_period}. Patient said: {verbatim}."}
+    suppressible: false
+    source: "Weight loss row: features usually tied to one cancer site become markers of several cancer types when they occur with unexpected weight loss; routing table: unintentional and significant, associated night sweats, lumps, bleeding"
+  - id: rf_weight_loss_unintended
+    fires_when: "wl.intended == 'unintended'"
+    tier: flag
+    alert: {include_verbatim: true, template: "Unintended weight loss. Amount and period in the patient's words: {wl.amount_period}; known from {wl.how_known}; age as stated {wl.age_verbatim}. Patient said: {verbatim}."}
+    suppressible: false
+    source: "Weight loss row: the operative word is unexpected; the age and sex investigation thresholds are configurable and applied by the clinician, not by this rule"
+closing:
+  uncertainty: "I can't tell from talking with you why you are losing weight."
+  watch_for: [the weight continuing to fall, food sticking when you swallow, bleeding from anywhere, a new lump, drenching night sweats, a cough that lasts]
+  time_course: "Someone will speak with you today."
+  where: "If you start bleeding, or become unable to swallow, before then, call an ambulance rather than waiting."
+prohibited: [converting the amount to a percentage or rounding a vague answer into a number, applying a sex-or-age threshold from a rule in this module, treating a patient's report of normal blood tests as reassurance, attributing the loss to dieting or ageing without asking whether it was more than expected]
+gaps: ["The 2020 BMJ diagnostic accuracy study on unexpected weight loss and cancer in primary care has been retracted and replaced by a 2024 update; secondary sources may still quote the retracted figures, and this module cites none", "Sex-and-age investigation thresholds (above 3% cancer risk in men 50 and over and women 60 and over in the English update) are configurable parameters; the Australian replication in Victorian general practice should be used to set them and its figures were not retrieved in this pass", "No measured weight: how the patient knows is recorded alongside the amount, and self-weighing is a delegated observation"]

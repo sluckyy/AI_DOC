@@ -1,0 +1,168 @@
+# A routing row for most patients and a cancer-risk row for older men on its own. The agent asks for the red-flag features and hands off; it never summarises fatigue as "non-specific".
+module: fatigue
+display_name: tiredness
+version: 0.1.0
+status: grounded
+reviewed: false
+review_notes: ["Age threshold for the cancer signal is a configurable parameter, given two English studies with different cut-offs (men 65 and over vs men 70 and over; women 80 and over vs no age)", "Mood question wording, pending mental health module going live", "Whether the substance disclosure here should defer to the alcohol and substance module", "Closing block is a first draft"]
+setting: both
+activates_on:
+  terms: [tired all the time, tired, tiredness, no energy, worn out, exhausted, exhaustion, fatigue, fatigued, run down, wiped out, lethargic, drained]
+slots:
+  - id: ft.onset
+    class: coverage
+    required: true
+    intent: new-onset versus longstanding; the cancer-risk evidence concerns new-onset fatigue
+    phrasings:
+      - {id: p1, form: open, text: "Is this tiredness something new, or have you felt like this for a long time?"}
+    value:
+      type: enum
+      options:
+        - {id: new_onset, synonyms: [new, recent, recently, just started, last few weeks, past month, since, out of the blue]}
+        - {id: longstanding, synonyms: [long time, always, years, ages, for ever, months and months, as long as i can remember]}
+        - {id: unsure, synonyms: [not sure, hard to say, gradually]}
+    verbatim: true
+    negative_reporting: omit
+  - id: ft.start_date
+    class: coverage
+    required: true
+    intent: the date the tiredness started, as the patient gives it
+    phrasings:
+      - {id: p1, form: open, text: "When did it start? Give me a date, or a month, even roughly."}
+    value: {type: text}
+    verbatim: true
+    negative_reporting: omit
+  - id: ft.function
+    class: coverage
+    required: true
+    intent: function as the severity measure; what the patient has stopped doing, never a tiredness scale
+    phrasings:
+      - {id: p1, form: open, text: "What have you stopped doing, or cut back on, because of the tiredness? Work, getting out, housework, exercise?"}
+    value: {type: text}
+    verbatim: true
+    negative_reporting: omit
+  - id: ft.red_flag_features
+    class: red_flag
+    required: true
+    intent: the listed red-flag features in fatigue, each of which has its own module; this module asks for them and hands off
+    phrasings:
+      - {id: p1, form: closed, text: "With the tiredness, have you had any of these: losing weight without trying, a fever that keeps coming back, sweats that soak the bed at night, bleeding or bruising you can't explain, chest pain or your heart racing or thumping, or getting short of breath when you exert yourself?"}
+    value:
+      type: set
+      options:
+        - {id: weight_loss, synonyms: [weight loss, lost weight, losing weight, clothes are loose, dropped weight]}
+        - {id: persistent_fever, synonyms: [fever, fevers, temperature, keeps coming back, feverish, hot and cold]}
+        - {id: night_sweats, synonyms: [night sweats, sweats at night, soak the bed, drenched, wake up wet]}
+        - {id: bleeding_bruising, synonyms: [bleeding, bruising, bruises, bruise easily, nosebleeds, bleeding gums, blood]}
+        - {id: chest_pain_palpitations, synonyms: [chest pain, palpitations, heart racing, thumping, fluttering, pounding]}
+        - {id: breathless_exertion, synonyms: [short of breath, breathless, out of breath, puffed, on the stairs, when i walk]}
+        - {id: none, synonyms: [none, "no", nothing, none of those, nothing like that]}
+    verbatim: true
+    negative_reporting: explicit
+  - id: ft.sleep
+    class: coverage
+    required: true
+    intent: sleep pattern, snoring, and shift work
+    phrasings:
+      - {id: p1, form: open, text: "How are you sleeping? How many hours, and is it broken? Do you snore or wake gasping? Do you work shifts or nights?"}
+    value: {type: text}
+    verbatim: true
+    negative_reporting: omit
+  - id: ft.mood_low
+    class: coverage
+    required: true
+    intent: low mood or loss of interest over the past two weeks, administered and recorded without judgement; a positive is a flag to the clinician, since the mental health module is not live
+    phrasings:
+      - {id: p1, form: closed, text: "Over the last two weeks, have you often been feeling down, low or hopeless, or found little interest or pleasure in things you usually enjoy?"}
+    value: {type: yes_no}
+    extraction: {yes_terms: ["yes", down, low, depressed, hopeless, flat, no interest, can't enjoy, miserable, sad, tearful], no_terms: ["no", mood is fine, feel okay in myself, still enjoy things, not down]}
+    verbatim: true
+    negative_reporting: explicit
+  - id: ft.substances
+    class: coverage
+    required: true
+    intent: alcohol, drug and medication history as part of this interview; recorded in the patient's words, not scored
+    stigmatised: true
+    preamble: "I ask everyone with tiredness about alcohol, other drugs and medicines, because they are among the commonest causes."
+    disclosure_group: substance
+    phrasings:
+      - {id: p1, form: open, text: "How much alcohol do you drink in a typical week? Do you use any other drugs? And which medicines do you take, including anything bought over the counter or online?"}
+    value: {type: text}
+    verbatim: true
+    negative_reporting: omit
+  - id: ft.thyroid_symptoms
+    class: coverage
+    required: true
+    intent: symptoms pointing to thyroid disease, one of the four strongest associations with new-onset fatigue
+    phrasings:
+      - {id: p1, form: closed, text: "Have you noticed feeling the cold or the heat more than other people, a change in your weight, your bowels, your skin or hair, or a swelling at the front of your neck?"}
+    value: {type: text}
+    verbatim: true
+    negative_reporting: explicit
+  - id: ft.age_band
+    class: coverage
+    required: true
+    intent: age band for the configurable cancer-signal threshold, recorded verbatim and prefilled from context; the threshold itself is a parameter and no rule in this module applies one
+    phrasings:
+      - {id: p1, form: open, text: "Because tiredness matters differently at different ages, can I check how old you are?"}
+    value:
+      type: enum
+      options:
+        - {id: under_65, synonyms: [under 65, sixties, fifties, forties, thirties, twenties, "50", "55", "60", "64"]}
+        - {id: over_65, synonyms: ["65", "66", "67", "68", "69", sixty-five, sixty five, over 65]}
+        - {id: over_70, synonyms: ["70", "72", "75", "78", "79", seventy, seventies, over 70]}
+        - {id: over_80, synonyms: ["80", "82", "85", "88", "90", "95", eighty, eighties, nineties, over 80]}
+    prefill_from: [ctx.age]
+    confirm: true
+    verbatim: true
+    negative_reporting: omit
+red_flags:
+  - id: rf.fatigue_weight_loss
+    fires_when: "'weight_loss' in ft.red_flag_features"
+    tier: same_day
+    alert: {include_verbatim: true, template: "Fatigue with unintended weight loss; routed to the weight loss module. Patient said: {verbatim}."}
+    suppressible: false
+    source: "Fatigue row: red flag features in fatigue, each routing to its own row; routing table: weight loss"
+  - id: rf.fatigue_persistent_fever
+    fires_when: "'persistent_fever' in ft.red_flag_features"
+    tier: same_day
+    alert: {include_verbatim: true, template: "Fatigue with persistent fever; routed to the fever and sepsis module. Patient said: {verbatim}."}
+    suppressible: false
+    source: "Fatigue row: red flag features in fatigue"
+  - id: rf.fatigue_night_sweats
+    fires_when: "'night_sweats' in ft.red_flag_features"
+    tier: same_day
+    alert: {include_verbatim: true, template: "Fatigue with night sweats. Patient said: {verbatim}."}
+    suppressible: false
+    source: "Fatigue row: red flag features in fatigue; routing table: night sweats"
+  - id: rf.fatigue_bleeding_bruising
+    fires_when: "'bleeding_bruising' in ft.red_flag_features"
+    tier: same_day
+    alert: {include_verbatim: true, template: "Fatigue with unexplained bleeding or bruising. Patient said: {verbatim}."}
+    suppressible: false
+    source: "Fatigue row: red flag features in fatigue, unexplained bleeding or bruising"
+  - id: rf.fatigue_chest_pain_palpitations
+    fires_when: "'chest_pain_palpitations' in ft.red_flag_features"
+    tier: same_day
+    alert: {include_verbatim: true, template: "Fatigue with chest pain or palpitations; routed to the chest pain or palpitations module. Patient said: {verbatim}."}
+    suppressible: false
+    source: "Fatigue row: red flag features in fatigue"
+  - id: rf.fatigue_breathless_exertion
+    fires_when: "'breathless_exertion' in ft.red_flag_features"
+    tier: same_day
+    alert: {include_verbatim: true, template: "Fatigue with breathlessness on exertion; routed to the breathlessness module. Patient said: {verbatim}."}
+    suppressible: false
+    source: "Fatigue row: red flag features in fatigue; routing table: breathlessness on exertion"
+  - id: rf.fatigue_low_mood
+    fires_when: "ft.mood_low == 'yes'"
+    tier: flag
+    alert: {include_verbatim: true, template: "Low mood or loss of interest reported with fatigue; the mental health module is not live, so this is for the clinician to follow up. Patient said: {verbatim}."}
+    suppressible: false
+    source: "Fatigue row: depression heads the association list; mental health section pending specialist input"
+closing:
+  uncertainty: "I can't tell from talking with you what is causing the tiredness."
+  watch_for: [losing weight without trying, fevers or drenching night sweats, bleeding or bruising you can't explain, chest pain or a racing heart, getting more short of breath, thoughts of harming yourself]
+  time_course: "Someone will speak with you today."
+  where: "If you have chest pain, become very short of breath, or have thoughts of harming yourself before then, call an ambulance or the crisis line rather than waiting."
+prohibited: ["summarising fatigue as non-specific in the handover", asking for tiredness on a scale, scoring the PHQ-9 or any mood instrument, judging or interpreting a mood answer, applying an age threshold from a rule in this module]
+gaps: ["The cancer-signal age threshold is a configurable parameter: one cohort reports 12-month cancer risk above 3% in men 65 and over and women 80 and over, a later analysis supports investigation in men 70 and over only; both are English data and the age band is recorded, not acted on", "The mental health module is not live; a low-mood positive is recorded and flagged to the clinician, not assessed", "Blood tests are out of scope and change management in only about 5% of patients; a report of normal bloods is the patient's report, not reassurance"]

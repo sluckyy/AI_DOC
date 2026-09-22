@@ -1,0 +1,159 @@
+module: abdominal_pain
+display_name: abdominal pain
+version: 0.1.0
+status: grounded
+reviewed: false
+review_notes: ["The under-triage mitigation for older patients", "Whether the equity finding should become a study outcome", "Closing block is a first draft"]
+setting: both
+activates_on:
+  terms: [tummy pain, guts hurting, cramps, stomach ache, colicky, abdominal pain, belly pain, pain in my stomach, pain in my belly, tummy ache, gut pain, stomach pain]
+slots:
+  - id: ab.pregnancy_possible
+    class: context
+    required: true
+    intent: possible pregnancy, asked early, because ectopic pregnancy can present with pain alone
+    phrasings:
+      - {id: p1, form: closed, text: "Because of where the pain is, I need to ask early: is there any chance you could be pregnant?"}
+    value:
+      type: enum
+      options:
+        - {id: "yes", synonyms: [could be, maybe, possibly, late period, missed period, pregnant, i am pregnant, might be]}
+        - {id: "no", synonyms: [not possible, no chance, can't be, menopause, hysterectomy, "no", not pregnant]}
+        - {id: not_applicable, synonyms: [i'm a man, male, not applicable, doesn't apply]}
+    verbatim: true
+    negative_reporting: explicit
+  - id: ab.onset_clock_time
+    class: coverage
+    required: true
+    intent: when the pain started, as a clock time
+    phrasings:
+      - {id: p1, form: open, text: "What time did the pain start? Roughly on the clock."}
+    value: {type: clock_time}
+    verbatim: true
+    negative_reporting: omit
+  - id: ab.onset_speed
+    class: red_flag
+    required: true
+    intent: sudden severe onset versus gradual
+    phrasings:
+      - {id: p1, form: closed, text: "Did it come on suddenly and severely, or build up?"}
+    value:
+      type: enum
+      options:
+        - {id: sudden_severe, synonyms: [suddenly, sudden, severe, all at once, doubled over, worst pain, out of nowhere]}
+        - {id: gradual, synonyms: [gradually, built up, slowly, crept, got worse over]}
+    verbatim: true
+    negative_reporting: omit
+  - id: ab.site
+    class: coverage
+    required: true
+    intent: site, recorded as a field, not a branch to trust
+    phrasings:
+      - {id: p1, form: open, text: "Where is the pain: upper, lower, left, right, all over, or does it move?"}
+    value: {type: text}
+    verbatim: true
+    negative_reporting: omit
+  - id: ab.character_course
+    class: coverage
+    required: true
+    intent: character and course, constant or colicky, better or worse
+    phrasings:
+      - {id: p1, form: open, text: "Is it constant, or does it come in waves? Is it getting better, worse, or staying the same?"}
+    value: {type: text}
+    verbatim: true
+    negative_reporting: omit
+  - id: ab.functional_change
+    class: coverage
+    required: true
+    intent: functional change and progression, weighted over the severity score especially in older patients
+    phrasings:
+      - {id: p1, form: open, text: "What has it stopped you doing today that you could do yesterday? Have you been able to eat, get up, walk about?"}
+    value: {type: text}
+    verbatim: true
+    negative_reporting: omit
+  - id: ab.shock_symptoms
+    class: red_flag
+    required: true
+    intent: faintness, collapse, cold and clammy, shoulder-tip pain
+    phrasings:
+      - {id: p1, form: closed, text: "Have you felt faint, collapsed, or gone cold and clammy? Any pain in the tip of your shoulder?"}
+    value: {type: yes_no}
+    extraction: {yes_terms: ["yes", faint, collapsed, clammy, cold and sweaty, dizzy, shoulder tip, shoulder pain, passed out], no_terms: ["no", none of those, nothing like that, feel fine otherwise]}
+    verbatim: true
+    negative_reporting: explicit
+  - id: ab.vomiting_bowels
+    class: coverage
+    required: true
+    intent: vomiting including blood or green, bowels including blood or complete constipation
+    phrasings:
+      - {id: p1, form: open, text: "Have you been vomiting, and what colour? Have your bowels been working, and have you seen any blood?"}
+    value: {type: text}
+    verbatim: true
+    negative_reporting: explicit
+  - id: ab.cardiac_screen
+    class: red_flag
+    required: true
+    intent: chest symptoms with upper abdominal pain, since infarction can present as epigastric pain
+    phrasings:
+      - {id: p1, form: closed, text: "Has there been any pain, tightness or pressure in your chest, or breathlessness or sweating, with it?"}
+    value: {type: yes_no}
+    extraction: {yes_terms: ["yes", chest, tight, pressure, breathless, sweating, sweaty], no_terms: ["no", nothing in my chest, breathing fine, none of those]}
+    verbatim: true
+    negative_reporting: explicit
+  - id: ab.urinary_fever
+    class: coverage
+    required: true
+    intent: fever, urinary symptoms
+    phrasings:
+      - {id: p1, form: closed, text: "Any fever or shivers? Any burning or trouble passing urine?"}
+    value: {type: text}
+    verbatim: true
+    negative_reporting: explicit
+  - id: ab.testicular_young_man
+    class: coverage
+    required: false
+    intent: testicular changes in a young man, the metastatic presentation patients do not connect
+    phrasings:
+      - {id: p1, form: closed, text: "One more specific question: have you noticed any lump, swelling or change in a testicle?"}
+    value: {type: yes_no}
+    extraction: {yes_terms: ["yes", lump, swelling, testicle, ball], no_terms: ["no", nothing, none]}
+    verbatim: true
+    negative_reporting: explicit
+red_flags:
+  - id: rf.abdo_pain_possible_pregnancy_collapse
+    fires_when: "ab.pregnancy_possible == 'yes' and ab.shock_symptoms == 'yes'"
+    tier: immediate
+    alert: {include_verbatim: true, template: "Possible early pregnancy with abdominal pain plus faintness, collapse or shoulder-tip pain. Patient said: {verbatim}."}
+    suppressible: false
+    source: "Master list: possible early pregnancy with abdominal pain plus shoulder-tip pain, dizziness or collapse"
+  - id: rf.abdo_pain_possible_pregnancy
+    fires_when: "ab.pregnancy_possible == 'yes'"
+    tier: same_day
+    alert: {include_verbatim: true, template: "Pain in possible early pregnancy. Patient said: {verbatim}."}
+    suppressible: false
+    source: "Master list: pain or bleeding in possible early pregnancy"
+  - id: rf.abdo_pain_shock
+    fires_when: "ab.shock_symptoms == 'yes'"
+    tier: immediate
+    alert: {include_verbatim: true, template: "Abdominal pain with faintness, collapse or clamminess. Patient said: {verbatim}."}
+    suppressible: false
+    source: "GI table: associated shock symptoms"
+  - id: rf.abdo_pain_cardiac
+    fires_when: "ab.cardiac_screen == 'yes'"
+    tier: immediate
+    alert: {include_verbatim: true, template: "Abdominal pain with chest symptoms. Patient said: {verbatim}."}
+    suppressible: false
+    source: "Abdominal pain row: myocardial infarction can present as epigastric pain"
+  - id: rf.abdo_pain_sudden_severe
+    fires_when: "ab.onset_speed == 'sudden_severe'"
+    tier: flag
+    alert: {include_verbatim: true, template: "Sudden severe onset abdominal pain. Patient said: {verbatim}."}
+    suppressible: false
+    source: "GI table: sudden severe onset; tier proposed for surgical review"
+closing:
+  uncertainty: "I can't tell from talking with you what is causing the pain."
+  watch_for: [the pain becoming suddenly severe, feeling faint or collapsing, vomiting blood or green fluid, a fever with shivers]
+  time_course: "Someone will speak with you today."
+  where: "If any of those happen before then, call an ambulance rather than waiting."
+prohibited: [naming a likely diagnosis, reasoning from site alone]
+gaps: ["No examination of the abdomen, no vital signs. The handover carries the patient's age beside any severity statement because older patients under-report severity."]

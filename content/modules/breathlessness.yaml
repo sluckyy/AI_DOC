@@ -1,0 +1,117 @@
+# Transcribed from the Symptom Questioning Library, cardiovascular and respiratory section.
+module: breathlessness
+display_name: breathlessness
+version: 0.1.0
+status: grounded
+reviewed: false
+review_notes: ["Concrete phrasings for orthopnoea and PND need reviewer confirmation", "Closing block is a first draft"]
+setting: both
+activates_on:
+  terms: [short of breath, breathless, breathlessness, can't catch my breath, puffed, winded, can't get air in, out of breath, struggling to breathe, hard to breathe]
+slots:
+  - id: br.at_rest
+    class: red_flag
+    required: true
+    intent: whether breathless at rest right now, or only able to speak in single words
+    phrasings:
+      - {id: p1, form: closed, text: "Right now, sitting still, are you short of breath?"}
+    value: {type: yes_no}
+    extraction: {yes_terms: ["yes", at rest, sitting still, right now, even sitting, can't talk, single words, struggling now], no_terms: ["no", only when, fine at rest, ok sitting, not at rest, better now]}
+    verbatim: true
+    negative_reporting: explicit
+  - id: br.onset_speed
+    class: coverage
+    required: true
+    intent: how quickly it came on
+    phrasings:
+      - {id: p1, form: closed, text: "Did the breathlessness come on suddenly, over minutes, or has it built up over days or weeks?"}
+    value:
+      type: enum
+      options:
+        - {id: sudden, synonyms: [suddenly, sudden, minutes, all at once, out of nowhere]}
+        - {id: hours, synonyms: [hours, over the day, this morning, since last night]}
+        - {id: days, synonyms: [days, over days, few days, this week]}
+        - {id: weeks, synonyms: [weeks, months, gradually, slowly, ages]}
+    verbatim: true
+    negative_reporting: omit
+  - id: br.exertional_threshold
+    class: coverage
+    required: true
+    intent: functional statement of what brings it on now compared with before
+    phrasings:
+      - {id: p1, form: open, text: "What can you do before you get breathless now, and what could you do a couple of weeks ago? For example walking to the shops, or crossing the room."}
+    value: {type: text}
+    verbatim: true
+    negative_reporting: omit
+  - id: br.orthopnoea
+    class: discriminating
+    required: true
+    intent: orthopnoea, asked concretely as pillows and lying flat
+    phrasings:
+      - {id: p1, form: closed, text: "How many pillows do you sleep on, and has that changed? Can you lie flat without getting breathless?"}
+    value: {type: yes_no}
+    extraction: {yes_terms: [more pillows, extra pillows, three pillows, four pillows, can't lie flat, sit up to sleep, propped up, sleep in a chair], no_terms: [one pillow, lie flat, "no", no change, same as always, fine lying]}
+    evidence: {lr: "orthopnoea LR+ 2.2 for heart failure; either orthopnoea or PND has NPV 97% and PPV 13% in the community", discriminates: heart failure, citation: "ED dyspnoea review and prospective population studies, as tabulated in the Symptom Questioning Library", grade: A, population: pooled}
+    verbatim: true
+    negative_reporting: explicit
+  - id: br.pnd
+    class: discriminating
+    required: true
+    intent: paroxysmal nocturnal dyspnoea, asked concretely
+    phrasings:
+      - {id: p1, form: closed, text: "Do you ever wake up in the night fighting for breath and have to sit up or get up?"}
+    value: {type: yes_no}
+    extraction: {yes_terms: ["yes", wake up, fighting for breath, sit up, gasping, at night, get up for air], no_terms: ["no", never, sleep through, not at night]}
+    evidence: {lr: "PND LR+ 2.6 for heart failure", discriminates: heart failure, citation: "ED dyspnoea review, as tabulated in the Symptom Questioning Library", grade: A, population: pooled}
+    verbatim: false
+    negative_reporting: explicit
+  - id: br.chest_pain
+    class: red_flag
+    required: true
+    intent: associated chest pain
+    phrasings:
+      - {id: p1, form: closed, text: "Is there any pain or tightness in your chest with it?"}
+    value: {type: yes_no}
+    extraction: {yes_terms: ["yes", pain, tight, tightness, pressure, ache in my chest], no_terms: ["no", no pain, nothing in my chest, just the breathing]}
+    verbatim: true
+    negative_reporting: explicit
+  - id: br.prior_mi
+    class: discriminating
+    required: true
+    intent: prior myocardial infarction, which sits in past history and carries 89% specificity
+    phrasings:
+      - {id: p1, form: closed, text: "Have you ever had a heart attack, or been told you have a weak heart?"}
+    value: {type: yes_no}
+    extraction: {yes_terms: ["yes", heart attack, weak heart, heart failure, stent, bypass, cardiac], no_terms: ["no", never, not that i know]}
+    evidence: {lr: "history of myocardial infarction specificity 89% for heart failure in primary care", discriminates: heart failure, citation: "primary care dyspnoea study, as tabulated in the Symptom Questioning Library", grade: A, population: pooled}
+    verbatim: true
+    negative_reporting: explicit
+  - id: br.cough_sputum
+    class: coverage
+    required: true
+    intent: associated cough and sputum, including any blood
+    phrasings:
+      - {id: p1, form: closed, text: "Is there a cough with it? If so, are you bringing anything up, and have you seen any blood?"}
+    value: {type: text}
+    verbatim: true
+    negative_reporting: omit
+red_flags:
+  - id: rf.breathless_at_rest
+    fires_when: "br.at_rest == 'yes'"
+    tier: immediate
+    alert: {include_verbatim: true, template: "Breathlessness at rest or speaking in single words. Patient said: {verbatim}."}
+    suppressible: false
+    source: "Master list: breathlessness at rest or speaking in single words (retained from original; not re-grounded)"
+  - id: rf.breathless_with_chest_pain
+    fires_when: "br.chest_pain == 'yes'"
+    tier: immediate
+    alert: {include_verbatim: true, template: "Breathlessness with chest pain. Patient said: {verbatim}."}
+    suppressible: false
+    source: "Chest pain row: any current or recent-onset chest pain escalates"
+closing:
+  uncertainty: "I can't tell from talking with you what is causing the breathlessness."
+  watch_for: [breathlessness at rest, being unable to finish a sentence, chest pain, blue lips]
+  time_course: "Someone will speak with you today."
+  where: "If any of those happen before then, call an ambulance rather than waiting."
+prohibited: [judging breathing effort by sound or appearance, naming a cardiac or respiratory cause]
+gaps: ["No oxygen saturation, respiratory rate or examination. Negatives are history negatives only; the negative predictive value of orthopnoea and PND is 97% but only if genuinely asked."]

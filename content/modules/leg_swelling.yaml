@@ -1,0 +1,117 @@
+module: leg_swelling
+display_name: leg swelling
+version: 0.1.0
+status: grounded
+reviewed: false
+review_notes: ["Confirmation that Wells components are listed but never assembled", "Closing block is a first draft"]
+setting: both
+activates_on:
+  terms: [swollen leg, swollen legs, leg swelling, ankles puffed up, ankles swollen, one leg bigger, leg is swollen, swollen ankle, swollen calf]
+slots:
+  - id: ls.laterality
+    class: coverage
+    required: true
+    intent: one leg or both, the first fork
+    phrasings:
+      - {id: p1, form: closed, text: "Is it one leg, or both?"}
+    value:
+      type: enum
+      options:
+        - {id: unilateral, synonyms: [one leg, one, just the left, just the right, only one, the left, the right]}
+        - {id: bilateral, synonyms: [both, both legs, two legs, each leg]}
+    verbatim: true
+    negative_reporting: omit
+  - id: ls.onset_duration
+    class: coverage
+    required: true
+    intent: when it started and how quickly
+    phrasings:
+      - {id: p1, form: open, text: "When did you first notice the swelling, and did it come on over hours, days or weeks?"}
+    value: {type: text}
+    verbatim: true
+    negative_reporting: omit
+  - id: ls.pain
+    class: red_flag
+    required: true
+    intent: pain or calf tenderness with the swelling
+    phrasings:
+      - {id: p1, form: closed, text: "Is the leg painful, or tender if you press the calf?"}
+    value: {type: yes_no}
+    extraction: {yes_terms: ["yes", painful, sore, tender, hurts, aching], no_terms: ["no", painless, doesn't hurt, not sore]}
+    verbatim: true
+    negative_reporting: explicit
+  - id: ls.injury
+    class: coverage
+    required: true
+    intent: any injury, strain or twist, since 40% of non-DVT cases are muscle injury
+    phrasings:
+      - {id: p1, form: closed, text: "Did you injure it, twist it, or feel something go in the calf?"}
+    value: {type: yes_no}
+    extraction: {yes_terms: ["yes", twisted, injured, felt something go, pulled, strained, fell], no_terms: ["no", no injury, nothing happened, didn't hurt it]}
+    verbatim: true
+    negative_reporting: explicit
+  - id: ls.wells_history_items
+    class: coverage
+    required: true
+    intent: "Wells history components, collected and never assembled: active cancer, recent immobilisation or paralysis, bedridden three days or major surgery within twelve weeks, previous DVT"
+    phrasings:
+      - {id: p1, form: closed, text: "A few specific things. Are you being treated for cancer? Have you had an operation, or been in bed for three days or more, in the last three months? Have you had a clot in the leg or lung before? Is the leg paralysed or in a cast?"}
+    value:
+      type: set
+      options:
+        - {id: active_cancer, synonyms: [cancer, chemo, chemotherapy, radiotherapy, tumour]}
+        - {id: immobilisation, synonyms: [cast, plaster, paralysed, can't move it, immobilised]}
+        - {id: bedridden_or_surgery, synonyms: [operation, surgery, in bed, bedridden, hospital, laid up]}
+        - {id: previous_dvt, synonyms: [clot, dvt, thrombosis, clot in my lung, pulmonary embolism, pe]}
+        - {id: none, synonyms: [none of those, "no", nothing like that]}
+    verbatim: true
+    negative_reporting: explicit
+  - id: ls.whole_leg
+    class: coverage
+    required: true
+    intent: whether the whole leg is swollen, and whether it pits when pressed (delegated observation)
+    phrasings:
+      - {id: p1, form: open, text: "Is the whole leg swollen, or just the ankle or calf? If you press your thumb into it for a few seconds, does it leave a dent?"}
+    value: {type: text}
+    delegated_observation: true
+    verbatim: true
+    negative_reporting: omit
+  - id: ls.breathless_chest_pain
+    class: red_flag
+    required: true
+    intent: associated breathlessness or chest pain
+    phrasings:
+      - {id: p1, form: closed, text: "Are you at all short of breath, or is there any chest pain?"}
+    value: {type: yes_no}
+    extraction: {yes_terms: ["yes", short of breath, breathless, chest pain, tight chest], no_terms: ["no", breathing fine, no chest pain, breathing is ok]}
+    verbatim: true
+    negative_reporting: explicit
+  - id: ls.medications_oedema
+    class: coverage
+    required: true
+    intent: medicines that cause bilateral oedema, pulled forward from the medication section
+    phrasings:
+      - {id: p1, form: open, text: "Which tablets do you take? In particular anything for blood pressure, the heart, or hormones."}
+    value: {type: text}
+    verbatim: true
+    negative_reporting: omit
+red_flags:
+  - id: rf.leg_swelling_with_breathlessness
+    fires_when: "ls.breathless_chest_pain == 'yes'"
+    tier: immediate
+    alert: {include_verbatim: true, template: "Leg swelling with breathlessness or chest pain. Patient said: {verbatim}."}
+    suppressible: false
+    source: "Cardiovascular table red flags"
+  - id: rf.unilateral_painful_leg
+    fires_when: "ls.laterality == 'unilateral' and ls.pain == 'yes'"
+    tier: same_day
+    alert: {include_verbatim: true, template: "Unilateral painful leg swelling. Patient said: {verbatim}. Wells history components collected, no score assembled."}
+    suppressible: false
+    source: "Cardiovascular table: unilateral with pain; tier proposed for review"
+closing:
+  uncertainty: "I can't tell from talking with you what is causing the swelling."
+  watch_for: [the leg becoming painful or hot, breathlessness, chest pain]
+  time_course: "Someone will speak with you today."
+  where: "If breathlessness or chest pain start before then, call an ambulance rather than waiting."
+prohibited: [assembling or implying a Wells score, naming a clot as the cause]
+gaps: ["Calf circumference, tenderness along the deep veins and the clinician's alternative-diagnosis judgement are examination items; no score can be assembled from history alone."]

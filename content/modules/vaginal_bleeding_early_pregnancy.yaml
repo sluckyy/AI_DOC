@@ -1,0 +1,108 @@
+module: vaginal_bleeding_early_pregnancy
+display_name: vaginal bleeding or early pregnancy
+version: 0.1.0
+status: grounded
+reviewed: false
+review_notes: ["Obstetric and gynaecological review (gate)", "Wording of the pregnancy gating question", "Same-day-in-person pathway for the GP version", "Closing block is a first draft"]
+setting: both
+activates_on:
+  terms: [bleeding, spotting, heavy periods, bleeding between periods, vaginal bleeding, bleeding down below, pregnant and bleeding, miscarriage, passed something, bleeding after menopause]
+slots:
+  - id: vb.pregnancy_status
+    class: context
+    required: true
+    intent: pregnancy status, including a home test as a delegated observation
+    phrasings:
+      - {id: p1, form: closed, text: "Could you be pregnant? Have you done a home pregnancy test, and what did it show?"}
+    value:
+      type: enum
+      options:
+        - {id: "yes", synonyms: [pregnant, positive test, could be, maybe, weeks pregnant, missed period, late]}
+        - {id: "no", synonyms: [not pregnant, negative test, no chance, can't be, menopause, hysterectomy, "no"]}
+        - {id: unsure, synonyms: [not sure, don't know, haven't tested]}
+    delegated_observation: true
+    verbatim: true
+    negative_reporting: explicit
+  - id: vb.lmp_gestation
+    class: coverage
+    required: true
+    intent: last menstrual period or gestation
+    phrasings:
+      - {id: p1, form: open, text: "When was your last period, or how many weeks pregnant are you?"}
+    value: {type: text}
+    verbatim: true
+    negative_reporting: omit
+  - id: vb.pain
+    class: red_flag
+    required: true
+    intent: pain with the bleeding, including shoulder-tip pain and an urge to open the bowels
+    phrasings:
+      - {id: p1, form: closed, text: "Is there any pain in your tummy, any pain in the tip of your shoulder, or an urge to open your bowels?"}
+    value: {type: yes_no}
+    extraction: {yes_terms: ["yes", pain, cramps, shoulder, tip of my shoulder, bowels, urge], no_terms: ["no", no pain, painless, just bleeding]}
+    verbatim: true
+    negative_reporting: explicit
+  - id: vb.collapse
+    class: red_flag
+    required: true
+    intent: dizziness, faintness or collapse
+    phrasings:
+      - {id: p1, form: closed, text: "Have you felt dizzy or faint, or collapsed?"}
+    value: {type: yes_no}
+    extraction: {yes_terms: ["yes", dizzy, faint, fainted, collapsed, light-headed, passed out], no_terms: ["no", not dizzy, fine standing]}
+    verbatim: true
+    negative_reporting: explicit
+  - id: vb.volume_tissue
+    class: coverage
+    required: true
+    intent: volume in pads and any passage of tissue, recorded verbatim and never taken as a completed miscarriage
+    phrasings:
+      - {id: p1, form: open, text: "How heavy is the bleeding, in pads per hour? Have you passed any clots or tissue?"}
+    value: {type: text}
+    verbatim: true
+    negative_reporting: omit
+  - id: vb.risk_factors
+    class: coverage
+    required: true
+    intent: previous ectopic, tubal surgery, IUD, IVF; absence never rules out
+    phrasings:
+      - {id: p1, form: closed, text: "Have you ever had an ectopic pregnancy, surgery on your tubes, an IUD in place, or IVF treatment?"}
+    value: {type: text}
+    verbatim: true
+    negative_reporting: explicit
+  - id: vb.postmenopausal
+    class: coverage
+    required: false
+    intent: bleeding after the menopause
+    phrasings:
+      - {id: p1, form: closed, text: "Had your periods stopped for good before this bleeding started?"}
+    value: {type: yes_no}
+    extraction: {yes_terms: ["yes", menopause, stopped years ago, no periods for], no_terms: ["no", still having periods, not menopausal]}
+    verbatim: true
+    negative_reporting: explicit
+red_flags:
+  - id: rf.early_pregnancy_collapse
+    fires_when: "vb.pregnancy_status in ['yes', 'unsure'] and vb.collapse == 'yes'"
+    tier: immediate
+    alert: {include_verbatim: true, template: "Possible early pregnancy with dizziness or collapse. Patient said: {verbatim}."}
+    suppressible: false
+    source: "Master list: possible early pregnancy with pain plus shoulder-tip pain, dizziness or collapse"
+  - id: rf.early_pregnancy_pain_or_bleeding
+    fires_when: "vb.pregnancy_status in ['yes', 'unsure']"
+    tier: same_day
+    alert: {include_verbatim: true, template: "Pain or bleeding in possible early pregnancy; all such patients are considered potentially unstable. Patient said: {verbatim}."}
+    suppressible: false
+    source: "Master list: pain or bleeding in possible early pregnancy"
+  - id: rf.postmenopausal_bleeding
+    fires_when: "vb.postmenopausal == 'yes'"
+    tier: flag
+    alert: {include_verbatim: true, template: "Postmenopausal bleeding. Patient said: {verbatim}."}
+    suppressible: false
+    source: "Master list first-draft trigger, no tier set; flag proposed pending gynaecology review"
+closing:
+  uncertainty: "I can't tell from talking with you what is causing the bleeding."
+  watch_for: [pain in your tummy or shoulder tip, feeling faint or collapsing, bleeding soaking more than a pad an hour]
+  time_course: "This needs to be seen in person today."
+  where: "If you feel faint or the pain becomes severe before then, call an ambulance rather than waiting."
+prohibited: [implying a completed miscarriage, implying an ectopic pregnancy has been excluded, treating a negative home test as closing the question]
+gaps: ["No examination, no ultrasound, no blood test. Up to 30% of ectopic pregnancies present without bleeding and half have no risk factors."]

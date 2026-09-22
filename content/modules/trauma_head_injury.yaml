@@ -1,0 +1,150 @@
+module: trauma_head_injury
+display_name: injury or head injury
+version: 0.1.0
+status: grounded
+reviewed: false
+review_notes: ["Which rule SA Health adopts for anticoagulated head injury (configurable parameter)", "Evaluation of anticoagulant capture in both error directions", "Closing block is a first draft"]
+setting: both
+activates_on:
+  terms: [hit my head, head injury, car accident, had a fall and hit, knocked my head, banged my head, concussion, injured, injury, twisted it, crash, accident]
+slots:
+  - id: tr.major_trauma
+    class: red_flag
+    required: true
+    intent: major, penetrating or multi-system trauma, which escalates on disclosure with no further questioning
+    phrasings:
+      - {id: p1, form: open, text: "Tell me what happened, in a sentence."}
+    value:
+      type: enum
+      options:
+        - {id: major, synonyms: [stabbed, shot, penetrating, crushed, run over, thrown from, ejected, rollover, high speed, fell from a height, multiple injuries, can't feel my legs]}
+        - {id: other, synonyms: [tripped, fell over, bumped, twisted, knocked, slipped, hit my head, fell down, fall]}
+    verbatim: true
+    negative_reporting: omit
+  - id: tr.head_struck
+    class: coverage
+    required: true
+    intent: whether the head was struck
+    phrasings:
+      - {id: p1, form: closed, text: "Did you hit your head?"}
+    value: {type: yes_no}
+    extraction: {yes_terms: ["yes", hit my head, banged, knocked, head], no_terms: ["no", didn't hit my head, head is fine]}
+    verbatim: true
+    negative_reporting: explicit
+  - id: tr.primary_event
+    class: coverage
+    required: true
+    intent: whether a blackout or seizure came before the injury
+    phrasings:
+      - {id: p1, form: closed, text: "Did you black out or have a fit before you fell, or did you trip or get hit?"}
+    value: {type: text}
+    verbatim: true
+    negative_reporting: omit
+  - id: tr.anticoagulant_named
+    class: red_flag
+    required: true
+    intent: anticoagulant by name, never inferred; the highest-consequence single field in this group
+    phrasings:
+      - {id: p1, form: closed, text: "Do you take a blood thinner: warfarin, apixaban, rivaroxaban, dabigatran, or clexane injections?"}
+    value: {type: yes_no}
+    extraction: {yes_terms: [warfarin, apixaban, eliquis, rivaroxaban, xarelto, dabigatran, pradaxa, clexane, heparin, blood thinner, "yes"], no_terms: ["no", none, nothing like that, don't take]}
+    verbatim: true
+    negative_reporting: explicit
+  - id: tr.antiplatelet_named
+    class: coverage
+    required: true
+    intent: antiplatelets by name, separately from anticoagulants
+    phrasings:
+      - {id: p1, form: closed, text: "And separately, do you take clopidogrel, ticagrelor, or aspirin?"}
+    value: {type: text}
+    verbatim: true
+    negative_reporting: explicit
+  - id: tr.vomits_count
+    class: red_flag
+    required: true
+    intent: number of vomits since the injury
+    phrasings:
+      - {id: p1, form: open, text: "Have you vomited since? How many times: once, or two or more?"}
+    value:
+      type: enum
+      options:
+        - {id: two_or_more, synonyms: [twice, two, three, several, more than once, kept vomiting, again]}
+        - {id: once, synonyms: [once, one time, just once]}
+        - {id: none, synonyms: ["no", not vomited, none, haven't]}
+    verbatim: true
+    negative_reporting: explicit
+  - id: tr.amnesia_anchors
+    class: coverage
+    required: true
+    intent: retrograde amnesia as two anchors, not a duration
+    phrasings:
+      - {id: p1, form: open, text: "What is the last thing you remember before the injury, and the first thing after?"}
+    value: {type: text}
+    verbatim: true
+    negative_reporting: omit
+  - id: tr.mechanism
+    class: red_flag
+    required: true
+    intent: dangerous mechanism, asked operationally
+    phrasings:
+      - {id: p1, form: open, text: "How far did you fall, in metres or stairs? If a vehicle, were you a pedestrian struck, or thrown from it? How fast?"}
+    value:
+      type: enum
+      options:
+        - {id: dangerous, synonyms: [more than a metre, three feet, five stairs, pedestrian, struck by a car, thrown, ejected, high speed, rollover]}
+        - {id: minor, synonyms: [standing, tripped, low, not far, slow, minor]}
+    verbatim: true
+    negative_reporting: explicit
+  - id: tr.basal_skull_signs
+    class: coverage
+    required: false
+    intent: clear fluid from nose or ear, bruising around the eyes or behind the ear, delegated observation
+    phrasings:
+      - {id: p1, form: closed, text: "Has anyone noticed clear fluid from your nose or ear, or bruising around both eyes or behind an ear?"}
+    value: {type: yes_no}
+    extraction: {yes_terms: ["yes", clear fluid, dripping, bruising around my eyes, behind my ear, panda eyes], no_terms: ["no", nothing, none, not noticed]}
+    delegated_observation: true
+    verbatim: true
+    negative_reporting: omit
+  - id: tr.age_over_65
+    class: context
+    required: false
+    intent: age 65 or over
+    phrasings:
+      - {id: p1, form: closed, text: "Because of the head injury I need to ask: are you 65 or over?"}
+    value: {type: yes_no}
+    extraction: {yes_terms: ["yes", over 65, "65", "70", "75", "80", "85", "90"], no_terms: ["no", under, younger]}
+    verbatim: false
+    negative_reporting: explicit
+red_flags:
+  - id: rf.major_trauma
+    fires_when: "tr.major_trauma == 'major'"
+    tier: immediate
+    alert: {include_verbatim: true, template: "Major, penetrating or multi-system trauma disclosed; no further questioning. Patient said: {verbatim}."}
+    suppressible: false
+    source: "Master list: major, penetrating or multi-system trauma escalates on disclosure"
+  - id: rf.head_injury_vomiting
+    fires_when: "tr.head_struck == 'yes' and tr.vomits_count == 'two_or_more'"
+    tier: immediate
+    alert: {include_verbatim: true, template: "Head injury with two or more episodes of vomiting. Patient said: {verbatim}."}
+    suppressible: false
+    source: "Master list: head injury with two or more episodes of vomiting"
+  - id: rf.head_injury_anticoagulated
+    fires_when: "tr.head_struck == 'yes' and tr.anticoagulant_named == 'yes'"
+    tier: same_day
+    alert: {include_verbatim: true, template: "Head injury on an anticoagulant (named by the patient). Patient said: {verbatim}."}
+    suppressible: false
+    source: "Master list: head injury in a patient on anticoagulants, or as set by the configured rule"
+  - id: rf.head_injury_high_risk
+    fires_when: "tr.head_struck == 'yes' and (tr.mechanism == 'dangerous' or tr.age_over_65 == 'yes' or tr.basal_skull_signs == 'yes')"
+    tier: same_day
+    alert: {include_verbatim: true, template: "Head injury with a Canadian CT head criterion (dangerous mechanism, age 65 or over, or reported basal skull sign). Patient said: {verbatim}."}
+    suppressible: false
+    source: "Canadian CT head rule history items; tier proposed for emergency medicine review"
+closing:
+  uncertainty: "I can't tell from talking with you whether there is an injury inside."
+  watch_for: [vomiting, getting drowsy or confused, a worsening headache, weakness or trouble speaking, clear fluid from the nose or ear]
+  time_course: "Someone will speak with you today."
+  where: "If any of those happen, call an ambulance rather than waiting."
+prohibited: [inferring an anticoagulant from any other medicine, clearing the patient, computing a duration of amnesia]
+gaps: ["Conscious level and skull examination are not available; history rules in for imaging and cannot rule out."]
