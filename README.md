@@ -25,7 +25,7 @@ confirms it.
 
 The agent's behaviour and content are defined by the product owner's own
 documents (the Framework Specification, the Symptom Questioning Library and the
-domain evidence bases), saved under `design/reference/`. This pack does not
+seven domain evidence bases), saved under `design/reference/`. This pack does not
 restate them. It covers the product, the persona and avatar, emotional tone as a
 subordinate modifier, the technical implementation of the four layers, the
 evaluation pathway and the decision record.

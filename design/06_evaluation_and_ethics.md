@@ -64,6 +64,7 @@ scripts. The evidence review adds the endpoints below at little extra cost.
 | Confabulation | Rate of slot values or narrative clauses with no transcript span; anticoagulant capture tested in both error directions | The prehospital stroke voice-agent prior art |
 | Route yield | Per-route incremental yield for past medical history; free recall versus the named-condition sweep | PMH evidence base |
 | Disclosure direction | Whether patients disclose more or less to the voice agent on stigmatised items (substances, sexual history, sphincter function, risk questions) than to a clinician | Library recurring principle 6 |
+| Functional and situational completeness | Pre-specified secondary outcome scored separately from symptom agreement, against collateral from a family member or a structured research assessment, never the ED note alone; baseline 75% of ED records reference no functional ability | Functional and situational evidence base |
 | Equity | Whether elicitation and handover narrow or widen documented under-triage of older patients and of minority patients in abdominal pain; stratified by interview language, age, health literacy | Library cross-cutting question |
 
 Exit criteria for Stage A: zero narrative clauses or slot values without a transcript span across the bank; every

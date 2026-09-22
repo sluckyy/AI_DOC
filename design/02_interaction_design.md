@@ -53,8 +53,21 @@ order the library sets: past medical and surgical history as five retrieval rout
 care contacts, surveillance), medications as a fixed thirteen-category inventory
 asked per medicine, allergies and adverse reactions recorded as what happened,
 family history targeted by trigger patterns with extended family named
-explicitly, social history taken contextually, functional baseline, and ideas,
-concerns and expectations. A review of systems runs after saturation as a
+explicitly, social history taken contextually, functional and situational history, and
+ideas, concerns and expectations.
+
+Functional and situational history follows its evidence base: a short universal
+core for everyone (Lawton's seven instrumental activities, a Katz-style basic
+activities set, mobility aids, falls in the last six to twelve months, who the
+person lives with, who helps and how often, services already in place), deeper
+questioning only on trigger (age, reported dependency, repeat presentation, a
+reported gap in support), and always the delta: usual function two weeks ago
+against now. The handover carries the inputs, never a frailty grade, in three or
+four lines near the top: baseline, change from baseline, who is at home, what
+would need to be in place to go home. A situational domain enters the question
+set only when a named recipient exists for a positive answer, and the patient is
+told where the answer goes, with a per-item "is it OK if I pass this on?" for
+social items (D-47). A review of systems runs after saturation as a
 coverage sweep; what the handover surfaces from it follows the review-of-systems
 evidence base (D-37).
 

@@ -54,6 +54,8 @@ Reply with the ID and "agree", or the change you want. Status moves from
 | D-45 | Deployment and parameters | First deployment is a regional South Australian health network; the configurable parameters register (age thresholds, imaging rules, screen thresholds, sepsis criteria, notification pathways, escalation routes, helplines) is a versioned per-deployment file with a named owner | Hard-coded thresholds | The library's parameters register; thresholds are policy, not evidence | Proposed, owner to be named |
 | D-46 | Tone is subordinate | Emotional tone detection changes pace, wording and expression only; it never enters gating, red-flag, escalation or handover clinical content, and "never reassure" and "never stand down" override warmth | Tone-driven behaviour | Keeps Dr Sam's warmth from becoming a clinical instrument | Proposed |
 
+| D-47 | Functional and situational history | Universal short core (Lawton IADL, Katz ADL, mobility, falls, who lives there, who helps, services) with deeper questioning on trigger; capture the delta from two weeks ago; output the inputs, never a frailty score; a situational domain is asked only where a named recipient for a positive answer exists; the written record is a separate consent with per-item pass-on for social items; three or four lines near the top of the handover | Exhaustive inventory; a frailty grade; automatic structured social profile | The functional and situational evidence base: prognostic weight sits in a few items, collection only helps when someone acts on it, 37% of people with multiple needs object to it entering the record, and the Clinical Frailty Scale carries a licence condition | Proposed, from the functional evidence base |
+
 ## Open questions for the product owner
 
 1. Clinical lead: the product owner (agreed 2026-09-22).
@@ -64,5 +66,6 @@ Reply with the ID and "agree", or the change you want. Status moves from
 5. The library already covers about forty-five presentations. Which ship in the
    v1 simulated-patient bank, and which reviewers (per the library's allocation
    table) are lined up?
-6. The "Functional & Situational History" companion document has not been
-   received.
+6. For each situational domain in v1, who is the named recipient of a positive
+   answer at the pilot site (discharge planner, social work, Aboriginal liaison,
+   home care, GP recall)? Domains without one stay out of v1.
