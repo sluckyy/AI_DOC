@@ -1,6 +1,6 @@
 # 00. Product brief
 
-Status: **Proposed**
+Status: **Proposed**; scope agreed as a history-taking and documentation tool (D-02)
 
 ## One paragraph
 
@@ -15,14 +15,19 @@ needs; a human does that, with Dr Sam's summary in hand.
 
 | Audience | What they get from Dr Sam | v1 |
 | --- | --- | --- |
-| Patients and the public | A patient, unhurried intake conversation before a consult; plain-language explanation of what happens next; safety-net advice | Yes |
+| Patients and the public | A patient, unhurried history-taking conversation before a consult, in an ED waiting room or before a GP appointment; plain-language explanation of what happens next; safety-net advice | Yes |
 | Clinicians | The intake summary in a structured handover; ability to ask Dr Sam questions about what the patient said; nothing that replaces their judgement | Yes (review only) |
 | Aged care and companion settings | Scheduled check-ins with the same familiar face, carer visibility, escalation to a human when something changes | Phase 3 |
 | Medical students and trainees | Dr Sam as a simulated patient or as a supervisor debriefing a history-taking exercise | Phase 4 |
 
 ## v1 scope and the regulatory boundary
 
-The product owner asked for both **symptom triage and advice** and **staying outside
+The clinical lead has set the aim: AI DOC is a **history-taking and documentation
+tool**. It will be tested with simulated patients first, then, under Human Research
+Ethics Committee approval, with emergency department and general practice patients.
+See `06_evaluation_and_ethics.md`.
+
+The product owner originally asked for both **symptom triage and advice** and **staying outside
 medical-device regulation** in Australia. Those conflict. Under the Therapeutic
 Goods Administration's software rules, software that takes an individual's
 symptoms and recommends a level of care, or suggests a diagnosis, is generally a

@@ -6,13 +6,13 @@ Reply with the ID and "agree", or the change you want. Status moves from
 | ID | Decision | Proposed default | Alternatives | Why | Status |
 | --- | --- | --- | --- | --- | --- |
 | D-01 | Audiences | Patients and clinicians in v1; companion in phase 3; students in phase 4 | All four in v1 | Intake plus clinician review is one coherent product; the others reuse it | Proposed |
-| D-02 | Clinical scope versus regulation | v1 is intake, fixed safety net and health information; no individual triage or advice. v2 adds triage under a chosen TGA pathway | Triage in v1 and accept device regulation; triage in v1 and hope | "Symptom triage and advice" and "outside device regulation" cannot both hold in Australia; this keeps launch achievable and the seam clean. Confirm with a regulatory consultant | Proposed, needs owner's explicit call |
+| D-02 | Clinical scope versus regulation | AI DOC is a history-taking and documentation tool: intake, fixed safety net, health information. No individual triage or advice. Triage, if ever, is a separate v2 under a chosen TGA pathway | Triage in v1 and accept device regulation | The clinical lead set the aim as history taking and documentation. Keeps v1 outside device scope; confirm with a regulatory consultant before the HREC submission | **Agreed** 2026-09-22, clinical lead (product owner) |
 | D-03 | Safety net | Deterministic, clinician-authored rules with fixed wording; model never composes it | Model-generated safety responses | Predictable, testable, reviewable like a leaflet | Proposed |
 | D-04 | Conversation engine | Transcribe → model → synthesise, streamed per sentence | Speech-to-speech realtime model | Testable, auditable, cheaper, gives visemes; realtime is phase 4 | Proposed |
 | D-05 | Tone inputs | Transcript plus browser-computed prosody; no camera | Text only; audio-capable model; camera | Camera emotion recognition is withdrawn on Azure and unacceptable for patients; prosody is cheap signal | Proposed |
 | D-06 | Tone thresholds | 0.6 to act; 0.4 for distress | Single threshold | Missing distress costs more than a gentle false alarm | Proposed |
-| D-07 | Avatar rendering | Stylised 2D character in Rive | 3D glTF; Azure photoreal TTS avatar; static portrait | Gender-neutral is far easier in stylised art; light on phones and waiting-room tablets; Azure prebuilt avatars are gendered humans and custom ones need limited-access approval | Proposed |
-| D-08 | Voice | Azure AI Speech neural TTS, en-AU, blind audition, SSML-tuned | OpenAI TTS; browser only | Visemes come free; pace and pause control; Australian accent | Proposed |
+| D-07 | Avatar rendering | Two steps. Simulated-patient testing uses a code-drawn SVG avatar (built in React, animated by CSS and viseme events) that needs no artist. The HREC study uses a stylised 2D character in Rive, commissioned once the SVG version has settled the expression set | 3D glTF; Azure photoreal TTS avatar; static portrait | Nothing blocks the slice on an illustrator; gender-neutral is far easier in stylised art; Azure prebuilt avatars are gendered humans and custom ones need limited-access approval | Proposed |
+| D-08 | Voice | Azure AI Speech neural TTS, en-AU, chosen by the blind audition in `tools/voice_audition.py`, SSML-tuned | OpenAI TTS; browser only | Visemes come free; pace and pause control; Australian accent | Proposed; audition pending an Azure Speech resource |
 | D-09 | Model hosting | Azure OpenAI in Australia East from day one | OpenAI direct with a switch | Health data: residency, no training on data, enterprise terms. The MedExec helper is adapted, not rewritten | Proposed |
 | D-10 | Expression driver | Dr Sam's own turn intent | Person's tone label | Avoids the avatar reacting to a classifier the person cannot see | Proposed |
 | D-11 | Barge-in | Supported in all modes | None | People interrupt doctors; Dr Sam should stop and listen | Proposed |
@@ -29,8 +29,8 @@ Reply with the ID and "agree", or the change you want. Status moves from
 
 ## Open questions for the product owner
 
-1. Who is the clinical lead who signs off the safety-net rules and prompts?
-2. Is there a pilot clinic, and what practice software do they use (for phase 3)?
+1. Clinical lead: the product owner (agreed 2026-09-22).
+2. Which ED and which GP practice will host the HREC study, and what practice software do they use (for phase 3)?
 3. Budget for an illustrator for the Rive character, or a purchased asset for v1?
 4. Should companion-mode check-ins be initiated by Dr Sam (scheduled) or only by
    the person or carer?
