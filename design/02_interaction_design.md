@@ -6,8 +6,8 @@ Status: **Proposed**
 
 | Mode | Who | Purpose | v1 |
 | --- | --- | --- | --- |
-| Intake | Patient, before a consult | Take the story, capture concerns and expectations, produce a clinician summary | Yes |
-| Clinician review | Clinician, after intake | Read the summary; ask Dr Sam "what did they say about X"; nothing clinical from Dr Sam | Yes |
+| Intake | Patient, before a consult, in ED or via a GP pre-appointment link | Take the story, capture classification-relevant specificity, produce the verbal handover and the coding document | Yes |
+| Clinician review and attestation | Clinician, after intake | Hear or read the handover; ask Dr Sam "what did they say about X"; edit and sign the coding document | Yes |
 | Check-in | Older person or companion setting, recurring | Short scheduled conversation; note changes since last time; alert a carer when something changes | Phase 3 |
 | Teaching | Student | Dr Sam plays a simulated patient from a case, or debriefs the student's history-taking | Phase 4 |
 
@@ -18,22 +18,44 @@ Only the prompt profile, the register and the output document change.
 
 Dr Sam follows a history-taking structure a clinician will recognise, but drives it
 by listening rather than by form fields. The order is a guide; Dr Sam follows the
-person's story and fills gaps later.
+person's story and fills gaps later. Each stage names the classification-relevant
+detail Dr Sam is expected to elicit, drawn from the evidence review; the wording
+is conversational, the capture is structured.
 
-1. Disclosure and consent (fixed script, must be spoken and shown).
+1. Disclosure and consent (fixed script, spoken and shown, with a genuine opt-out
+   and the assurance that care is the same either way).
 2. Open invitation: "What's brought you in?" then silence.
 3. The story in their words; Dr Sam reflects and clarifies.
-4. Characterisation of the main problem (onset, course, what makes it better or
-   worse, what they have tried).
-5. Concerns, ideas and expectations: what they fear it is, what they hope for.
-6. Relevant background, only where the person raises it or it is plainly relevant:
-   existing conditions, medicines, allergies, family history, social context.
-7. Anything else: "Is there something you were hoping to bring up but haven't?"
-8. Wrap-up: Dr Sam reads back a short summary, the person corrects it, and it is
-   handed to the clinician.
+4. Characterisation of each symptom: onset and duration, course, severity,
+   laterality, what makes it better or worse, what they have tried, whether it is
+   the first episode or a recurrence, and any qualifier the symptom family needs
+   (for example, for injuries: mechanism, place, activity at the time, intent).
+5. Concerns, ideas and expectations.
+6. Pre-existing conditions, one at a time: the condition, who diagnosed it and
+   when, current treatment, whether treatment has changed recently and why,
+   whether it is being actively monitored, and whether it was present before
+   today's problem started.
+7. Medicines: drug, dose, what it is for, whether it is actually being taken,
+   recent changes and why. Allergies.
+8. Behavioural risk factors (smoking with quantity and currency, alcohol, other
+   substances), social and functional context (accommodation, supports, mobility,
+   carer, occupation), and obstetric status where relevant. Each introduced with
+   `explain_why`.
+9. Anything else: "Is there something you were hoping to bring up but haven't?"
+10. Wrap-up: Dr Sam reads back a short summary, the person corrects it, and the
+    handover and coding document are prepared for the clinician.
 
-Time budget: eight to twelve minutes. Dr Sam never says "we're out of time"; a
-long story is still a good intake.
+Elicitation rules that protect the record:
+
+- Ask for specificity, never for a conclusion. "Has a doctor ever told you what
+  that was?" is allowed; "Do you think it's your heart?" is not.
+- Never lead toward complication-bearing content. Questions come from the
+  person's story and the standard structure above, not from what would raise
+  coded complexity.
+- Record what the person said, attributed to them. A prior diagnosis is "patient
+  reports being told by their GP in 2023 that...", never a bare label.
+- Time budget: eight to twelve minutes in ED, up to fifteen for a GP pre-consult.
+  Dr Sam never says "we're out of time".
 
 ## Active listening moves
 
@@ -101,7 +123,7 @@ transcripts. The model does not compose safety-net wording.
 
 | Trigger class | Examples | Response |
 | --- | --- | --- |
-| Emergency physical | Chest pain with arm or jaw pain, severe breathlessness, stroke signs, anaphylaxis, heavy bleeding, unresponsive person | Fixed "call triple zero" guidance; stop the intake; show the guidance as text with a large call button |
+| Emergency physical | Chest pain with arm or jaw pain, severe breathlessness, stroke signs, anaphylaxis, heavy bleeding, unresponsive person | Fixed guidance; stop the intake; show it as text with a large call button. In ED the response is escalation to the triage desk rather than triple zero; that escalation is clinical decision support and its regulatory status is an open question (D-28) |
 | Self-harm or suicide | Explicit statements or plans | Fixed acknowledgement, Lifeline 13 11 14 and triple zero if in immediate danger, offer to stop; flag to the clinician as urgent |
 | Abuse or safety at home | Disclosure of violence or abuse | Fixed acknowledgement, 1800RESPECT, offer to continue in private, urgent clinician flag |
 | Distress without a clear class | `distressed` at 0.4 or above | Acknowledge, pause, offer a helpline (Lifeline; Beyond Blue), offer to continue or stop |
@@ -154,20 +176,43 @@ motion: blink only. Transitions blend over 300 to 500 ms.
 conversation goes, so a dropped connection still leaves a usable summary.
 `flags` carries `safety_net:<class>` or `off_topic`.
 
-## Clinician summary format
+## Dual output: one interview, two artefacts, one attestation
 
-Fixed sections, plain text and structured JSON, exported as a document:
+**Output A, the verbal handover.** A narrative ordered by clinical salience, as a
+good registrar would give it, spoken by Dr Sam to the clinician on request and
+shown as text, with the structured data underneath. The clinician can ask Dr Sam
+clarifying questions; answers quote the transcript and add nothing.
 
-1. Safety-net flags (if any), first.
-2. Presenting problem in the patient's words (one quoted sentence).
-3. History of the presenting problem.
-4. The patient's concerns, ideas and expectations.
-5. Background the patient raised.
-6. What the patient wants to ask.
-7. How the patient seemed (only with consent; one sentence; no labels).
-8. Gaps: what Dr Sam did not get to ask.
+**Output B, the coding document.** Field-structured, provenance-labelled at field
+level, and explicitly incomplete: the diagnosis block sits at the top and is
+visibly empty, because only a clinician can fill it.
 
-Everything is attributed to the patient. Dr Sam adds no interpretation.
+| Block | Content | Provenance |
+| --- | --- | --- |
+| Diagnosis block | Empty. Labelled slots for principal and additional diagnoses, with a prompt for the clinician to nominate which condition occasioned the episode | Clinician only |
+| Reason for encounter | The presenting problem in the patient's words, plus Dr Sam's structured symptom set | Patient-reported |
+| Symptom detail with qualifiers | Per symptom: onset, duration, course, severity, laterality, acute or chronic, first episode or recurrence, family-specific qualifiers | Patient-reported |
+| Pre-existing conditions | One row per condition: who diagnosed it and when, current treatment, whether treatment changed, whether actively monitored | Patient-reported; clinician-confirmed on attestation |
+| Onset relative to presentation | For every condition, whether present before arrival, stated as a fact of the history | Patient-reported |
+| Medicines | Drug, dose, actual adherence, recent changes and why, the condition each is for | Patient-reported |
+| External cause (injuries) | Mechanism, place of occurrence, activity, intent | Patient-reported |
+| Behavioural risk factors | Smoking with quantity and currency, alcohol, other substances | Patient-reported |
+| Social and functional | Accommodation, supports, mobility, carer status, occupation | Patient-reported |
+| Obstetric status | Pregnancy, gestation, parity | Patient-reported |
+| Safety-net events | Class and time of any trigger, and what was said | Structural |
+| How the patient seemed | One sentence, only with tone consent, no labels | Derived |
+| Gaps | What Dr Sam did not get to ask | Structural |
+| Provenance and attestation | Statement that content is patient-reported and machine-transcribed; agent, prompt and rule-set versions; interview timestamp; clinician sign-off | Structural |
+
+Rules for Output B: every clinical concept is bound to a SNOMED CT-AU concept, never
+an ICD-10-AM code; each pre-existing condition row makes the three ACS 0002 tests
+answerable at a glance; nothing is interpreted; the diagnosis block is never
+pre-populated.
+
+**Attestation** is an act, not a click. The clinician opens the document, edits
+what is wrong, fills the diagnosis block or leaves it empty, and signs. Until then
+the document is patient-reported and not a primary source. In the GP setting the
+same act is the deliberate adoption of a document generated days earlier.
 
 ## Barge-in, accessibility, fallbacks
 

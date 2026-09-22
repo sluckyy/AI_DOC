@@ -31,10 +31,27 @@ Runs: each case at least twice with different simulated patients; every prompt o
 rule-set version re-runs the full bank. Results are stored as a table in
 `evaluation/` in this repo, with the prompt and rule-set versions recorded.
 
-Exit criteria for Stage A: documentation fidelity with zero invented facts across
-the bank; every red-flag case triggers the safety net and every benign case does
-not; boundary checklist clean; simulated patients rate "felt heard" at four of
-five or better.
+The planned agreement study is the spine of Stage A: agreement between the
+Dr Sam-elicited history and a clinician-elicited history on the same simulated
+patients, consultant-adjudicated, blinded by having actors or agents read both
+scripts. The evidence review adds the endpoints below at little extra cost.
+
+| Endpoint | Measure | Reference |
+| --- | --- | --- |
+| History agreement (primary) | Agreement between agent and clinician histories, consultant-adjudicated, blinded | Adjudicated history |
+| Condition capture | Per-condition sensitivity and positive predictive value of the structured condition list | Adjudicated history; comparable to the Australian computer-assisted coding benchmark of 54.1% sensitivity and 70.2% PPV, noting that was extraction from notes |
+| Coder-facing sufficiency | Blinded dual coding with and without the attested document: DRG concordance, additional diagnosis counts, query rate, coder-rated sufficiency | Adjudicated clinical reference, never the routine coded record |
+| Note quality | Modified PDQI-9 on the handover and the coding document, including freedom from hallucination | Instrument scores |
+| Safety | Rate of history items present in the document but absent from the reference (fabricated or misattributed); red-flag sensitivity; time to escalation | Reference standard; scripted red-flag cases |
+| Equity | Everything above stratified by interview language, age and health literacy | Stratified analysis |
+| Monitored harm | NWAU or DRG complexity shift, reported and explicitly excluded from success criteria; a rise without a matching rise in agreement is a finding against the system | Declared in the protocol before data exists |
+
+Exit criteria for Stage A: zero fabricated history items across the bank; every
+red-flag case triggers the safety net and every benign case does not; boundary
+checklist clean (no diagnosis, urgency or medication language; diagnosis block
+empty in every document); history agreement and condition capture at the
+thresholds the clinical lead sets in the protocol; simulated patients rate "felt
+heard" at four of five or better.
 
 ## Stage B: HREC-approved study with ED and GP patients
 
@@ -55,8 +72,15 @@ clinical lead writes:
 - A safety plan: the fixed safety-net rule set and wording, who is notified when
   it triggers in the ED waiting room and in the GP setting, and the clinical
   escalation path. Stage A results as evidence.
-- A clear statement of the regulatory position (history-taking and documentation,
-  not a medical device), with the written regulatory advice attached.
+- A clear statement of the regulatory position (transcription and structuring,
+  not a medical device), with the TGA's answer on the ED red-flag escalation and
+  the coding document attached (D-28).
+- The governance baseline from the Safer Care Victoria ambient-scribe advisory,
+  adopted as written: explicit consent with a genuine opt-out and equivalent care
+  either way; data stored and processed in Australia; no vendor resale and no
+  third-party model training on the content; retention schedules that cover the
+  AI-generated artefacts as well as the final record; the clinician responsible
+  for everything they sign.
 - Study measures: documentation fidelity judged by the treating clinician, time
   to complete the history, clinician-rated usefulness, patient-rated experience,
   safety-net events and false alarms, and technical reliability.

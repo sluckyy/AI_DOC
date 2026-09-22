@@ -1,82 +1,87 @@
 # 00. Product brief
 
-Status: **Proposed**; scope agreed as a history-taking and documentation tool (D-02)
+Status: **Proposed**; scope agreed as a history-taking and documentation tool (D-02).
+Grounded in the clinical lead's evidence review, `reference/cdi_evidence_review_2026-09-23.md`.
 
 ## One paragraph
 
-AI DOC puts a calm, credible doctor in front of people who need to be heard before
-they see a clinician, and puts a clean, structured account of that conversation in
-front of the clinician. Dr Sam gathers the story, notices how the person is doing,
-responds in the right tone, keeps them safe with a fixed safety net, and hands
-over. Dr Sam does not diagnose and does not decide what level of care a person
-needs; a human does that, with Dr Sam's summary in hand.
+AI DOC puts a calm, credible doctor in front of a patient before the clinician
+sees them, takes a structured history by listening rather than by form, and turns
+that one interview into two artefacts: a verbal handover a good registrar would
+give, and a coding-ready document whose every field says where it came from and
+whose diagnosis block is left empty for the clinician. Dr Sam acts on the supply of
+clinical facts, not on their transcription. Nothing Dr Sam writes is codeable until
+a clinician reviews, edits and signs it; that attestation is the product's central
+act.
 
-## Audiences (all confirmed in scope)
+## Why this and not a scribe or a coding tool
 
-| Audience | What they get from Dr Sam | v1 |
+The Australian evidence says documentation, not coder skill, is the dominant source
+of coding error, and that most automation has aimed at extracting codes from notes
+already written. Only about three quarters of encounters in the largest Australian
+computer-assisted coding study could be coded from the notes at all. Nothing in the
+literature generates structured, classification-aware clinical content from the
+patient before the encounter. That is the gap AI DOC occupies, and it is also why
+its evaluation can carry the blinded clinical reference standard the field lacks.
+
+## Audiences
+
+| Audience | What they get | v1 |
 | --- | --- | --- |
-| Patients and the public | A patient, unhurried history-taking conversation before a consult, in an ED waiting room or before a GP appointment; plain-language explanation of what happens next; safety-net advice | Yes |
-| Clinicians | The intake summary in a structured handover; ability to ask Dr Sam questions about what the patient said; nothing that replaces their judgement | Yes (review only) |
-| Aged care and companion settings | Scheduled check-ins with the same familiar face, carer visibility, escalation to a human when something changes | Phase 3 |
-| Medical students and trainees | Dr Sam as a simulated patient or as a supervisor debriefing a history-taking exercise | Phase 4 |
+| Patients | An unhurried, spoken history-taking conversation before the clinician, in their language, with a fixed safety net | Yes |
+| Clinicians | The verbal handover, the coding document to attest, and the ability to ask Dr Sam clarifying questions about what the patient said | Yes |
+| Clinical coders | An attested document in which the ACS 0002 significance tests are answerable row by row, with field-level provenance | Yes, via the clinician's attestation |
+| Aged care and companion settings | Recurring check-ins with the same face | Phase 3 |
+| Students and trainees | Simulated patient and history-taking debrief | Phase 4 |
 
-## v1 scope and the regulatory boundary
+## Deployment settings
 
-The clinical lead has set the aim: AI DOC is a **history-taking and documentation
-tool**. It will be tested with simulated patients first, then, under Human Research
-Ethics Committee approval, with emergency department and general practice patients.
-See `06_evaluation_and_ethics.md`.
+| Setting | How the document arrives | Classification status |
+| --- | --- | --- |
+| Emergency department | Taken in the waiting room on a tablet; arrives before the clinician and travels with the episode | Feeds admitted-patient coding directly once attested |
+| General practice | Taken via a booking-call or pre-appointment link, days before the consult | Prior-episode documentation until the GP adopts it, so adoption is designed as one deliberate act at the start of the consult |
 
-The product owner originally asked for both **symptom triage and advice** and **staying outside
-medical-device regulation** in Australia. Those conflict. Under the Therapeutic
-Goods Administration's software rules, software that takes an individual's
-symptoms and recommends a level of care, or suggests a diagnosis, is generally a
-software-based medical device, whatever it is called in marketing. Software that
-gathers information for a clinician to act on, or provides general health
-information that is not personalised into a recommendation, generally is not.
-This is a summary, not legal advice; a regulatory consultant should confirm the
-boundary before launch (decision D-02).
+## What Dr Sam is uniquely placed to supply
 
-v1 is therefore designed as:
+1. Facts only the patient holds that the classification needs and that go
+   unrecorded: mechanism, place, activity and intent for injuries; onset timing;
+   prior diagnoses with who made them and when; whether regular medicines are
+   actually taken.
+2. The specificity clinical shorthand drops: acute versus chronic, first episode
+   versus recurrence, subtype, laterality.
+3. Onset relative to presentation, captured at the one moment it is unambiguous.
 
-1. **Pre-consult intake.** Dr Sam takes a history the way a good doctor would,
-   asks about concerns and expectations, and produces a structured summary for the
-   treating clinician. The clinician decides everything clinical.
-2. **Fixed safety net.** A small, clinician-authored list of red-flag statements
-   (chest pain, difficulty breathing, stroke signs, suicidal thoughts, and so on)
-   triggers standard, non-personalised emergency guidance: call 000, or a named
-   helpline. The guidance is identical for everyone who triggers it and is
-   reviewed like any patient leaflet. It is not an assessment of the individual.
-3. **Health information.** Explains terms and what to expect at the appointment,
-   drawing on reviewed sources such as healthdirect, and always points back to
-   the clinician for anything about the person's own situation.
+## What Dr Sam must never do
 
-**Individual triage and advice** (what Dr Sam thinks is wrong, how urgent it is, what
-to take) is the v2 product, built on the same platform once a regulatory pathway
-is chosen and a clinical evaluation plan exists. The architecture keeps a clean
-seam so v2 does not require a rewrite.
+- Generate a diagnostic label styled as a clinical conclusion. The patient said
+  chest pain; the document says chest pain.
+- Infer a diagnosis from a symptom pattern and present it as history.
+- Be tuned toward output that raises coded complexity. Preferentially eliciting
+  complication-bearing content is the automated form of a leading query.
+- Emit ICD-10-AM codes. Dr Sam binds to SNOMED CT-AU concepts; coding is the
+  coder's act under standards the agent cannot apply.
+- Pre-populate the diagnosis block, now or under later pressure.
 
-## What "appropriate emotional tone" means here
+## Regulatory position
 
-Dr Sam detects how a person seems from what they say and how they say it, and
-adjusts pace, wording and expression. Dr Sam does not tell the person what they
-are feeling, does not store a mood profile without consent, and never uses the
-inference for anything clinical. Where the tone is distress or crisis, the safety
-net takes over.
+Transcription and structuring sit outside medical-device regulation. Red-flag
+escalation to a triage desk is clinical decision support and plausibly inside it.
+The coding document is the ambiguous case. The TGA's digital-scribes guidance is
+the entry point and the boundary has moved recently, so the question goes to the
+TGA before the build, not after (D-02, D-28).
 
 ## Non-goals for v1
 
-- Diagnosis, differential diagnosis, urgency scoring, medication advice.
-- Replacing a phone triage service or an emergency department.
-- Prescribing, referrals, or writing into a clinical record system (the summary is
-  exported as a document; integration with practice software is phase 3).
-- Video or camera analysis of the person.
-- Any use outside Australia until the jurisdiction question is revisited.
+- Diagnosis, urgency scoring, medication advice, any clinical conclusion.
+- Writing into a practice or hospital record system without attestation
+  (integration is phase 3, and always behind the attestation step).
+- Camera or video analysis of the person.
+- Use outside Australia.
 
-## Success measures for v1
+## Success measures
 
-- Clinicians rate the intake summary as accurate and useful (target: four of five).
-- Patients report feeling listened to (single question after the conversation).
-- Every scripted red-flag test transcript triggers the safety net, and no
-  scripted benign transcript does.
-- Median time from a patient's last word to Dr Sam speaking under two seconds.
+Defined by the evaluation plan in `06_evaluation_and_ethics.md`: history
+agreement with a clinician-taken history, condition capture, coder-facing
+sufficiency, note quality, fabricated-content rate, red-flag sensitivity, equity
+across interview language and age. Coded complexity is reported as a monitored
+harm, never as a success measure.

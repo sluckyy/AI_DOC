@@ -69,7 +69,15 @@ Clinician review UI ◄── GET /conversations/{id}/summary
 - `app/services/drsam/content_safety.py`: screens model output before synthesis;
   on a hit the turn is replaced by a `decline` and logged.
 - `app/services/drsam/summary.py`: merges `summary_delta` into the structured
-  summary; renders the clinician document.
+  history; renders Output A (handover narrative) and Output B (coding document)
+  with field-level provenance; never fills the diagnosis block.
+- `app/services/drsam/terminology.py`: `TerminologyProvider` protocol binding
+  free-text concepts to SNOMED CT-AU via a FHIR terminology server (the National
+  Clinical Terminology Service's Ontoserver, or Azure Health Data Services with
+  the SNOMED CT-AU edition loaded); `fake` returns stable placeholder concept ids.
+  Emits concepts only, never ICD-10-AM codes.
+- `app/services/drsam/attestation.py`: clinician edit-and-sign workflow; records
+  who signed what version when; the signed document is the only one exported.
 - `app/prompts/`: `drsam_persona_v1.md`, `drsam_register_patient_v1.md`,
   `drsam_register_clinician_v1.md`, `drsam_tone_v1.md`. Versioned, reviewed by
   the clinical lead before release.
@@ -98,7 +106,9 @@ clinic-issued one-time link; clinicians with Entra ID.
 | `POST /conversations/{id}/read-back` | Generate the read-back from the summary so far |
 | `POST /conversations/{id}/end` | Close and finalise the summary |
 | `GET /conversations/{id}` | Conversation with turns, for resume |
-| `GET /conversations/{id}/summary` | Structured summary and rendered document (clinician scope) |
+| `GET /conversations/{id}/handover` | Output A: narrative handover, text and optional spoken audio (clinician scope) |
+| `GET /conversations/{id}/coding-document` | Output B: field-structured, provenance-labelled document, diagnosis block empty (clinician scope) |
+| `POST /conversations/{id}/attest` | Clinician's edited document plus signature; creates an attested version; the only exportable form |
 | `POST /conversations/{id}/clinician-questions` | Clinician asks what the patient said about something; answers quote the transcript only |
 | `GET /audio/{turn_id}` | Streams cached audio |
 | `GET /speech-token` | Phase 4: ten-minute Azure Speech token for browser-side STT |
@@ -109,8 +119,17 @@ clinic-issued one-time link; clinicians with Entra ID.
 - `people`: `id`, `clinic_id`, identity provider subject, display name, preferences
   (JSON: avatar, voice, reduced motion, caption size).
 - `conversations`: `id`, `clinic_id`, `person_id`, `mode`, `audience`,
-  `consent` (JSON), `started_at`, `ended_at`, `safety_net_flags` (JSON),
-  `summary` (JSON), `summary_document_ref`.
+  `setting` (ed | gp), `language`, `consent` (JSON), `started_at`, `ended_at`,
+  `safety_net_flags` (JSON), `history` (JSON, the structured capture),
+  `handover_ref`, `coding_document_ref`, `is_simulation` (bool),
+  `agent_version`, `prompt_version`, `ruleset_version`.
+- `history_items`: `id`, `conversation_id`, `block` (symptom | condition |
+  medicine | external_cause | risk_factor | social | obstetric), `fields` (JSON),
+  `snomed_concept_id`, `snomed_term`, `provenance` (patient_reported |
+  clinician_confirmed | derived | structural), `transcript_turn_ids`.
+- `attestations`: `id`, `conversation_id`, `clinician_id`, `document_version`,
+  `diagnosis_block` (JSON, clinician-entered), `edits` (JSON diff),
+  `signed_at`.
 - `turns`: `id`, `conversation_id`, `order`, `role`, `text`, `move`,
   `expression`, `tone_label`, `tone_confidence` (null unless consent), `prosody`
   (JSON), `audio_ref`, `viseme_ref`, `model`, `latency_ms` (JSON),
@@ -118,6 +137,14 @@ clinic-issued one-time link; clinicians with Entra ID.
 - `audit_events`: who viewed or exported which conversation or summary, when.
 - `ai_cost_events`: reuse from MedExec, with `drsam_turn`, `drsam_tone`,
   `drsam_stt`, `drsam_tts` event types.
+
+## Multilingual
+
+Azure AI Speech transcribes and synthesises in the languages the pilot needs, and
+the persona model converses in them; the structured capture and both outputs are
+always produced in English for the clinician. The interview language is recorded
+on the conversation so every evaluation measure can be stratified by it. Which
+languages ship in v1 is decision D-29.
 
 ## Latency budget
 
