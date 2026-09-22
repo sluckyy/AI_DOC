@@ -20,7 +20,7 @@ confirms it.
 | [design/04_decision_record.md](design/04_decision_record.md) | Every decision with proposed default, alternatives and status |
 | [design/05_build_plan.md](design/05_build_plan.md) | Phased delivery starting with a vertical slice that runs on fakes |
 | [design/06_evaluation_and_ethics.md](design/06_evaluation_and_ethics.md) | Simulated-patient testing, then the HREC study in ED and GP; what each phase must show |
-| [design/reference/](design/reference/) | Source material, starting with the clinical lead's evidence review on clinical documentation improvement and agent output requirements |
+| [design/reference/](design/reference/) | Source material, the clinical lead's evidence reviews on clinical documentation improvement and on medical history taking |
 | [tools/voice_audition.py](tools/voice_audition.py) | Blind voice audition for D-08; run with your own Azure Speech key |
 
 Start with `04_decision_record.md`: it is the list of choices that change the build.

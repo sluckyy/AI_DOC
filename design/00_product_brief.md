@@ -38,8 +38,8 @@ its evaluation can carry the blinded clinical reference standard the field lacks
 
 | Setting | How the document arrives | Classification status |
 | --- | --- | --- |
-| Emergency department | Taken in the waiting room on a tablet; arrives before the clinician and travels with the episode | Feeds admitted-patient coding directly once attested |
-| General practice | Taken via a booking-call or pre-appointment link, days before the consult | Prior-episode documentation until the GP adopts it, so adoption is designed as one deliberate act at the start of the consult |
+| ED room | Taken in the waiting area on a tablet with headphones and a privacy screen; arrives before the clinician and travels with the episode. No published analogue: undifferentiated walk-in presentation is unstudied | Feeds admitted-patient coding directly once attested |
+| GP booking call | Taken at home on the patient's own phone, days before the consult: the private, individual setting that gives the largest disclosure advantage. Nearest analogue is the Boston pre-visit feasibility study | Prior-episode documentation until the GP adopts it, so adoption is designed as one deliberate act at the start of the consult |
 
 ## What Dr Sam is uniquely placed to supply
 
@@ -69,6 +69,17 @@ escalation to a triage desk is clinical decision support and plausibly inside it
 The coding document is the ambiguous case. The TGA's digital-scribes guidance is
 the entry point and the boundary has moved recently, so the question goes to the
 TGA before the build, not after (D-02, D-28).
+
+## The claim we make
+
+Dr Sam does not interrupt at eleven seconds, solicits an agenda every time, never
+asks a leading question about substance use, and does not lose a third of reported
+symptoms before the note. Against a clinician under time pressure that will look
+good, and the comparison is fair, but it is a comparison against degraded practice.
+The defensible claim is consistency: the same questioning discipline at 3 am on the
+twelfth patient. The evaluation is powered for variance, not only mean agreement,
+and the protocol says which claim is being made. On the GP booking call the honest
+comparator is the status quo, where none of this information exists at booking.
 
 ## Non-goals for v1
 

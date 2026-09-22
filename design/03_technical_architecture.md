@@ -56,6 +56,19 @@ Clinician review UI ◄── GET /conversations/{id}/summary
 
 ### Backend
 
+- `app/services/drsam/questioning_engine.py`: the deterministic phase machine of
+  `02_interaction_design.md`. Holds the phase, the named problems and their
+  saturation state, the outstanding coverage, discriminating and red-flag items
+  per symptom class from the symptom library, and the background schedule. Each
+  turn it hands the model the phase, the allowed moves and at most one
+  outstanding item; the model supplies wording. It never lets the model skip a
+  phase, cap the opening, or ask a hypothesis-testing question.
+- `app/symptom_library/*.yaml`: one file per symptom class with `coverage`,
+  `discriminating` (with `lr`, `citation`, `setting`, or `gap: true`) and
+  `red_flag` (with `trigger`, `response_id`, `alert_class`) entries, and
+  `phrasings` with ids and variants. Versioned; owned by the clinical lead.
+- `app/safety_netting/*.yaml`: clinician-authored written safety-netting
+  templates keyed to symptom class (D-31).
 - `app/services/drsam/safety_net.py`: versioned rule set (YAML), pattern matching
   on the transcript window, fixed responses, unit-tested against scripted
   transcripts in `tests/safety_net_cases/`.
@@ -130,13 +143,33 @@ clinic-issued one-time link; clinicians with Entra ID.
 - `attestations`: `id`, `conversation_id`, `clinician_id`, `document_version`,
   `diagnosis_block` (JSON, clinician-entered), `edits` (JSON diff),
   `signed_at`.
-- `turns`: `id`, `conversation_id`, `order`, `role`, `text`, `move`,
-  `expression`, `tone_label`, `tone_confidence` (null unless consent), `prosody`
-  (JSON), `audio_ref`, `viseme_ref`, `model`, `latency_ms` (JSON),
+- `turns`: `id`, `conversation_id`, `order`, `role`, `text`, `move`, `phase`,
+  `library_item_id`, `phrasing_variant_id`, `expression`, `tone_label`,
+  `tone_confidence` (null unless consent), `prosody` (JSON), `audio_ref`,
+  `viseme_ref`, `asr_confidence`, `model`, `latency_ms` (JSON),
   `interrupted_at_ms`, `content_safety_result`, `created_at`.
+- `experiments`: registered phrasing or stopping-rule experiments with arms and
+  allocation, so randomised phrasings are analysable (D-34).
 - `audit_events`: who viewed or exported which conversation or summary, when.
 - `ai_cost_events`: reuse from MedExec, with `drsam_turn`, `drsam_tone`,
   `drsam_stt`, `drsam_tts` event types.
+
+## Voice layer risks
+
+Every automated history-taking result in the evidence is text or form based.
+Voice adds turn-taking, interruption handling, silence tolerance, prosody, speech
+recognition error on symptom vocabulary and accents, and no scroll-back for the
+patient. Consequences for the build:
+
+- Facilitators ("mm-hm") are spoken by Dr Sam while the patient talks, so the
+  capture path must exclude Dr Sam's own audio: acoustic echo cancellation on the
+  microphone stream, and the known synthesised audio subtracted or gated in
+  software before transcription.
+- An ASR accuracy sub-study on symptom vocabulary, accented English and each v1
+  language runs before Stage B; `asr_confidence` is stored per turn and low
+  confidence triggers `clarify` rather than silent acceptance.
+- Silence tolerance in phase 1 is at least three seconds before a facilitator
+  and never a question.
 
 ## Multilingual
 

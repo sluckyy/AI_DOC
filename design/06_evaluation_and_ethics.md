@@ -31,6 +31,11 @@ Runs: each case at least twice with different simulated patients; every prompt o
 rule-set version re-runs the full bank. Results are stored as a table in
 `evaluation/` in this repo, with the prompt and rule-set versions recorded.
 
+The Stage A comparator is a real clinician history on the same simulated patient.
+The GP booking call's honest comparator is the status quo, where none of this
+information exists at booking, so non-inferiority against a doctor is the wrong
+frame there. The protocol states which claim is made (see the product brief).
+
 The planned agreement study is the spine of Stage A: agreement between the
 Dr Sam-elicited history and a clinician-elicited history on the same simulated
 patients, consultant-adjudicated, blinded by having actors or agents read both
@@ -45,6 +50,12 @@ scripts. The evidence review adds the endpoints below at little extra cost.
 | Safety | Rate of history items present in the document but absent from the reference (fabricated or misattributed); red-flag sensitivity; time to escalation | Reference standard; scripted red-flag cases |
 | Equity | Everything above stratified by interview language, age and health literacy | Stratified analysis |
 | Monitored harm | NWAU or DRG complexity shift, reported and explicitly excluded from success criteria; a rise without a matching rise in agreement is a finding against the system | Declared in the protocol before data exists |
+| Discordance direction | Adjudication records "agent right, clinician wrong" as a distinct outcome; two-directional disagreement is expected (Stockholm chest-pain study: 80% denied to the computer a radiation the EHR recorded, and 50% reported one the EHR denied) | Consultant adjudication with three outcomes, not an accuracy ranking |
+| Consistency | Variance of agreement across time of day, patient order in a session and case, not only mean agreement | Powered for variance |
+| Documentation loss | Agent-captured symptoms versus what reaches the clinical note, against the published 31 to 45% loss baseline | Note review |
+| Handover format | Narrative-plus-structured versus structured-alone as a randomised arm, with clinician decision quality as the outcome | Two-arm comparison; unstudied in the literature |
+| Voice accuracy | ASR word error on symptom vocabulary, accented English and each v1 language; disfluency and interruption handling | Sub-study before Stage B |
+| Phrasing and stopping rules | Registered experiments: "something" versus "anything" and other phrasing variants; symptom-saturation stopping versus a fixed comprehensive schedule | Randomised in simulation (D-34) |
 
 Exit criteria for Stage A: zero fabricated history items across the bank; every
 red-flag case triggers the safety net and every benign case does not; boundary

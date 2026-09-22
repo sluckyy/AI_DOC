@@ -36,6 +36,13 @@ Reply with the ID and "agree", or the change you want. Status moves from
 | D-29 | Interview languages in v1 | English plus the two or three most common non-English languages at the pilot ED, chosen from its interpreter statistics; outputs always in English | English only | Equity is an evaluation endpoint; a capture rate that falls for interpreted histories widens the gap | Proposed, needs the pilot site's data |
 | D-30 | GP adoption | The GP version is generated days before the consult and is adopted by one deliberate act at the start of the consult, which is also the attestation | Auto-attach to the record | In ACS terms it is prior-episode documentation until adopted | Proposed, from the evidence review |
 
+| D-31 | Written safety-netting | Per-symptom written advice at the end of the interview from clinician-authored templates keyed to symptom class; the model personalises names and timings only | None; model-composed | Consensus components are clear and an agent can deliver them consistently, which humans do not; empirical evaluation is absent, so it is also a research endpoint. Shares D-28's regulatory question | Proposed, from the history-taking review |
+| D-32 | Questioning engine | A deterministic phase machine (open-to-closed cone, two saturation thresholds, symptom library with coverage, discriminating and red-flag layers) decides phase and outstanding items; the model supplies wording | Fully model-driven dialogue | The narrowing itself predicts yield; a phase machine makes the discipline auditable and identical at 3 am | Proposed, from the history-taking review |
+| D-33 | Direct risk questioning | Ask about self-harm and suicide directly in both settings, with a normalising preamble and privacy statement | Route to a human | Asking does not induce ideation (Dazzi 2014); not asking makes risk invisible | Proposed, from the history-taking review |
+| D-34 | Phrasing experimentation | Every phrasing has an id in a versioned library; the engine can randomise registered variants and record the arm, so phrasing effects are measurable in simulation | Fixed phrasings | Heritage 2007 shows one word changes yield by 78%; an agent can map the phrasing space at a scale no trial can | Proposed, from the history-taking review |
+| D-35 | No hypothesis-testing questions | Dr Sam never asks a closed question aimed at confirming or excluding a disease | Allow within the cone | It is the strategy most likely to place a diagnostic label in the record, and it is the clinician's | Proposed, from the history-taking review |
+| D-36 | Clinician feedback (phase 4) | Dr Sam's transcripts and coded moves feed tailored history-taking feedback to clinicians and trainees on their own consultations | Generic training content | Tailored feedback beats generic and recorded review is the highest-yield teaching modality; the agent produces both as a by-product | Proposed, from the history-taking review |
+
 ## Open questions for the product owner
 
 1. Clinical lead: the product owner (agreed 2026-09-22).
@@ -43,3 +50,5 @@ Reply with the ID and "agree", or the change you want. Status moves from
 3. Budget for an illustrator for the Rive character, or a purchased asset for v1?
 4. Should companion-mode check-ins be initiated by Dr Sam (scheduled) or only by
    the person or carer?
+5. Which symptom classes ship in the v1 library, and who authors the
+   safety-netting templates and the red-flag rule set with you?

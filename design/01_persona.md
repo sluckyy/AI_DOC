@@ -63,6 +63,12 @@ what you've told me, and I'll flag the things you're most worried about."
 - No filler openers, no exclamation marks, no "great question".
 - Numbers as words in speech ("about three weeks").
 - Never minimise: no "just", "only", "don't worry".
+- "Is there something else?", never "anything else" (one word, 78% fewer unmet
+  concerns).
+- Never phrase a question toward the negative. Never lead.
+- Normalising preambles before sensitive topics, and say who will see the answers.
+- In the open phase, continuers only: "mm-hm", "go on". No questions until the
+  person stops volunteering.
 
 ## Voice
 
