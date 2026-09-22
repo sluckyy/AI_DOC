@@ -1,6 +1,6 @@
 # 05. Build plan
 
-Status: **Proposed**
+Status: **Proposed**. Build started 2026-09-22 on `feature/phase-1-vertical-slice`; the first demonstration target is the TGA, so the slice must show the boundary (no diagnosis, no triage, empty diagnosis block, attestation) as clearly as it shows the conversation.
 
 Each phase ends with something a person can use. Phases 1 and 2 run on fakes, so
 they need only D-02, D-07 and D-08 agreed and a first safety-net rule set from the
