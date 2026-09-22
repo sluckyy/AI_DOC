@@ -145,3 +145,33 @@ def test_reviewed_content_guard(bundle, monkeypatch):
     except RuntimeError as e:
         raised = "HAZ-8" in str(e)
     assert raised
+
+
+def test_live_transfer_setup_and_content_reload(client):
+    r = client.post("/conversations", json={"setting": "gp_booking", "language": "en"})
+    cid = r.json()["conversation_id"]
+    assert client.post(f"/conversations/{cid}/transfer").status_code == 409, "no alert yet"
+    for line in ["Yes.", "I've got a tight pain in my chest right now.", "No.", "No.", "No.", "No.", "Yes that's right."]:
+        r = client.post(f"/conversations/{cid}/turns", json={"transcript": line})
+        if r.json()["phase"] == "ended":
+            break
+    t = client.post(f"/conversations/{cid}/transfer")
+    assert t.status_code == 200, t.text
+    assert t.json()["route"] == "live_transfer" and t.json()["alert"]["tier"] == "immediate"
+    rl = client.post("/content/reload")
+    assert rl.status_code == 200 and rl.json()["reloaded"] and rl.json()["authoring_checks"]["passed"]
+
+
+def test_disabled_module_is_listed_but_never_runs(client):
+    """D-52: a module with enabled: false stays in the repository, is reported on the status page, and never activates."""
+    s = client.get("/content/status").json()
+    assert "mental_health" in s["disabled_modules"], s["disabled_modules"]
+    assert all(m["module"] != "mental_health" for m in s["modules"])
+    assert "haematuria_referral_age" in s["clinical_parameters"]
+    assert s["clinical_parameters"]["haematuria_referral_age"]["status"] == "pending"
+    r = client.post("/conversations", json={"setting": "ed", "language": "en"})
+    cid = r.json()["conversation_id"]
+    client.post(f"/conversations/{cid}/turns", json={"transcript": "Yes."})
+    client.post(f"/conversations/{cid}/turns", json={"transcript": "I've been feeling really low and I can't cope."})
+    state = client.get(f"/conversations/{cid}").json()["state"]
+    assert "mental_health" not in state.get("module_queue", [])

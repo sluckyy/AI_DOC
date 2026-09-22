@@ -29,7 +29,7 @@ export function Intake() {
   if (cid) {
     return (
       <div>
-        <DrSamPanel cid={cid} language={language} register={register} initialTurns={turns} onEnded={() => setEnded(true)} />
+        <DrSamPanel cid={cid} setting={setting} language={language} register={register} initialTurns={turns} onEnded={() => setEnded(true)} />
         {ended && (
           <p className="afterEnd">
             For the clinician: <a href={`#/clinician/${cid}`}>open the handover for {cid}</a>

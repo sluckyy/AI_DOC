@@ -16,6 +16,7 @@ from app.process.rules import check_transcript
 from app.providers.content_safety import get_content_safety_provider
 from app.providers.extraction import get_extraction_provider
 from app.providers.speech import get_speech_provider, word_count
+from app.providers.telephony import get_telephony_provider
 from app.providers.terminology import get_terminology_provider
 from app.providers.tone import get_tone_provider
 from app.providers.wording import get_wording_provider
@@ -315,6 +316,42 @@ def export(cid: str, db: Session = Depends(get_db)):
             "process_check": [{"rule": v.rule, "turn_index": v.turn_index, "detail": v.detail} for v in violations]}
 
 
+@router.post("/conversations/{cid}/transfer")
+def transfer_setup(cid: str, db: Session = Depends(get_db)):
+    """D-42 live transfer. Returns what the browser needs to connect the patient to the duty GP,
+    and records the transfer attempt against the conversation's open immediate alert."""
+    conv = db.get(Conversation, cid)
+    if conv is None:
+        raise HTTPException(404, "conversation not found")
+    alerts = [a for a in conv.state.get("alerts", []) if a["tier"] == "immediate"]
+    if not alerts:
+        raise HTTPException(409, "no immediate-tier alert on this conversation")
+    setup = get_telephony_provider().setup()
+    route = get_bundle().parameters.escalation[conv.setting]["immediate"]
+    db.add(AuditEvent(conversation_id=cid, actor="controller", action="live_transfer_initiated",
+                      detail={"provider": setup.provider, "route": route.route, "target": route.transfer_target, "number_configured": bool(setup.transfer_number)}))
+    db.commit()
+    return {"route": route.route, "transfer_target": route.transfer_target, "unanswered": route.unanswered,
+            "provider": setup.provider, "transfer_number": setup.transfer_number, "caller_id": setup.caller_id,
+            "token": setup.token, "user_id": setup.user_id, "expires_on": setup.expires_on,
+            "alert": {**alerts[-1], "alert_id": f"{cid}-{alerts[-1]['id']}"}}
+
+
+@router.post("/content/reload")
+def content_reload():
+    """D-51: reload content from disk without a restart. A failing load keeps the old bundle."""
+    from app.content.checks import run_checks
+    from app.content.loader import reload_bundle
+
+    try:
+        bundle = reload_bundle()
+    except Exception as exc:
+        raise HTTPException(422, f"content not reloaded: {exc}")
+    findings = run_checks(bundle)
+    return {"reloaded": True, "modules": len(bundle.modules), "versions": bundle.versions,
+            "authoring_checks": {"passed": not findings, "findings": [str(f) for f in findings]}}
+
+
 @router.get("/content/status")
 def content_status():
     from app.content.checks import run_checks
@@ -322,7 +359,13 @@ def content_status():
     bundle = get_bundle()
     findings = run_checks(bundle)
     return {
-        "modules": [{"module": m.module, "version": m.version, "status": m.status, "slots": len(m.slots), "red_flags": [r.id for r in m.red_flags]} for m in bundle.modules.values()],
+        "modules": [{"module": m.module, "display_name": m.display_name or m.module.replace("_", " "), "version": m.version, "status": m.status,
+                     "reviewed": m.reviewed, "reviewed_by": m.reviewed_by, "reviewed_on": m.reviewed_on, "slots": len(m.slots),
+                     "red_flags": [{"id": r.id, "tier": r.tier} for r in m.red_flags], "review_notes": m.review_notes} for m in bundle.modules.values()],
+        "escalation": {setting: {tier: {"route": r.route, "transfer_target": r.transfer_target} for tier, r in tiers.items()} for setting, tiers in bundle.parameters.escalation.items()},
+        "telephony": get_telephony_provider().name,
+        "disabled_modules": bundle.versions.get("disabled_modules", {}),
+        "clinical_parameters": {k: {"status": v.get("status", "pending"), "value": v.get("value", v.get("positive_threshold"))} for k, v in bundle.parameters.clinical_parameters.items()},
         "context_version": bundle.context.version, "parameters": bundle.versions["parameters"], "languages": bundle.parameters.languages,
         "authoring_checks": {"passed": not findings, "findings": [str(f) for f in findings]},
         "providers": {"model": get_extraction_provider().name, "tts": get_speech_provider().name, "content_safety": get_content_safety_provider().name, "terminology": get_terminology_provider().name},

@@ -63,6 +63,9 @@ class Slot(BaseModel):
     prefill_from: list[str] = Field(default_factory=list)
     confirm: bool = False
     gates: list[str] = Field(default_factory=list)
+    delegated_observation: bool = False
+    absolute_time: bool = False
+    disclosure_group: str | None = None   # F-36: substance, sexual, continence, risk
 
     model_config = {"populate_by_name": True}
 
@@ -104,7 +107,12 @@ class Module(BaseModel):
     module: str
     version: str
     status: Literal["grounded", "first_draft"]
+    enabled: bool = True   # D-50: a module can be present but not live (e.g. mental health pending specialist input)
     reviewed: bool = False
+    reviewed_by: str | None = None
+    reviewed_on: str | None = None
+    display_name: str | None = None
+    review_notes: list[str] = Field(default_factory=list)
     setting: Literal["ed", "gp_booking", "both"] = "both"
     activates_on: Activation = Field(default_factory=Activation)
     slots: list[Slot]
@@ -130,6 +138,8 @@ class ContextModule(BaseModel):
 class EscalationRoute(BaseModel):
     route: str
     patient_message: str = ""
+    transfer_target: str | None = None
+    unanswered: str | None = None
 
 
 class Parameters(BaseModel):
@@ -143,6 +153,7 @@ class Parameters(BaseModel):
     silence_end_of_turn_ms: int = 1200
     alert_acknowledgement_timeout_s: int = 120
     escalation: dict[str, dict[str, EscalationRoute]]
+    clinical_parameters: dict[str, dict[str, Any]] = Field(default_factory=dict)   # D-45: owner-set; pending until set
     helplines: dict[str, str] = Field(default_factory=dict)
     disclosure: dict[str, str]
 

@@ -59,17 +59,30 @@ Open the handover. Show:
 - Export: the study record with the P1 to P14 transcript check reporting no
   violations.
 
-## Scene 4: an immediate-tier alert (3 min)
+## Scene 4: an immediate-tier alert and the live transfer (4 min)
+
+Before the session, set `DEMO_TRANSFER_NUMBER` to the mobile of the GP in the
+room and `TELEPHONY_PROVIDER=acs` (or leave the fake, which shows the number
+and a call button instead of dialling). Neither is in the repository.
 
 Start a new conversation, GP booking call setting. Say: "I've got a tight pain in
 my chest right now, it's there at the moment." After the summary, the rule
-`rf.chest_pain_current` fires from the narrative alone. Dr Sam stops, tells the
-patient the duty doctor is reviewing it now, delivers no further questions, and
-the handover marks everything after as not asked. Show the alert row: rule id,
-tier, route, the patient's words, the clock time.
+`rf.chest_pain_current` fires from the narrative alone. Dr Sam stops, says it is
+putting the patient through to the duty doctor and will pass on their own words,
+and asks no further questions. The transfer panel appears; the GP's phone rings.
+The alert row shows rule id, tier, route `live_transfer`, the patient's words and
+the clock time. Everything after the alert is marked not asked in the handover.
+
+Say out loud what the software does not do: if the duty GP's phone is
+unanswered, the practice's own routing sends the call to reception. That is
+the practice's workflow, not Dr Sam's logic, and the alert still stands in the
+clinician view until someone acknowledges it (the unacknowledged feed is on the
+clinician page).
 
 Repeat in the ED setting to show the route change to the triage desk with no
-change to the rule.
+change to the rule. Then show the same-day tier in the GP setting: the patient is
+asked to come in for an urgent appointment today, and nothing is booked by the
+agent.
 
 ## Scene 5: what is deliberately absent (2 min)
 

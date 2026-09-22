@@ -21,6 +21,14 @@ param openAiCapacity int = 30
 param backendImage string = 'mcr.microsoft.com/k8se/quickstart:latest'
 param frontendImage string = 'mcr.microsoft.com/k8se/quickstart:latest'
 
+// D-42 live transfer. The demo transfer number is a secure parameter passed at
+// deploy time (never in source); the ACS caller id is the number purchased in
+// the ACS resource after deployment (number purchase is not expressible in Bicep).
+@secure()
+param demoTransferNumber string = ''
+param acsCallerIdNumber string = ''
+param telephonyProvider string = 'fake'
+
 var suffix = toLower('${namePrefix}${environmentName}')
 var uniq = uniqueString(resourceGroup().id, suffix)
 var storageName = toLower(take(replace('${suffix}st${uniq}', '-', ''), 24))
@@ -115,6 +123,24 @@ resource handovers 'Microsoft.Storage/storageAccounts/blobServices/containers@20
 }
 
 // Secrets: keys are written to Key Vault here so the apps never see them in Bicep params.
+// Azure Communication Services: PSTN calling for the live transfer (data location Australia).
+resource acs 'Microsoft.Communication/communicationServices@2023-04-01' = {
+  name: '${suffix}-acs-${uniq}'
+  location: 'global'
+  properties: { dataLocation: 'Australia' }
+}
+
+resource secretAcs 'Microsoft.KeyVault/vaults/secrets@2023-07-01' = {
+  parent: keyVault
+  name: 'acs-connection-string'
+  properties: { value: acs.listKeys().primaryConnectionString }
+}
+resource secretDemoNumber 'Microsoft.KeyVault/vaults/secrets@2023-07-01' = if (!empty(demoTransferNumber)) {
+  parent: keyVault
+  name: 'demo-transfer-number'
+  properties: { value: demoTransferNumber }
+}
+
 resource secretOpenAi 'Microsoft.KeyVault/vaults/secrets@2023-07-01' = {
   parent: keyVault
   name: 'azure-openai-key'
@@ -154,6 +180,8 @@ resource api 'Microsoft.App/containerApps@2024-03-01' = {
         { name: 'azure-openai-key', keyVaultUrl: secretOpenAi.properties.secretUri, identity: identity.id }
         { name: 'azure-speech-key', keyVaultUrl: secretSpeech.properties.secretUri, identity: identity.id }
         { name: 'content-safety-key', keyVaultUrl: secretSafety.properties.secretUri, identity: identity.id }
+        { name: 'acs-connection-string', keyVaultUrl: secretAcs.properties.secretUri, identity: identity.id }
+        { name: 'demo-transfer-number', value: demoTransferNumber }
       ]
     }
     template: {
@@ -174,6 +202,11 @@ resource api 'Microsoft.App/containerApps@2024-03-01' = {
             { name: 'CONTENT_SAFETY_ENDPOINT', value: contentSafety.properties.endpoint }
             { name: 'CONTENT_SAFETY_KEY', secretRef: 'content-safety-key' }
             { name: 'PARAMETERS_DEPLOYMENT', value: 'sa_health_regional' }
+            { name: 'TELEPHONY_PROVIDER', value: telephonyProvider }
+            { name: 'ACS_CONNECTION_STRING', secretRef: 'acs-connection-string' }
+            { name: 'ACS_CALLER_ID_NUMBER', value: acsCallerIdNumber }
+            { name: 'DEMO_TRANSFER_NUMBER', secretRef: 'demo-transfer-number' }
+            { name: 'REQUIRE_REVIEWED_CONTENT', value: 'false' }
           ]
         }
       ]

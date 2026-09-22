@@ -118,8 +118,8 @@ def test_current_chest_pain_fires_immediate_alert_and_stops(bundle):
 
 def test_gp_booking_immediate_routes_to_duty_gp(bundle):
     state, _ = run(bundle, ["I have chest pain now, right now, it's tight."], SETTLED_ANSWERS, setting="gp_booking")
-    assert state["alerts"][0]["route"] == "duty_gp_review"
-    assert "duty doctor" in state["alerts"][0]["patient_message"]
+    assert state["alerts"][0]["route"] == "live_transfer"
+    assert "put you through" in state["alerts"][0]["patient_message"]
 
 
 def test_dissection_pattern_rule(bundle):
@@ -169,9 +169,9 @@ def test_tone_is_stored_only_with_consent(bundle):
 def test_generic_module_used_for_ungrounded_presentation(bundle):
     answers = {"gen.onset": "Three days ago.", "gen.progression": "Getting worse.", "gen.triggers": "Bright light.",
                "gen.relief": "Lying down in the dark.", "gen.functional_impact": "I can't work.", "gen.associated": "Feeling sick."}
-    state, log = run(bundle, ["I've had a headache for three days."], answers)
+    state, log = run(bundle, ["I've had hiccups for three days."], answers)
     assert state["module_queue"] == ["generic_symptom"]
-    assert state["generic_problem"] == "headache"
+    assert state["generic_problem"] == "hiccups"
     asked = [a["text"] for r, a in log if r == "agent" and a["move"] == "ask"]
-    assert any("headache" in t for t in asked), "the generic module names the patient's own problem"
+    assert any("hiccups" in t for t in asked), "the generic module names the patient's own problem"
     assert state["slot_values"]["gen.progression"]["value"] == "worse"

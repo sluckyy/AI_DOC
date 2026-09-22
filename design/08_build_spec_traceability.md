@@ -58,9 +58,9 @@ slice on `feature/phase-1-vertical-slice`. States: **Met**, **Partial**,
 | S-1 | Met | Rules and tiers in YAML; routes in the parameters register |
 | S-2 | Met | Rules evaluated after every slot write; immediate interrupts |
 | S-3 | Met | Verbatim, rule id, timestamp, turn id, clock times |
-| S-4 | Partial | `POST /alerts/{id}/acknowledge` added; timed further escalation not built; no acknowledgement UI at the triage desk |
+| S-4 | Partial | `POST /alerts/{id}/acknowledge` and the overdue feed (`alert_acknowledgement_timeout_s`) built, with acknowledgement on the clinician page; the further escalation target when overdue is an owner call (09 brief) |
 | S-5 | Met | Nothing lowers a tier; rules are monotonic |
-| S-6 | Blocked | Routes agreed (D-42); wording awaits EM review; no-human case open |
+| S-6 | Partial | Live transfer to the duty GP built (`POST /conversations/{id}/transfer`, ACS provider with fake fallback); same-day asks for an urgent appointment today; wording awaits EM review; the no-human case is the practice's routing, recorded in D-42 |
 | S-7, S-8 | Not yet | See F-3, F-4 |
 | S-9 | Blocked | Mental health section disabled until sign-off |
 | S-10 | Not yet | Trauma module not built |
@@ -74,7 +74,7 @@ slice on `feature/phase-1-vertical-slice`. States: **Met**, **Partial**,
 | HAZ-8 | Met | `reviewed` flag per module; `REQUIRE_REVIEWED_CONTENT=true` refuses to start on unreviewed content; versions in every handover |
 | S-11 | Met | Consent recorded with timestamp at start |
 | S-12 | Met | No claims made; deflection only |
-| S-13, S-14 | Blocked / Not yet | Mental health reviewer; call-drop alert standing not built |
+| S-13, S-14 | Blocked / Partial | S-13 with the mental health reviewer; S-14: an alert never clears on a dropped call (it stays until acknowledged) but no call-back is placed, pending the owner's call (09 brief) |
 | S-15 | Partial | Tests exist for HAZ-1 provenance, HAZ-4 and HAZ-8; not for every hazard |
 | S-16 | Met by policy | Mental health section disabled in content |
 | S-17 | Not yet | Evaluation harness |

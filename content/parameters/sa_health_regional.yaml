@@ -23,14 +23,70 @@ escalation:
       patient_message: ""
   gp_booking:
     immediate:
-      route: duty_gp_review
-      patient_message: "I'm passing what you've told me to the duty doctor right now, and they will look at it straight away. If the pain is there now or comes back, or you feel worse, call triple zero rather than waiting. Wording pending emergency medicine review."
+      route: live_transfer            # D-42: the call transfers live to the duty GP
+      transfer_target: duty_gp        # resolved from DEMO_TRANSFER_NUMBER for the demo; the practice's duty GP line in production
+      unanswered: practice_workflow   # the practice routes an unanswered duty GP phone back to reception; not the agent's logic
+      patient_message: "I'm going to put you through to the duty doctor now, and I'll pass on what you've told me in your own words. Please stay on the line. If the call drops and you feel worse, call triple zero rather than waiting. Wording pending emergency medicine review."
     same_day:
-      route: urgent_gp_appointment_today
+      route: urgent_gp_appointment_today   # practices hold same-day slots; booking is the practice's workflow
       patient_message: "What you've told me needs to be seen in person today. Please come in to the practice for an urgent appointment today; reception will fit you in."
     flag:
       route: handover_flag
       patient_message: ""
+# The nine configurable clinical parameters from the Symptom Questioning Library
+# (plus the childbearing range used by the pregnancy gate). Each is policy, not
+# evidence. `status: pending` means the owner has not set it; the modules record
+# the raw feature (age, sex, exposure) and NEVER embed a threshold, so a pending
+# value changes handover annotations only, never what is asked. See
+# design/09_owner_decisions_brief.md for the options and the recommended defaults.
+clinical_parameters:
+  haematuria_referral_age:
+    status: pending
+    value: null                      # years; NICE 45, AUA 35, Scotland none (null = no age threshold)
+    options: [35, 45, null]
+    recommended: 45
+  bowel_symptom_referral_ages:
+    status: pending
+    value: {rectal_bleeding: null, change_in_bowel_habit: null, iron_deficiency_anaemia: null}
+    recommended: {rectal_bleeding: 50, change_in_bowel_habit: 60, iron_deficiency_anaemia: 60}
+  anticoagulated_head_injury_imaging:
+    status: pending
+    value: null                      # scan_all (NICE) | apply_rule (Canadian CT Head Rule excludes)
+    options: [scan_all, apply_rule]
+    recommended: scan_all
+  soft_tissue_lump_initial_imaging:
+    status: pending
+    value: null                      # ultrasound_first (UK) | mri_first (European)
+    options: [ultrasound_first, mri_first]
+    recommended: ultrasound_first
+  weight_loss_investigation_thresholds:
+    status: pending
+    value: {male_age: null, female_age: null}
+    recommended: {male_age: 50, female_age: 60}   # 2024 BMJ update; English data
+  fatigue_cancer_signal_age:
+    status: pending
+    value: {male_age: null, female_age: null}
+    options: [{male_age: 65, female_age: 80}, {male_age: 70, female_age: null}]
+    recommended: {male_age: 65, female_age: 80}
+  audit_c:
+    status: pending
+    positive_threshold: {male: null, female: null}
+    recommended_threshold: {male: 4, female: 3}
+    standard_drink_grams_alcohol: 10             # Australian standard drink
+  sepsis_criteria_set:
+    status: pending
+    value: null                      # nice_ng51 | sa_health_local
+    options: [nice_ng51, sa_health_local]
+    recommended: nice_ng51
+  bat_exposure_notification_pathway:
+    status: pending
+    value: null                      # e.g. "SA Health Communicable Disease Control Branch 1300 232 272"; source guidance is Queensland
+    recommended: "SA Health Communicable Disease Control Branch, 1300 232 272 (to be confirmed by the owner)"
+  childbearing_range:
+    status: pending
+    value: {min: null, max: null}
+    recommended: {min: 12, max: 55}
+
 helplines:
   emergency: "000"
   lifeline: "13 11 14"

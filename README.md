@@ -62,6 +62,16 @@ fake if unconfigured, so the demo never breaks.
 | `TTS_PROVIDER=azure_rest` plus `AZURE_SPEECH_KEY`, `AZURE_SPEECH_REGION`, `AZURE_SPEECH_VOICE` or `AZURE_SPEECH_VOICES=en=...,vi=...` | Azure neural voices; viseme events are estimated until the Speech SDK is wired |
 | `CONTENT_SAFETY_PROVIDER=azure` plus endpoint and key | Screens every spoken turn |
 | `TERMINOLOGY_PROVIDER=fhir` plus `TERMINOLOGY_FHIR_BASE` | SNOMED CT-AU binding through a FHIR terminology server |
+| `TELEPHONY_PROVIDER=acs` plus `ACS_CONNECTION_STRING`, `ACS_CALLER_ID_NUMBER` | Live transfer of the GP booking call on an immediate-tier alert (D-42) through Azure Communication Services; the fake shows the number and a `tel:` link instead |
+| `DEMO_TRANSFER_NUMBER` | The mobile the transfer goes to for the demo (the GP watching). Set it in the environment, never in the repo |
+| `REQUIRE_REVIEWED_CONTENT=true` | HAZ-8 guard: refuse to start on any module still marked `reviewed: false` |
+| `ALLOW_MACHINE_TRANSLATION=true` | Lets Azure OpenAI word non-English turns; off until translations are validated (N-13) |
+
+Content is reloadable without a restart: `POST /api/content/reload` re-reads
+`content/` and keeps the previous bundle if the new one fails the authoring
+checks (D-51). `GET /api/content/status` lists every module with its review
+state, the disabled modules, the escalation routes and the owner-set clinical
+parameters that are still pending.
 
 ## The boundary, as the software enforces it
 

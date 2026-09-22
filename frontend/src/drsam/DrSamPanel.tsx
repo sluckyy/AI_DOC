@@ -4,9 +4,11 @@ import type { AgentTurn } from "../api";
 import { api } from "../api";
 import { LANGUAGES } from "../config";
 import { makeRecognizer, playAudio, speakBrowser, SpeakHandle } from "./speech";
+import { LiveTransfer } from "./LiveTransfer";
 
 type Props = {
   cid: string;
+  setting: "ed" | "gp_booking";
   language: string;
   register: string;
   initialTurns: AgentTurn[];
@@ -15,7 +17,8 @@ type Props = {
 
 type Line = { role: "agent" | "person"; text: string; move?: string; alert?: boolean };
 
-export function DrSamPanel({ cid, language, register, initialTurns, onEnded }: Props) {
+export function DrSamPanel({ cid, setting, language, register, initialTurns, onEnded }: Props) {
+  const [transfer, setTransfer] = useState(false);
   const [expression, setExpression] = useState<Expression>("warm");
   const [viseme, setViseme] = useState(0);
   const [speaking, setSpeaking] = useState(false);
@@ -81,6 +84,7 @@ export function DrSamPanel({ cid, language, register, initialTurns, onEnded }: P
       const r = await api.turn(cid, text, prosody, conf);
       setPhase(r.phase);
       setTone(r.detected_tone?.label || null);
+      if (setting === "gp_booking" && r.alerts?.some((a: any) => a.tier === "immediate" && a.route === "live_transfer")) setTransfer(true);
       await playTurns(r.agent_turns);
     } catch (e: any) {
       setLines((l) => [...l, { role: "agent", text: "Sorry, I lost the connection for a moment. Could you say that again?" }]);
@@ -147,6 +151,7 @@ export function DrSamPanel({ cid, language, register, initialTurns, onEnded }: P
             <label className="small"><input type="checkbox" checked={captionsLarge} onChange={(e) => setCaptionsLarge(e.target.checked)} /> Large captions</label>
           </div>
         )}
+        {transfer && <LiveTransfer cid={cid} />}
         {ended && <div className="endedNote">This conversation has ended. Everything you said, in your own words, goes to the doctor.</div>}
       </div>
     </div>

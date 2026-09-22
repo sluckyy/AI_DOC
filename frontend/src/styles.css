@@ -60,3 +60,8 @@ tr.not_asked td { color: var(--muted); }
 .qa { border-left: 3px solid var(--line); padding-left: 10px; margin: 8px 0; }
 .diagBlock { border: 2px dashed var(--alert); border-radius: 12px; padding: 12px; }
 pre { overflow: auto; font-size: 0.8rem; background: var(--bg); padding: 10px; border-radius: 8px; }
+
+.transfer { margin-top: 12px; border: 2px solid var(--alert); border-radius: 12px; padding: 12px; background: var(--alert-bg); }
+
+.status-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; margin: 1rem 0; }
+.status-table th, .status-table td { text-align: left; vertical-align: top; padding: 0.35rem 0.5rem; border-bottom: 1px solid var(--line, #ddd); }
