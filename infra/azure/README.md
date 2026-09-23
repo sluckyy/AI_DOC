@@ -82,6 +82,35 @@ theirs. Nothing can be created without one.
   registry and a build step are added. Running the API and web app locally with
   the Azure keys in `backend/.env` is the intended path for the demo.
 
+## Putting Dr Sam on the deployed apps
+
+The template leaves both container apps on a placeholder image. The portal's
+continuous-deployment wizard builds the real images from this repository and
+keeps them updated on every push to `main`. It creates the container registry,
+the service principal and the GitHub workflow itself. Do it once per app.
+
+1. Open the resource group, click the container app `aidocdev-api`.
+2. In the left menu under **Settings**, click **Deployment**, then the
+   **Continuous deployment** tab.
+3. **Sign in with GitHub** and authorise Azure for the `sluckyy` account.
+4. Organization `sluckyy`, Repository `AI_DOC`, Branch `main`.
+5. Registry source **Azure Container Registry**, then **Create new** (any name,
+   for example `aidocdevacr`). Image name `aidoc-api`.
+6. Dockerfile location `backend/Dockerfile`. Leave the build context as the
+   repository root; the Dockerfile expects it.
+7. Service principal **Create new**, then **Start continuous deployment**.
+8. Repeat for `aidocdev-web` with image name `aidoc-web` and Dockerfile
+   location `frontend/Dockerfile`, reusing the registry created in step 5.
+
+Each run commits a workflow file under `.github/workflows/` and the first build
+takes about five minutes. After that, opening the web address shows Dr Sam.
+
+The API app reads its content from `/content` inside the image, so a content
+change is a push to `main` followed by the automatic rebuild, or a call to
+`POST /api/content/reload` against a running app. The API keeps its database in
+the container (SQLite) until a Postgres server is added, which is fine for the
+demo and not for the study.
+
 ## Running locally against the deployed services
 
 Open the Key Vault in the portal, read the secrets you need, and put them in
