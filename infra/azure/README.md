@@ -34,6 +34,28 @@ git already signed in as you.
 
    Re-running the script is safe; it updates what changed.
 
+## No terminal: the portal form instead
+
+The same template can be deployed from a portal form, with drop-downs. Do not
+use **Import From GitHub** or **Web App**: those wizards deploy one app onto App
+Service and cannot create the AI services. Use the custom template deployment:
+
+1. Download `infra/azure/main.json` from GitHub (open the file, then **Download
+   raw file**). It is the compiled copy of `main.bicep`; regenerate it with
+   `bicep build main.bicep` after any change.
+2. In the portal search box type **Deploy a custom template** and open it.
+3. Choose **Build your own template in the editor**, then **Load file** and
+   pick `main.json`. Click **Save**.
+4. Fill the form: Subscription; Resource group **Create new** (for example
+   `aidoc-demo-rg`); Region **Australia East**. Leave the other parameters as
+   they are; `demoTransferNumber` can be set now or later.
+5. **Review + create**, then **Create**. About ten minutes.
+
+If the Subscription drop-down is empty, the account has no subscription yet.
+Search **Subscriptions** in the portal and add one (free trial or pay as you
+go), or ask whoever owns the organisation's Azure to add you as Contributor on
+theirs. Nothing can be created without one.
+
 ## What the template creates, all in Australia East
 
 | Resource | Used for |

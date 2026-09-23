@@ -1,0 +1,509 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "metadata": {
+    "_generator": {
+      "name": "bicep",
+      "version": "0.47.16.16243",
+      "templateHash": "8413526777833711039"
+    }
+  },
+  "parameters": {
+    "namePrefix": {
+      "type": "string",
+      "defaultValue": "aidoc",
+      "minLength": 3,
+      "maxLength": 12
+    },
+    "environmentName": {
+      "type": "string",
+      "defaultValue": "dev"
+    },
+    "location": {
+      "type": "string",
+      "defaultValue": "australiaeast"
+    },
+    "openAiModelName": {
+      "type": "string",
+      "defaultValue": "gpt-4o",
+      "metadata": {
+        "description": "Azure OpenAI model deployments for the persona and tone prompts."
+      }
+    },
+    "openAiModelVersion": {
+      "type": "string",
+      "defaultValue": "2024-11-20"
+    },
+    "openAiCapacity": {
+      "type": "int",
+      "defaultValue": 30
+    },
+    "backendImage": {
+      "type": "string",
+      "defaultValue": "mcr.microsoft.com/k8se/quickstart:latest",
+      "metadata": {
+        "description": "Container image for the API; a placeholder until the deploy workflow pushes one."
+      }
+    },
+    "frontendImage": {
+      "type": "string",
+      "defaultValue": "mcr.microsoft.com/k8se/quickstart:latest"
+    },
+    "demoTransferNumber": {
+      "type": "securestring",
+      "defaultValue": ""
+    },
+    "acsCallerIdNumber": {
+      "type": "string",
+      "defaultValue": ""
+    },
+    "telephonyProvider": {
+      "type": "string",
+      "defaultValue": "fake"
+    }
+  },
+  "variables": {
+    "suffix": "[toLower(format('{0}{1}', parameters('namePrefix'), parameters('environmentName')))]",
+    "uniq": "[uniqueString(resourceGroup().id, variables('suffix'))]",
+    "storageName": "[toLower(take(replace(format('{0}st{1}', variables('suffix'), variables('uniq')), '-', ''), 24))]",
+    "kvName": "[take(format('{0}-kv-{1}', variables('suffix'), variables('uniq')), 24)]"
+  },
+  "resources": [
+    {
+      "type": "Microsoft.OperationalInsights/workspaces",
+      "apiVersion": "2023-09-01",
+      "name": "[format('{0}-logs', variables('suffix'))]",
+      "location": "[parameters('location')]",
+      "properties": {
+        "sku": {
+          "name": "PerGB2018"
+        },
+        "retentionInDays": 30
+      }
+    },
+    {
+      "type": "Microsoft.ManagedIdentity/userAssignedIdentities",
+      "apiVersion": "2023-01-31",
+      "name": "[format('{0}-id', variables('suffix'))]",
+      "location": "[parameters('location')]"
+    },
+    {
+      "type": "Microsoft.KeyVault/vaults",
+      "apiVersion": "2023-07-01",
+      "name": "[variables('kvName')]",
+      "location": "[parameters('location')]",
+      "properties": {
+        "sku": {
+          "family": "A",
+          "name": "standard"
+        },
+        "tenantId": "[subscription().tenantId]",
+        "enableRbacAuthorization": true,
+        "enableSoftDelete": true,
+        "softDeleteRetentionInDays": 30
+      }
+    },
+    {
+      "type": "Microsoft.Authorization/roleAssignments",
+      "apiVersion": "2022-04-01",
+      "scope": "[resourceId('Microsoft.KeyVault/vaults', variables('kvName'))]",
+      "name": "[guid(resourceId('Microsoft.KeyVault/vaults', variables('kvName')), resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-id', variables('suffix'))), '4633458b-17de-408a-b874-0445c86b69e6')]",
+      "properties": {
+        "roleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '4633458b-17de-408a-b874-0445c86b69e6')]",
+        "principalId": "[reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-id', variables('suffix'))), '2023-01-31').principalId]",
+        "principalType": "ServicePrincipal"
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-id', variables('suffix')))]",
+        "[resourceId('Microsoft.KeyVault/vaults', variables('kvName'))]"
+      ]
+    },
+    {
+      "type": "Microsoft.CognitiveServices/accounts",
+      "apiVersion": "2024-10-01",
+      "name": "[format('{0}-openai-{1}', variables('suffix'), variables('uniq'))]",
+      "location": "[parameters('location')]",
+      "kind": "OpenAI",
+      "sku": {
+        "name": "S0"
+      },
+      "properties": {
+        "customSubDomainName": "[format('{0}-openai-{1}', variables('suffix'), variables('uniq'))]",
+        "publicNetworkAccess": "Enabled"
+      }
+    },
+    {
+      "type": "Microsoft.CognitiveServices/accounts/deployments",
+      "apiVersion": "2024-10-01",
+      "name": "[format('{0}/{1}', format('{0}-openai-{1}', variables('suffix'), variables('uniq')), 'persona')]",
+      "sku": {
+        "name": "Standard",
+        "capacity": "[parameters('openAiCapacity')]"
+      },
+      "properties": {
+        "model": {
+          "format": "OpenAI",
+          "name": "[parameters('openAiModelName')]",
+          "version": "[parameters('openAiModelVersion')]"
+        }
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.CognitiveServices/accounts', format('{0}-openai-{1}', variables('suffix'), variables('uniq')))]"
+      ]
+    },
+    {
+      "type": "Microsoft.CognitiveServices/accounts",
+      "apiVersion": "2024-10-01",
+      "name": "[format('{0}-speech-{1}', variables('suffix'), variables('uniq'))]",
+      "location": "[parameters('location')]",
+      "kind": "SpeechServices",
+      "sku": {
+        "name": "S0"
+      },
+      "properties": {
+        "customSubDomainName": "[format('{0}-speech-{1}', variables('suffix'), variables('uniq'))]"
+      }
+    },
+    {
+      "type": "Microsoft.CognitiveServices/accounts",
+      "apiVersion": "2024-10-01",
+      "name": "[format('{0}-safety-{1}', variables('suffix'), variables('uniq'))]",
+      "location": "[parameters('location')]",
+      "kind": "ContentSafety",
+      "sku": {
+        "name": "S0"
+      },
+      "properties": {
+        "customSubDomainName": "[format('{0}-safety-{1}', variables('suffix'), variables('uniq'))]"
+      }
+    },
+    {
+      "type": "Microsoft.Storage/storageAccounts",
+      "apiVersion": "2023-05-01",
+      "name": "[variables('storageName')]",
+      "location": "[parameters('location')]",
+      "kind": "StorageV2",
+      "sku": {
+        "name": "Standard_LRS"
+      },
+      "properties": {
+        "minimumTlsVersion": "TLS1_2",
+        "allowBlobPublicAccess": false
+      }
+    },
+    {
+      "type": "Microsoft.Storage/storageAccounts/blobServices",
+      "apiVersion": "2023-05-01",
+      "name": "[format('{0}/{1}', variables('storageName'), 'default')]",
+      "dependsOn": [
+        "[resourceId('Microsoft.Storage/storageAccounts', variables('storageName'))]"
+      ]
+    },
+    {
+      "type": "Microsoft.Storage/storageAccounts/blobServices/containers",
+      "apiVersion": "2023-05-01",
+      "name": "[format('{0}/{1}/{2}', variables('storageName'), 'default', 'audio-cache')]",
+      "dependsOn": [
+        "[resourceId('Microsoft.Storage/storageAccounts/blobServices', variables('storageName'), 'default')]"
+      ]
+    },
+    {
+      "type": "Microsoft.Storage/storageAccounts/blobServices/containers",
+      "apiVersion": "2023-05-01",
+      "name": "[format('{0}/{1}/{2}', variables('storageName'), 'default', 'handovers')]",
+      "dependsOn": [
+        "[resourceId('Microsoft.Storage/storageAccounts/blobServices', variables('storageName'), 'default')]"
+      ]
+    },
+    {
+      "type": "Microsoft.Communication/communicationServices",
+      "apiVersion": "2023-04-01",
+      "name": "[format('{0}-acs-{1}', variables('suffix'), variables('uniq'))]",
+      "location": "global",
+      "properties": {
+        "dataLocation": "Australia"
+      }
+    },
+    {
+      "type": "Microsoft.KeyVault/vaults/secrets",
+      "apiVersion": "2023-07-01",
+      "name": "[format('{0}/{1}', variables('kvName'), 'acs-connection-string')]",
+      "properties": {
+        "value": "[listKeys(resourceId('Microsoft.Communication/communicationServices', format('{0}-acs-{1}', variables('suffix'), variables('uniq'))), '2023-04-01').primaryConnectionString]"
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Communication/communicationServices', format('{0}-acs-{1}', variables('suffix'), variables('uniq')))]",
+        "[resourceId('Microsoft.KeyVault/vaults', variables('kvName'))]"
+      ]
+    },
+    {
+      "condition": "[not(empty(parameters('demoTransferNumber')))]",
+      "type": "Microsoft.KeyVault/vaults/secrets",
+      "apiVersion": "2023-07-01",
+      "name": "[format('{0}/{1}', variables('kvName'), 'demo-transfer-number')]",
+      "properties": {
+        "value": "[parameters('demoTransferNumber')]"
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.KeyVault/vaults', variables('kvName'))]"
+      ]
+    },
+    {
+      "type": "Microsoft.KeyVault/vaults/secrets",
+      "apiVersion": "2023-07-01",
+      "name": "[format('{0}/{1}', variables('kvName'), 'azure-openai-key')]",
+      "properties": {
+        "value": "[listKeys(resourceId('Microsoft.CognitiveServices/accounts', format('{0}-openai-{1}', variables('suffix'), variables('uniq'))), '2024-10-01').key1]"
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.KeyVault/vaults', variables('kvName'))]",
+        "[resourceId('Microsoft.CognitiveServices/accounts', format('{0}-openai-{1}', variables('suffix'), variables('uniq')))]"
+      ]
+    },
+    {
+      "type": "Microsoft.KeyVault/vaults/secrets",
+      "apiVersion": "2023-07-01",
+      "name": "[format('{0}/{1}', variables('kvName'), 'azure-speech-key')]",
+      "properties": {
+        "value": "[listKeys(resourceId('Microsoft.CognitiveServices/accounts', format('{0}-speech-{1}', variables('suffix'), variables('uniq'))), '2024-10-01').key1]"
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.KeyVault/vaults', variables('kvName'))]",
+        "[resourceId('Microsoft.CognitiveServices/accounts', format('{0}-speech-{1}', variables('suffix'), variables('uniq')))]"
+      ]
+    },
+    {
+      "type": "Microsoft.KeyVault/vaults/secrets",
+      "apiVersion": "2023-07-01",
+      "name": "[format('{0}/{1}', variables('kvName'), 'content-safety-key')]",
+      "properties": {
+        "value": "[listKeys(resourceId('Microsoft.CognitiveServices/accounts', format('{0}-safety-{1}', variables('suffix'), variables('uniq'))), '2024-10-01').key1]"
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.CognitiveServices/accounts', format('{0}-safety-{1}', variables('suffix'), variables('uniq')))]",
+        "[resourceId('Microsoft.KeyVault/vaults', variables('kvName'))]"
+      ]
+    },
+    {
+      "type": "Microsoft.App/managedEnvironments",
+      "apiVersion": "2024-03-01",
+      "name": "[format('{0}-env', variables('suffix'))]",
+      "location": "[parameters('location')]",
+      "properties": {
+        "appLogsConfiguration": {
+          "destination": "log-analytics",
+          "logAnalyticsConfiguration": {
+            "customerId": "[reference(resourceId('Microsoft.OperationalInsights/workspaces', format('{0}-logs', variables('suffix'))), '2023-09-01').customerId]",
+            "sharedKey": "[listKeys(resourceId('Microsoft.OperationalInsights/workspaces', format('{0}-logs', variables('suffix'))), '2023-09-01').primarySharedKey]"
+          }
+        }
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.OperationalInsights/workspaces', format('{0}-logs', variables('suffix')))]"
+      ]
+    },
+    {
+      "type": "Microsoft.App/containerApps",
+      "apiVersion": "2024-03-01",
+      "name": "[format('{0}-api', variables('suffix'))]",
+      "location": "[parameters('location')]",
+      "identity": {
+        "type": "UserAssigned",
+        "userAssignedIdentities": {
+          "[format('{0}', resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-id', variables('suffix'))))]": {}
+        }
+      },
+      "properties": {
+        "managedEnvironmentId": "[resourceId('Microsoft.App/managedEnvironments', format('{0}-env', variables('suffix')))]",
+        "configuration": {
+          "ingress": {
+            "external": true,
+            "targetPort": 8000
+          },
+          "secrets": [
+            {
+              "name": "azure-openai-key",
+              "keyVaultUrl": "[reference(resourceId('Microsoft.KeyVault/vaults/secrets', variables('kvName'), 'azure-openai-key'), '2023-07-01').secretUri]",
+              "identity": "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-id', variables('suffix')))]"
+            },
+            {
+              "name": "azure-speech-key",
+              "keyVaultUrl": "[reference(resourceId('Microsoft.KeyVault/vaults/secrets', variables('kvName'), 'azure-speech-key'), '2023-07-01').secretUri]",
+              "identity": "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-id', variables('suffix')))]"
+            },
+            {
+              "name": "content-safety-key",
+              "keyVaultUrl": "[reference(resourceId('Microsoft.KeyVault/vaults/secrets', variables('kvName'), 'content-safety-key'), '2023-07-01').secretUri]",
+              "identity": "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-id', variables('suffix')))]"
+            },
+            {
+              "name": "acs-connection-string",
+              "keyVaultUrl": "[reference(resourceId('Microsoft.KeyVault/vaults/secrets', variables('kvName'), 'acs-connection-string'), '2023-07-01').secretUri]",
+              "identity": "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-id', variables('suffix')))]"
+            },
+            {
+              "name": "demo-transfer-number",
+              "value": "[parameters('demoTransferNumber')]"
+            }
+          ]
+        },
+        "template": {
+          "containers": [
+            {
+              "name": "api",
+              "image": "[parameters('backendImage')]",
+              "resources": {
+                "cpu": "[json('0.5')]",
+                "memory": "1Gi"
+              },
+              "env": [
+                {
+                  "name": "MODEL_PROVIDER",
+                  "value": "azure_openai"
+                },
+                {
+                  "name": "AZURE_OPENAI_ENDPOINT",
+                  "value": "[reference(resourceId('Microsoft.CognitiveServices/accounts', format('{0}-openai-{1}', variables('suffix'), variables('uniq'))), '2024-10-01').endpoint]"
+                },
+                {
+                  "name": "AZURE_OPENAI_DEPLOYMENT_PERSONA",
+                  "value": "persona"
+                },
+                {
+                  "name": "AZURE_OPENAI_KEY",
+                  "secretRef": "azure-openai-key"
+                },
+                {
+                  "name": "TTS_PROVIDER",
+                  "value": "azure_rest"
+                },
+                {
+                  "name": "AZURE_SPEECH_REGION",
+                  "value": "[parameters('location')]"
+                },
+                {
+                  "name": "AZURE_SPEECH_KEY",
+                  "secretRef": "azure-speech-key"
+                },
+                {
+                  "name": "CONTENT_SAFETY_PROVIDER",
+                  "value": "azure"
+                },
+                {
+                  "name": "CONTENT_SAFETY_ENDPOINT",
+                  "value": "[reference(resourceId('Microsoft.CognitiveServices/accounts', format('{0}-safety-{1}', variables('suffix'), variables('uniq'))), '2024-10-01').endpoint]"
+                },
+                {
+                  "name": "CONTENT_SAFETY_KEY",
+                  "secretRef": "content-safety-key"
+                },
+                {
+                  "name": "PARAMETERS_DEPLOYMENT",
+                  "value": "sa_health_regional"
+                },
+                {
+                  "name": "TELEPHONY_PROVIDER",
+                  "value": "[parameters('telephonyProvider')]"
+                },
+                {
+                  "name": "ACS_CONNECTION_STRING",
+                  "secretRef": "acs-connection-string"
+                },
+                {
+                  "name": "ACS_CALLER_ID_NUMBER",
+                  "value": "[parameters('acsCallerIdNumber')]"
+                },
+                {
+                  "name": "DEMO_TRANSFER_NUMBER",
+                  "secretRef": "demo-transfer-number"
+                },
+                {
+                  "name": "REQUIRE_REVIEWED_CONTENT",
+                  "value": "false"
+                }
+              ]
+            }
+          ],
+          "scale": {
+            "minReplicas": 1,
+            "maxReplicas": 3
+          }
+        }
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.App/managedEnvironments', format('{0}-env', variables('suffix')))]",
+        "[resourceId('Microsoft.CognitiveServices/accounts', format('{0}-safety-{1}', variables('suffix'), variables('uniq')))]",
+        "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-id', variables('suffix')))]",
+        "[resourceId('Microsoft.CognitiveServices/accounts', format('{0}-openai-{1}', variables('suffix'), variables('uniq')))]",
+        "[resourceId('Microsoft.CognitiveServices/accounts/deployments', format('{0}-openai-{1}', variables('suffix'), variables('uniq')), 'persona')]",
+        "[resourceId('Microsoft.KeyVault/vaults/secrets', variables('kvName'), 'acs-connection-string')]",
+        "[resourceId('Microsoft.KeyVault/vaults/secrets', variables('kvName'), 'azure-openai-key')]",
+        "[resourceId('Microsoft.KeyVault/vaults/secrets', variables('kvName'), 'content-safety-key')]",
+        "[resourceId('Microsoft.KeyVault/vaults/secrets', variables('kvName'), 'azure-speech-key')]"
+      ]
+    },
+    {
+      "type": "Microsoft.App/containerApps",
+      "apiVersion": "2024-03-01",
+      "name": "[format('{0}-web', variables('suffix'))]",
+      "location": "[parameters('location')]",
+      "properties": {
+        "managedEnvironmentId": "[resourceId('Microsoft.App/managedEnvironments', format('{0}-env', variables('suffix')))]",
+        "configuration": {
+          "ingress": {
+            "external": true,
+            "targetPort": 80
+          }
+        },
+        "template": {
+          "containers": [
+            {
+              "name": "web",
+              "image": "[parameters('frontendImage')]",
+              "resources": {
+                "cpu": "[json('0.25')]",
+                "memory": "0.5Gi"
+              },
+              "env": [
+                {
+                  "name": "API_BASE_URL",
+                  "value": "[format('https://{0}', reference(resourceId('Microsoft.App/containerApps', format('{0}-api', variables('suffix'))), '2024-03-01').configuration.ingress.fqdn)]"
+                }
+              ]
+            }
+          ],
+          "scale": {
+            "minReplicas": 1,
+            "maxReplicas": 2
+          }
+        }
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.App/containerApps', format('{0}-api', variables('suffix')))]",
+        "[resourceId('Microsoft.App/managedEnvironments', format('{0}-env', variables('suffix')))]"
+      ]
+    }
+  ],
+  "outputs": {
+    "apiUrl": {
+      "type": "string",
+      "value": "[format('https://{0}', reference(resourceId('Microsoft.App/containerApps', format('{0}-api', variables('suffix'))), '2024-03-01').configuration.ingress.fqdn)]"
+    },
+    "webUrl": {
+      "type": "string",
+      "value": "[format('https://{0}', reference(resourceId('Microsoft.App/containerApps', format('{0}-web', variables('suffix'))), '2024-03-01').configuration.ingress.fqdn)]"
+    },
+    "keyVaultName": {
+      "type": "string",
+      "value": "[variables('kvName')]"
+    },
+    "speechEndpoint": {
+      "type": "string",
+      "value": "[reference(resourceId('Microsoft.CognitiveServices/accounts', format('{0}-speech-{1}', variables('suffix'), variables('uniq'))), '2024-10-01').endpoint]"
+    },
+    "openAiEndpoint": {
+      "type": "string",
+      "value": "[reference(resourceId('Microsoft.CognitiveServices/accounts', format('{0}-openai-{1}', variables('suffix'), variables('uniq'))), '2024-10-01').endpoint]"
+    }
+  }
+}
