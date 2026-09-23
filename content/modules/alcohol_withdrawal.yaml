@@ -16,6 +16,7 @@ slots:
       - {id: p1, form: open, text: "What time was your last drink? I need a clock time, even roughly, not just how long ago."}
     value: {type: clock_time}
     absolute_time: true
+    confirm: true
     stigmatised: true
     preamble: "I'm going to ask some questions about drinking that are asked of everyone who is stopping or thinking about it. There is no judgement in them, and only the clinician looking after you sees the answers."
     disclosure_group: substance

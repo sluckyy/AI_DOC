@@ -46,8 +46,12 @@ def generate(state: dict, bundle: ContentBundle, terminology: TerminologyProvide
         partial_reason = "interview stopped by an immediate-tier alert"
     elif state.get("phase") != "ended":
         partial_reason = f"interview incomplete; stopped in phase {state.get('phase')}"
+    if state.get("contact_lost"):
+        partial_reason = (partial_reason + "; " if partial_reason else "") + "contact with the patient was lost"
     if partial_reason:
         narrative.append(f"PARTIAL HISTORY: {partial_reason}. Everything not listed below was not asked. No examination was performed. This must not be read as a complete assessment.")
+    if state.get("contact_lost"):
+        narrative.append(f"CONTACT LOST at {state.get('contact_lost_at')}: the line dropped. Every alert below stands and needs acknowledgement; no call-back was placed by the agent (S-14, owner decision B10).")
     ctx = state.get("slot_values", {})
     demo = [f"age {ctx['ctx.age']['value']}" for _ in [0] if ctx.get("ctx.age", {}).get("value") is not None]
     if ctx.get("ctx.sex_recorded", {}).get("value"):
@@ -84,12 +88,15 @@ def generate(state: dict, bundle: ContentBundle, terminology: TerminologyProvide
                 "negative_reporting": s.negative_reporting,
             }
             structured.append(entry)
+            if v is not None and v["state"] == "not_applicable":
+                continue   # an answer-driven branch that did not apply (F-13)
             if v is None or v["state"] == "not_asked":
                 if s.required:
                     not_asked.append(s.intent)
                 continue
             if v["state"] == "unknown":
-                unknown.append(s.intent)
+                label = s.intent.split(",")[0].split(";")[0]
+                unknown.append(f"{label}: patient could not say; not verified" + (f' ("{v.get("verbatim", "")[:100]}")' if v.get("verbatim") else ""))
                 continue
             val = v["value"]
             is_negative = val in ("no", "none", []) or (isinstance(val, list) and val == ["none"])
@@ -103,7 +110,7 @@ def generate(state: dict, bundle: ContentBundle, terminology: TerminologyProvide
                 line += f' ("{v["verbatim"][:120]}")'
             found.append(line)
         if found:
-            narrative.append(f"{m.module.replace('_', ' ').capitalize()}: " + "; ".join(found) + ".")
+            narrative.append(f"{(m.display_name or m.module.replace('_', ' ')).capitalize()}: " + "; ".join(found) + ".")
         if negatives:
             narrative.append("Documented negatives (each was asked): " + "; ".join(negatives) + ".")
         if unknown:
@@ -139,11 +146,11 @@ def generate(state: dict, bundle: ContentBundle, terminology: TerminologyProvide
                               "prompt": "Left empty by the agent. The clinician nominates which condition occasioned the episode."},
         "reason_for_encounter": {"patient_words": pv, "structured_symptom_set": concept_terms, "concepts": concepts, "provenance": "patient_reported"},
         "symptom_detail": {"items": symptom_detail, "provenance": "patient_reported"},
-        "pre_existing_conditions": {"items": [], "provenance": "patient_reported", "note": "closing sections not in this slice"},
+        "pre_existing_conditions": {"items": [e for e in structured if e["slot_id"] == "cs.past_history"], "provenance": "patient_reported", "note": "in the patient's words; full past history section is a later slice"},
         "onset_relative_to_presentation": {"items": [e for e in structured if e["slot_id"].endswith("clock_time")], "provenance": "patient_reported"},
-        "medications": {"items": [e for e in structured if e["slot_id"].startswith("ctx.medications")], "provenance": "patient_reported"},
-        "external_cause": {"items": [], "provenance": "patient_reported"},
-        "behavioural_risk_factors": {"items": [], "provenance": "patient_reported"},
+        "medications": {"items": [e for e in structured if e["slot_id"].startswith("ctx.medications") or e["slot_id"] in ("cs.medications", "cs.allergies", "gate.anticoagulant", "gate.immunosuppression")], "provenance": "patient_reported", "note": "captured by name and read back; 'patient could not say' is distinct from 'none' and from 'not asked' (F-17)"},
+        "external_cause": {"items": [e for e in structured if e["slot_id"] in ("gate.bat_contact", "gate.overseas_animal") or e["slot_id"].startswith("wb.")], "provenance": "patient_reported"},
+        "behavioural_risk_factors": {"items": [e for e in structured if e["slot_id"] in ("gate.smoking",) or e["slot_id"].startswith("au.")], "provenance": "patient_reported"},
         "social_and_functional": {"items": [], "provenance": "patient_reported"},
         "obstetric_status": {"items": [], "provenance": "patient_reported"},
         "safety_net_events": {"items": alerts, "provenance": "structural"},
@@ -167,7 +174,10 @@ def generate(state: dict, bundle: ContentBundle, terminology: TerminologyProvide
         "versions": versions or {},
         "metadata": {**(metadata or {}), "language": state.get("language"), "setting": state.get("setting"),
                      "consent": state.get("consent"), "consent_timestamp": state.get("consent_timestamp"),
-                     "is_simulation": bool(state.get("is_simulation")), "saturation_invitations": state.get("saturation_invitations")},
+                     "is_simulation": bool(state.get("is_simulation")), "saturation_invitations": state.get("saturation_invitations"),
+                     "content_version": (versions or {}).get("content_version"), "content_mode": (versions or {}).get("content_mode"),
+                     "review_status": {n: (versions or {}).get("review_status", {}).get(n) for n in state.get("module_queue", [])},
+                     "collateral_available": state.get("collateral_available"), "capability": state.get("capability")},
     }
 
 
@@ -180,7 +190,7 @@ def answer_clinician_question(question: str, state: dict, bundle: ContentBundle,
         for s in bundle.modules[name].slots:
             v = state["slot_values"].get(s.id)
             hay = f"{s.id.replace('.', ' ').replace('_', ' ')} {s.intent}".lower()
-            if any(w in hay for w in words):
+            if any(re.search(r"\b" + re.escape(w) + r"\b", hay) for w in words):
                 if v is None or v["state"] == "not_asked":
                     hits.append(f"I didn't ask about {s.intent}.")
                 elif v["state"] == "unknown":

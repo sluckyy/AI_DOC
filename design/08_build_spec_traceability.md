@@ -112,3 +112,22 @@ slice on `feature/phase-1-vertical-slice`. States: **Met**, **Partial**,
 | N-31 | Met | Alert wording is templated |
 | N-32 to N-34 | Partial | Telemetry stored in state; no dashboards |
 | N-35, N-36 | Blocked / Not yet | Owner decision; cost events not yet recorded |
+
+
+## Tabs 5 to 7 (added to the Build Specification on 2026-09-23)
+
+| Item | Status | Where |
+| --- | --- | --- |
+| Dialogue pack 1 to 3, 9, 13, 14 | Met | `content/phrasings/invitations.yaml` carries the lines under the pack's ids; OP ids frozen in `content/shared/frozen_ids.yaml` (C2); P5 conflicts held as D-54 |
+| Dialogue pack 2 capability check | Met | Controller `capability` phase; hearing difficulty bails out; language offer switches the interview language (D-58) |
+| Dialogue pack 4 domain stems | Partial | The generic module uses the eleven-domain stems; presentation modules keep the library's row-specific wording |
+| Dialogue pack 5 absolute time | Met | Clock-time slots are asked explicitly, never lifted from the narrative; the computed interval is read back and confirmed; C9 enforces `confirm: true` |
+| Dialogue pack 6 medications | Partial | `cs.medications`, `cs.allergies`, blood thinners by name with the packet check in `gate.anticoagulant`; the full inventory (D-38) and the list read-back line follow |
+| Dialogue pack 7 delegated observations | Partial | Slots marked `delegated_observation`; the glass test and lighter-area prompt in the rash and child modules; F-18 "what they did" capture is verbatim only |
+| Dialogue pack 8 hard questions | Met | Stigmatised slots with preambles; pregnancy gate; knuckle question keyed on location |
+| Dialogue pack 10 mental health | Blocked | `enabled: false`, status blocked; never loads (D-52) |
+| Dialogue pack 11 escalation lines | Partial | ED and same-day lines as in the pack; GP immediate line pending EM sign-off (D-42) |
+| Dialogue pack 12 prohibited phrasings | Met | `content/shared/prohibited_phrases.yaml`; C5 lints authored content; the runtime guardrail and the simulation harness lint generated speech and the handover |
+| Authoring guide A9 review status | Met | D-56; `CONTENT_MODE` |
+| Validation suite C1 to C13 | Partial | C1 (Pydantic schema), C2, C3, C5, C6, C7, C9, C10 built; C4 branch purity holds structurally (rules reference slot values only); C8 negatives policy is per slot (`negative_reporting`), not per presentation; C11 `routes_to` and C12 gating coverage not yet built; C13 `CONTENT_VERSION` in every handover |
+| Simulated case pack | Partial | `content/simulation/cases.yaml`; automated scripted runs under `backend/tests/simulation`; C-16 speech criteria and C-19 need actors and sign-off |

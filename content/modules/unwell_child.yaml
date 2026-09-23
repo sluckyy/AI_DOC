@@ -7,6 +7,7 @@ status: grounded
 reviewed: false
 review_notes: ["Paediatric review (gate): escalation thresholds are not inherited from the adult pathway", "Whether carer concern should itself trigger escalation; drafted as same_day, routing up never down", "Whether an abnormal cry (high-pitched or weak) should route on its own as a NICE red feature", "Glass-test and breathing observation wording for a carer by voice", "Closing block is a first draft"]
 setting: both
+supersedes: [fever_sepsis, vomiting, rash, generally_unwell, confusion]   # the child row owns these features in a child
 activates_on:
   terms: [my child, my baby, my son, my daughter, my toddler, not feeding, floppy, crying differently, hot and floppy, unwell child, sick child, baby is hot, baby has a fever, child has a fever, won't feed, not drinking, no wet nappies, baby has a rash, child has a rash]
 slots:
@@ -55,12 +56,19 @@ slots:
     verbatim: true
     negative_reporting: omit
   - id: uc.resolved_features
-    class: coverage
+    class: red_flag
     required: true
-    intent: features present since the onset of the illness that have now settled, reported as historical and not current
+    intent: features present at any point since the onset of the illness, including ones that have now settled; reported as historical and not current, and a settled feature never lowers the tier
     phrasings:
-      - {id: p1, form: open, text: "Since this started, has there been anything that has now settled: a rash, being floppy or hard to wake, breathing fast, or refusing feeds? Tell me even if it has gone now."}
-    value: {type: text}
+      - {id: p1, form: open, text: "Since this started, what has he or she been like? Has there been anything that has now settled: a rash, being floppy or hard to wake, breathing fast, or refusing feeds? Tell me even if it has gone now."}
+    value:
+      type: set
+      options:
+        - {id: floppy_hard_to_wake, synonyms: [floppy, hard to wake, hard to rouse, couldn't wake, wouldn't wake, limp, unresponsive, out of it, not responding, didn't respond, wouldn't respond, lifeless]}
+        - {id: rash, synonyms: [rash, spots, blotches]}
+        - {id: fast_breathing, synonyms: [breathing fast, fast breathing, breathing quickly, panting, grunting, working hard to breathe]}
+        - {id: refusing_feeds, synonyms: [refusing feeds, refused feeds, wouldn't feed, not feeding, wouldn't drink, refused to drink, off his food, off her food]}
+        - {id: none, synonyms: ["no", nothing, none, nothing like that, nothing has settled, just the fever]}
     verbatim: true
     negative_reporting: explicit
   - id: uc.fluid_intake
@@ -80,6 +88,7 @@ slots:
       - {id: p1, form: open, text: "When was the last wet nappy, or the last time they passed urine? I need a clock time, even roughly, not just how long ago."}
     value: {type: clock_time}
     absolute_time: true
+    confirm: true
     verbatim: true
     negative_reporting: omit
   - id: uc.no_urine_12h
@@ -89,17 +98,17 @@ slots:
     phrasings:
       - {id: p1, form: closed, text: "Has it been more than 12 hours since a wet nappy, or since they last passed urine?"}
     value: {type: yes_no}
-    extraction: {yes_terms: ["yes", more than twelve hours, since yesterday, since last night, all day, none today, dry nappies], no_terms: ["no", this morning, a few hours ago, an hour ago, wet nappy today, normal amount]}
+    extraction: {yes_terms: ["yes", more than twelve hours, no wet nappy since, nothing since yesterday, nothing since last night, not since yesterday, not since last night, all day, none today, dry nappies, dry all day], no_terms: ["no", this morning, a few hours ago, an hour ago, wet nappy today, normal amount]}
     verbatim: true
     negative_reporting: explicit
   - id: uc.drowsy_responsiveness
     class: red_flag
     required: true
-    intent: drowsiness, difficulty waking, or not responding to the carer normally, as a delegated observation
+    intent: drowsiness, difficulty waking, or not responding to the carer normally, now as a delegated observation or at any point since this started; an episode that has passed still counts
     phrasings:
-      - {id: p1, form: closed, text: "Look at your child now. Are they drowsy, hard to wake, or not responding to you the way they normally do?"}
+      - {id: p1, form: closed, text: "Look at your child now. Are they drowsy, hard to wake, or not responding to you the way they normally do? And has that happened at any point since this started, even if it has passed?"}
     value: {type: yes_no}
-    extraction: {yes_terms: ["yes", drowsy, hard to wake, won't wake, floppy, not responding, staring, limp, out of it, can't rouse], no_terms: ["no", awake, alert, playing, responding normally, looking at me, smiling]}
+    extraction: {yes_terms: ["yes", drowsy, hard to wake, won't wake, floppy, not responding, staring, limp, out of it, can't rouse, hard to rouse, couldn't wake, wouldn't wake, was floppy, went floppy, earlier], no_terms: ["no", awake, alert, playing, responding normally, looking at me, smiling]}
     delegated_observation: true
     verbatim: true
     negative_reporting: explicit
@@ -155,15 +164,15 @@ slots:
   - id: uc.vomit_colour
     class: red_flag
     required: true
-    intent: vomiting and its colour, asked for green and blood by name
+    intent: vomiting and its colour in the carer's own words, asked open and never as a closed green-or-yellow choice; yellow counts with green and is not resolved by further questioning
     phrasings:
-      - {id: p1, form: open, text: "Has your child vomited? What colour was it: green, with blood in it, or milky or like the food they had?"}
+      - {id: p1, form: open, text: "Has your child vomited? What colour was it? Tell me in your own words."}
     value:
       type: enum
       options:
-        - {id: green, synonyms: [green, dark green, bile, yellow-green]}
+        - {id: yellow_or_green, synonyms: [green, greenish, dark green, bile, bilious, yellow-green, yellow, yellowy, yellowish, bright yellow, mustard]}
         - {id: blood, synonyms: [blood, bloody, red, coffee grounds, brown flecks]}
-        - {id: other, synonyms: [milky, milk, food, clear, yellow, normal vomit]}
+        - {id: other, synonyms: [milky, milk, food, clear, white, normal vomit]}
         - {id: none, synonyms: [no vomiting, not vomited, hasn't vomited, kept everything down, "no"]}
     verbatim: true
     negative_reporting: explicit
@@ -189,7 +198,7 @@ slots:
   - id: uc.recent_presentations
     class: coverage
     required: true
-    intent: previous presentations for this illness, by date, with what was said; recurrent presentations are a documented antecedent of missed paediatric sepsis
+    intent: previous presentations for this illness, by date, with what was said; repeated presentation is a recognised warning sign
     phrasings:
       - {id: p1, form: open, text: "Has your child already been seen by a doctor, a nurse or a hospital for this illness? On which dates, and what were you told?"}
     value: {type: text}
@@ -206,6 +215,12 @@ slots:
     verbatim: true
     negative_reporting: explicit
 red_flags:
+  - id: rf.child_reduced_responsiveness_since_onset
+    fires_when: "'floppy_hard_to_wake' in uc.resolved_features"
+    tier: immediate
+    alert: {include_verbatim: true, template: "Child was floppy, hard to wake or not responding normally at some point in this illness, as reported by the carer. That it has since settled does not lower the tier; the feature is historical, not absent. Age {uc.child_age}. Fever: {uc.fever}. Carer said: {verbatim}."}
+    suppressible: false
+    source: "Unwell child section: features since onset that have resolved are historical and are reported as such, not as absent; NICE red feature (does not wake or does not stay awake); S-5, elapsed time and resolution never de-escalate"
   - id: rf.child_hard_to_wake
     fires_when: "uc.drowsy_responsiveness == 'yes'"
     tier: immediate
@@ -237,11 +252,11 @@ red_flags:
     suppressible: false
     source: "Master list: seizure in a febrile child; first-draft tier, immediate proposed pending paediatric review"
   - id: rf.child_green_or_bloody_vomit
-    fires_when: "uc.vomit_colour in ['green', 'blood']"
+    fires_when: "uc.vomit_colour in ['yellow_or_green', 'blood']"
     tier: immediate
-    alert: {include_verbatim: true, template: "Green or blood-stained vomit in a child. Colour reported: {uc.vomit_colour}. Carer said: {verbatim}."}
+    alert: {include_verbatim: true, template: "Green or yellow (possibly bilious) or blood-stained vomit in a child. Colour coded: {uc.vomit_colour}. Carer's words: {verbatim}."}
     suppressible: false
-    source: "Vomiting row colour rules: green (bilious) or blood-stained vomit in a child"
+    source: "Vomiting row colour rules: green or bright yellow (bilious) or blood-stained vomit in a child; yellow is not resolved by further questioning and the colour is asked open (dialogue pack 7.4)"
   - id: rf.infant_fever_with_other_feature
     fires_when: "uc.child_age == 'under_3_months' and uc.fever == 'yes' and (uc.no_urine_12h == 'yes' or uc.carer_concern_different == 'yes' or uc.cry == 'yes')"
     tier: immediate

@@ -19,6 +19,12 @@ Dr Sam's first words are the fixed disclosure: an AI, not a doctor; who sees the
 answers; the same care either way. Point out it is a stored script, reviewable
 like a leaflet.
 
+After consent, three short questions from the dialogue pack: can you hear me,
+would you rather another language (name Vietnamese and watch the interview
+language switch), is anyone with you. Say what each one is for: a hearing
+problem hands over to a person, the language offer is how the equity claim
+starts, and "someone with you" is where a collateral history comes from.
+
 ## Scene 2: a settled chest pain history (8 min)
 
 Speak or type, in this order, answering what Dr Sam asks:

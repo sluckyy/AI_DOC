@@ -14,6 +14,7 @@ from dataclasses import dataclass, field
 from datetime import datetime, timezone
 
 from app.content.rules import evaluate
+from app.control.clock import describe_interval, parse_clock
 from app.content.schema import ContentBundle, Module, Slot
 from app.providers.extraction import ExtractionProvider, RulesExtraction
 from app.providers.tone import RulesTone, ToneProvider
@@ -22,12 +23,16 @@ from app.providers.wording import TemplateWording, WordingProvider, passes_guard
 AFFIRM = re.compile(r"\b(yes|yeah|yep|ok|okay|sure|fine|go on|all right|alright|that's fine|of course|please|continue)\b", re.I)
 DECLINE = re.compile(r"\b(no|nope|stop|don't|do not|a person|a human|real person|someone else|not the ai)\b", re.I)
 SERIOUS_Q = re.compile(r"\b(is it serious|am i going to be ok|is this bad|is it my heart|what do you think it is|what is it|is it dangerous|should i be worried)\b", re.I)
+CONFIDENTIALITY_Q = re.compile(r"\b(police|confidential|who (will|can|gets to) see|who sees|does this go (to|on)|on my record|kept private|tell anyone|tell my)\b", re.I)
+HEARING_TROUBLE = re.compile(r"\b(can't hear|cannot hear|pardon|what did you say|say that again|speak up|hard of hearing|hearing aid|you're breaking up|breaking up|muffled)\b", re.I)
+NEGATED = re.compile(r"\b(no|not|never|without|haven't|hasn't|didn't|don't|doesn't|isn't|wasn't|nor|any)\b(?:\s+\w+){0,3}\s*$", re.I)
+COLLATERAL_PRESENT = re.compile(r"\b(my (wife|husband|partner|daughter|son|mum|mother|dad|father|carer|friend|neighbour|nurse)|someone|is with me|is here|with me|beside me|next to me)\b", re.I)
 
 MOVE_EXPRESSION = {
     "disclose": "warm", "open": "attentive", "facilitate": "listening", "invite": "attentive",
     "summarise": "thoughtful", "ask": "attentive", "explain_why": "reassuring_neutral", "deflect": "reassuring_neutral",
     "alert": "serious", "read_back": "thoughtful", "close": "reassuring_neutral", "goodbye": "warm", "bail_out": "serious",
-    "final_invite": "attentive", "reask": "attentive",
+    "final_invite": "attentive", "reask": "attentive", "capability": "attentive", "confirm_time": "thoughtful", "transition": "attentive",
 }
 
 
@@ -66,6 +71,8 @@ def new_state(setting: str, language: str, consent: dict, register: str = "patie
         "fired_rules": [], "undecidable_rules": [], "alerts": [], "closed_by_alert": False,
         "closing_delivered": {}, "patient_corrections": [], "read_back_done": False,
         "transition_log": [], "tone_log": [], "bail_out_reason": None, "ended_at": None,
+        "capability": {}, "capability_step": 0, "collateral_available": None, "gating_needed": [],
+        "pending_confirm": None, "deflections": [], "contact_lost": False,
     }
 
 
@@ -104,15 +111,35 @@ class Controller:
         found: list[dict] = []
         seen_modules = {p["module"] for p in state["problems"] if p.get("module")}
         seen_terms = {p["term"] for p in state["problems"]}
+        spans: list[tuple[int, int]] = []
+
+        def negated(mm: re.Match) -> bool:
+            before = t[max(0, mm.start() - 40):mm.start()]
+            before = before.split(",")[-1].split(".")[-1].split(" but ")[-1].split(" and ")[-1] if before else before
+            return bool(NEGATED.search(before))
+
         for term, module in self._trigger_index:
-            if re.search(r"(?<![a-z])" + re.escape(term) + r"(?![a-z])", t):
+            mm = re.search(r"(?<![a-z])" + re.escape(term) + r"(?![a-z])", t)
+            if mm and negated(mm):
+                state.setdefault("denied_in_narrative", []).append(term)
+                spans.append(mm.span())
+                continue
+            if mm:
+                spans.append(mm.span())
                 if module in seen_modules or any(f.get("module") == module for f in found):
                     continue
                 found.append({"term": term, "module": module})
         for term in self._lexicon:
             if term in seen_terms or any(f["term"] == term for f in found):
                 continue
-            if re.search(r"(?<![a-z])" + re.escape(term) + r"(?![a-z])", t):
+            mm = re.search(r"(?<![a-z])" + re.escape(term) + r"(?![a-z])", t)
+            if mm:
+                a, b = mm.span()
+                if any(a < e and b > s0 for s0, e in spans):
+                    continue   # part of a phrase a module already claimed ("lower back" inside "lower back pain")
+                if negated(mm):
+                    state.setdefault("denied_in_narrative", []).append(term)
+                    continue
                 # skip generic 'pain' if a more specific term already matched this turn
                 if term == "pain" and (found or any("pain" in p["term"] for p in state["problems"])):
                     continue
@@ -131,7 +158,22 @@ class Controller:
 
     def _outstanding(self, state: dict, module_name: str) -> list[Slot]:
         m = self._module(module_name)
-        return [s for s in m.slots if s.required and s.id not in state["slot_values"]]
+        if m.kind == "gating":
+            needed = set(state.get("gating_needed", []))
+            self._prefill_gates(state)
+            return [s for s in m.slots if s.id in needed and s.id not in state["slot_values"]]
+        out = [s for s in m.slots if (s.required or s.always) and s.id not in state["slot_values"] and self._applies(state, s)]
+        first = state.get("time_first") or []
+        if first:
+            out.sort(key=lambda s_: 0 if s_.id in first else 1)
+        return out
+
+    def _applies(self, state: dict, slot: Slot) -> bool:
+        """F-13: a branch depends only on prior answers. Undecidable (a referenced slot unfilled) means ask."""
+        if not slot.asked_when:
+            return True
+        res = evaluate(slot.asked_when, self._rule_values(state))
+        return res.fired or bool(res.missing)
 
     def _write(self, state: dict, module_name: str, slot: Slot, value, verbatim: str, turn_id: str, source: str = "person", st: str = "filled", confidence: float | None = None) -> None:
         state["slot_values"][slot.id] = {
@@ -157,14 +199,13 @@ class Controller:
                 if res.fired and rf.id not in state["fired_rules"]:
                     state["fired_rules"].append(rf.id)
                     route = self.b.parameters.escalation[state["setting"]][rf.tier]
+                    from app.content.rules import referenced_slot_ids as _refs
+                    rule_bits = [state["slot_values"][sid]["verbatim"] for sid in _refs(rf.fires_when) if state["slot_values"].get(sid, {}).get("verbatim")]
                     verbatim_bits = [v["verbatim"] for v in state["slot_values"].values() if v.get("verbatim") and v["module"] == name]
-                    verbatim = state.get("presenting_verbatim") or (verbatim_bits[0] if verbatim_bits else "")
+                    verbatim = " | ".join(dict.fromkeys(rule_bits)) if rule_bits else (state.get("presenting_verbatim") or (verbatim_bits[0] if verbatim_bits else ""))
                     fmt = {k: (v["value"] if not isinstance(v["value"], list) else ", ".join(v["value"])) for k, v in state["slot_values"].items()}
                     fmt["verbatim"] = verbatim
-                    try:
-                        text = rf.alert.template.format_map(_Default(fmt))
-                    except Exception:
-                        text = rf.alert.template
+                    text = re.sub(r"\{([A-Za-z_][\w.]*)\}", lambda mm: str(fmt.get(mm.group(1), "not asked")), rf.alert.template)
                     alert = {
                         "id": f"a{len(state['alerts']) + 1}", "rule_id": rf.id, "module": name, "tier": rf.tier,
                         "route": route.route, "text": text, "verbatim": verbatim if rf.alert.include_verbatim else None,
@@ -192,16 +233,49 @@ class Controller:
         state["_current_turn"] = [turn_id, text]
         if state["phase"] == "ended":
             return turn_id, []
-        if SERIOUS_Q.search(text) and phase not in ("consent",):
-            deflect = self._say(state, self.b.phrasings.deflect["serious"], "deflect")
-            turn_id2, rest = turn_id, self._dispatch(state, text, turn_id)
-            return turn_id2, [deflect] + rest
+        if phase not in ("consent",):
+            key = self._deflection_key(text)
+            if key:
+                nth = sum(1 for d in state["deflections"] if d["key"] == key)
+                state["deflections"].append({"turn_id": turn_id, "key": key, "text": text.strip()[:200]})
+                line = self.b.phrasings.deflection(key, nth)
+                move = "deflect"
+                if key == "confidentiality":
+                    line = self.b.parameters.confidentiality.get(state["setting"]) or line
+                deflect = self._say(state, line, move)
+                # a bare question ("so I don't need to worry then?") carries no answer: repeat the question, never record it
+                bare_question = text.strip().endswith("?") and len(text.split()) <= 12
+                rest = self._repeat_current(state) if (key in ("why", "confidentiality") or bare_question) else self._dispatch(state, text, turn_id)
+                return turn_id, [deflect] + rest
         return turn_id, self._dispatch(state, text, turn_id)
+
+    def _deflection_key(self, text: str) -> str | None:
+        t = " " + re.sub(r"[^a-z' ]", " ", text.lower()) + " "
+        if CONFIDENTIALITY_Q.search(text) and self.b.parameters.confidentiality:
+            return "confidentiality"
+        for key, phrases in self.b.phrasings.deflect_triggers.items():
+            for ph in phrases:
+                if f" {ph.lower()} " in t or re.search(r"\b" + re.escape(ph.lower()) + r"\b", t):
+                    return key
+        if SERIOUS_Q.search(text):
+            return "serious"
+        return None
+
+    def _repeat_current(self, state: dict) -> list[AgentTurn]:
+        """After answering why or a confidentiality question, ask the current question again without counting an attempt."""
+        if state["phase"] == "module" and state.get("current_slot"):
+            name = state["active_module"]
+            slot = self._module(name).slot(state["current_slot"])
+            if slot and slot.id not in state["slot_values"]:
+                ph = slot.phrasings[0] if slot.phrasings else None
+                text = (ph.text if ph else slot.intent).replace("{problem}", state.get("generic_problem", "problem"))
+                return [self._say(state, text, "ask", phrasing_variant_id=(ph.id if ph else None), slot_id=slot.id)]
+        return []
 
     def _dispatch(self, state: dict, text: str, turn_id: str) -> list[AgentTurn]:
         phase = state["phase"]
         handler = {
-            "consent": self._on_consent, "open": self._on_open, "summary": self._on_summary,
+            "consent": self._on_consent, "capability": self._on_capability, "open": self._on_open, "summary": self._on_summary,
             "module": self._on_module, "final_invite": self._on_final_invite, "read_back": self._on_read_back,
         }.get(phase)
         if handler is None:
@@ -216,11 +290,85 @@ class Controller:
             state["ended_at"] = now_iso()
             return [self._say(state, self.b.scripts["bail_out"], "bail_out", next="end")]
         if AFFIRM.search(text):
-            state["phase"] = "open"
-            op = self.b.phrasings.opening[0]
-            state["opening_used"] = op.id
-            return [self._say(state, op.text, "open", phrasing_variant_id=op.id)]
+            state["consent_timestamp"] = now_iso()
+            if self.b.parameters.capability_check and self.b.phrasings.capability:
+                state["phase"] = "capability"
+                state["capability_step"] = 0
+                return [self._capability_question(state)]
+            return [self._begin_open(state)]
         return [self._say(state, "Is it all right to go on? You can say yes, or ask for a person instead.", "disclose")]
+
+    def _begin_open(self, state: dict) -> AgentTurn:
+        state["phase"] = "open"
+        enabled = [p for p in self.b.phrasings.opening if p.enabled] or self.b.phrasings.opening
+        op = enabled[0]
+        state["opening_used"] = op.id
+        return self._say(state, op.text, "open", phrasing_variant_id=op.id)
+
+    CAPABILITY_STEPS = ("hearing", "language", "present")
+
+    def _capability_question(self, state: dict) -> AgentTurn:
+        step = self.CAPABILITY_STEPS[state["capability_step"]]
+        text = self.b.phrasings.capability[step]
+        names = self.b.parameters.language_names
+        text = text.replace("{supported_languages}", ", ".join(names.get(l, l) for l in self.b.parameters.languages))
+        return self._say(state, text, "capability", slot_id=f"cap.{step}")
+
+    def _on_capability(self, state: dict, text: str, turn_id: str) -> list[AgentTurn]:
+        """Dialogue pack 2: hearing, language, someone present. Not announced as an assessment."""
+        step = self.CAPABILITY_STEPS[state["capability_step"]]
+        state["capability"][step] = {"turn_id": turn_id, "text": text.strip()}
+        if step == "hearing":
+            if HEARING_TROUBLE.search(text) or (DECLINE.search(text) and not AFFIRM.search(text)):
+                state["capability"]["hearing_trouble"] = True
+                return self._bail_out(state, "hearing_difficulty")
+        elif step == "language":
+            names = {v.lower(): k for k, v in self.b.parameters.language_names.items()}
+            for lang_name, code in names.items():
+                if re.search(r"\b" + re.escape(lang_name) + r"\b", text, re.I) and code != state["language"] and not re.search(r"\b(no|english is fine|english)\b", text, re.I):
+                    state["language"] = code
+                    state["capability"]["language_switched_to"] = code
+        elif step == "present":
+            state["collateral_available"] = bool(COLLATERAL_PRESENT.search(text)) and not re.match(r"^\s*(no|nope|just me|on my own|alone|nobody)\b", text.strip(), re.I)
+        state["capability_step"] += 1
+        if state["capability_step"] < len(self.CAPABILITY_STEPS):
+            return [self._capability_question(state)]
+        return [self._begin_open(state)]
+
+    def contact_lost(self, state: dict) -> None:
+        """S-14: the line dropped. The alert stands and records that contact was lost; nothing is de-escalated."""
+        state["contact_lost"] = True
+        state["contact_lost_at"] = now_iso()
+        for a in state["alerts"]:
+            if a["tier"] == "immediate":
+                a["contact_lost"] = True
+                a["contact_lost_at"] = state["contact_lost_at"]
+        if state["phase"] != "ended":
+            state["bail_out_reason"] = state.get("bail_out_reason") or "contact_lost"
+            state["phase"] = "ended"
+            state["ended_at"] = now_iso()
+
+    def _time_slots_first(self, state: dict) -> list[str]:
+        """F-14/F-15: when a rule is about to fire from the narrative, the module's clock-time slots are asked first,
+        so the alert carries confirmed times rather than 'not asked'. Two questions at most; nothing else waits."""
+        values = self._rule_values(state)
+        ids: list[str] = []
+        for name in state["module_queue"]:
+            m = self._module(name)
+            if m.kind != "presentation":
+                continue
+            if any(evaluate(rf.fires_when, values).fired and rf.tier == "immediate" and rf.id not in state["fired_rules"] for rf in m.red_flags):
+                for s_ in m.slots:
+                    if s_.required and s_.absolute_time and s_.value.type == "clock_time" and s_.id not in state["slot_values"]:
+                        ids.append(s_.id)
+        return ids
+
+    def _bail_out(self, state: dict, reason: str) -> list[AgentTurn]:
+        state["phase"] = "ended"
+        state["bail_out_reason"] = reason
+        state["ended_at"] = now_iso()
+        line = self.b.phrasings.capability.get("bail_out_1") or self.b.scripts["bail_out"]
+        return [self._say(state, line, "bail_out", next="end")]
 
     def _on_open(self, state: dict, text: str, turn_id: str) -> list[AgentTurn]:
         if state["presenting_verbatim"] is None and text.strip():
@@ -244,8 +392,11 @@ class Controller:
         needed = max(1, self.b.parameters.saturation_invitations)
         if state["consecutive_empty_invitations"] >= needed and distinct >= needed:
             return self._close_problem_list(state)
-        unused = [p for p in self.b.phrasings.invitations if p.id not in state["invitations_used"]]
-        inv = unused[0] if unused else self.b.phrasings.invitations[len(state["invitations_used"]) % len(self.b.phrasings.invitations)]
+        pool = [p for p in self.b.phrasings.invitations if p.enabled] or self.b.phrasings.invitations
+        unused = [p for p in pool if p.id not in state["invitations_used"]]
+        last = state["invitations_used"][-1] if state["invitations_used"] else None
+        candidates = unused or [p for p in pool if p.id != last] or pool
+        inv = candidates[0]
         state["invitations_used"].append(inv.id)
         state["last_invitation_id"] = inv.id
         return [self._say(state, inv.text, "invite", phrasing_variant_id=inv.id)]
@@ -271,6 +422,10 @@ class Controller:
                 queue.append(p["module"])
             elif not p.get("module"):
                 unmatched.append(p["term"])
+        superseded = {x for n in queue for x in self._module(n).supersedes}
+        if superseded:
+            queue = [n for n in queue if n not in superseded]
+            state["superseded_modules"] = sorted(superseded)
         fallback = next((n for n, m in self.b.modules.items() if m.activates_on.fallback), None)
         if unmatched and fallback and fallback not in queue:
             queue.append(fallback)
@@ -278,7 +433,33 @@ class Controller:
         if not queue and fallback:
             queue.append(fallback)
             state["generic_problem"] = "problem"
+        # F-16 shared gating and the closing sections follow the presentation modules
+        needed: list[str] = []
+        for name, m in self.b.modules.items():
+            if m.kind == "gating":
+                for s in m.slots:
+                    if s.always or any(g in queue for g in s.gates):
+                        needed.append(s.id)
+                queue.append(name)
+        for name, m in self.b.modules.items():
+            if m.kind == "closing":
+                queue.append(name)
+        state["gating_needed"] = needed
         state["module_queue"] = queue
+
+    def _prefill_gates(self, state: dict) -> None:
+        """A gate already answered inside a presentation module is copied, not asked again (F-16)."""
+        for name, m in self.b.modules.items():
+            if m.kind != "gating":
+                continue
+            for s in m.slots:
+                if s.id in state["slot_values"]:
+                    continue
+                for src in s.prefill_from:
+                    v = state["slot_values"].get(src)
+                    if v and v.get("state") == "filled":
+                        state["slot_values"][s.id] = {**v, "slot_id": s.id, "module": name, "source": f"prefilled_from:{src}", "written_at": now_iso()}
+                        break
 
     def _opportunistic_fill(self, state: dict, module_name: str, person_turns: list[tuple[str, str]]) -> None:
         """Fill slots from what the person already said in the open phase, keeping the originating turn id."""
@@ -286,6 +467,8 @@ class Controller:
         for s in m.slots:
             if s.id in state["slot_values"] or not s.required:
                 continue
+            if s.absolute_time and s.value.type == "clock_time":
+                continue   # F-14: asked explicitly and read back, never lifted from the narrative
             for tid, txt in person_turns:
                 prop = self.extraction.propose(s, txt, state.get("language", "en"), opportunistic=True)
                 if prop is not None and prop.confidence >= 0.6:
@@ -304,8 +487,13 @@ class Controller:
         state["phase"] = "module"
         person_turns = state.get("_person_turns", [])
         for name in state["module_queue"]:
-            self._opportunistic_fill(state, name, person_turns)
+            if self._module(name).kind == "presentation":
+                self._opportunistic_fill(state, name, person_turns)
+        self._prefill_gates(state)
         # rules may already fire from the narrative (for example current pain stated in the opening)
+        state["time_first"] = self._time_slots_first(state)
+        if state["time_first"]:
+            return self._ask_next(state)
         alerts = self._evaluate_rules(state, turn_id)
         out: list[AgentTurn] = []
         if alerts:
@@ -328,8 +516,14 @@ class Controller:
                 text = phrasing.text if phrasing else slot.intent
                 text = text.replace("{problem}", state.get("generic_problem", "problem"))
                 turns: list[AgentTurn] = []
-                if slot.stigmatised and slot.preamble:
+                if not state.get("_transition_said") and self.b.phrasings.transition:
+                    state["_transition_said"] = True
+                    tr = self.b.phrasings.transition[0]
+                    turns.append(self._say(state, tr.text, "transition", phrasing_variant_id=tr.id))
+                if slot.stigmatised and slot.preamble and attempts == 0:
                     turns.append(self._say(state, slot.preamble, "explain_why"))
+                if slot.absolute_time and slot.value.type == "clock_time" and attempts == 0 and self.b.scripts.get("time_ask_prefix") and "time" not in text.lower():
+                    text = f"{self.b.scripts['time_ask_prefix']} {text}"
                 turns.append(self._say(state, text, "ask" if attempts == 0 else "reask", phrasing_variant_id=(phrasing.id if phrasing else None), slot_id=slot.id))
                 return turns
             # module complete: move to next
@@ -343,6 +537,25 @@ class Controller:
     def _on_module(self, state: dict, text: str, turn_id: str) -> list[AgentTurn]:
         name = state["active_module"]
         m = self._module(name)
+        pending = state.get("pending_confirm")
+        if pending:
+            # F-14: the computed interval was read back; confirm or re-ask, never derive
+            state["pending_confirm"] = None
+            sv = state["slot_values"].get(pending["slot_id"])
+            if AFFIRM.search(text) and not re.match(r"^\s*(no|nope|not quite|wrong)\b", text.strip(), re.I):
+                if sv:
+                    sv["confirmed_interval_minutes"] = pending["minutes"]
+                    sv["confirmed"] = True
+                    sv["confirmed_turn_id"] = turn_id
+            else:
+                state["slot_values"].pop(pending["slot_id"], None)
+                state["slot_attempts"][pending["slot_id"]] = state["slot_attempts"].get(pending["slot_id"], 0) + 1
+                state["patient_corrections"].append({"turn_id": turn_id, "phase": "time_read_back", "slot_id": pending["slot_id"], "text": text.strip()})
+            alerts = [] if self._times_outstanding(state) else self._evaluate_rules(state, turn_id)
+            out = self._deliver_alerts(state, alerts) if alerts else []
+            if state["phase"] == "ended":
+                return out
+            return out + self._ask_next(state)
         current = m.slot(state["current_slot"]) if state.get("current_slot") else None
         filled_now = False
         if current is not None and current.id not in state["slot_values"]:
@@ -350,18 +563,35 @@ class Controller:
             if prop is not None:
                 self._write(state, name, current, prop.value, prop.verbatim, turn_id, confidence=prop.confidence)
                 filled_now = True
+                if current.absolute_time and current.value.type == "clock_time":
+                    now = datetime.now(timezone.utc).astimezone()
+                    dt = parse_clock(text, now)
+                    if dt is not None:
+                        minutes = int((now - dt).total_seconds() // 60)
+                        state["slot_values"][current.id]["stated_time"] = dt.isoformat()
+                        state["slot_values"][current.id]["interval_minutes_unconfirmed"] = minutes
+                        state["pending_confirm"] = {"slot_id": current.id, "minutes": minutes}
+                        rb = self.b.phrasings.time.get("read_back", "So that's about {interval} ago. Have I got that right?")
+                        alerts = [] if self._times_outstanding(state) else self._evaluate_rules(state, turn_id)
+                        out = self._deliver_alerts(state, alerts) if alerts else []
+                        if state["phase"] == "ended":
+                            return out
+                        return out + [self._say(state, rb.replace("{interval}", describe_interval(minutes)), "confirm_time", slot_id=current.id)]
             else:
                 state["slot_attempts"][current.id] = state["slot_attempts"].get(current.id, 0) + 1
                 if state["slot_attempts"][current.id] >= 2:
                     self._write(state, name, current, None, text.strip(), turn_id, st="unknown", confidence=0.0)
-        # opportunistic: other outstanding slots in this module answered in the same breath
-        for s in self._outstanding(state, name):
+        # opportunistic: other outstanding slots in this module answered in the same breath (presentation modules only;
+        # a gate or closing section is asked explicitly, never inferred from an adjacent answer, F-17)
+        for s in (self._outstanding(state, name) if m.kind == "presentation" else []):
             if s.id == (current.id if current else None):
+                continue
+            if s.absolute_time and s.value.type == "clock_time":
                 continue
             prop = self.extraction.propose(s, text, state.get("language", "en"), opportunistic=True)
             if prop is not None and prop.confidence >= 0.6 and s.value.type != "text":
                 self._write(state, name, s, prop.value, prop.verbatim, turn_id, source="person_same_turn", confidence=prop.confidence)
-        alerts = self._evaluate_rules(state, turn_id)
+        alerts = [] if self._times_outstanding(state) else self._evaluate_rules(state, turn_id)
         out: list[AgentTurn] = []
         if alerts:
             out.extend(self._deliver_alerts(state, alerts))
@@ -369,6 +599,11 @@ class Controller:
                 return out
         out.extend(self._ask_next(state))
         return out
+
+    def _times_outstanding(self, state: dict) -> bool:
+        first = [sid for sid in (state.get("time_first") or []) if sid not in state["slot_values"] or state.get("pending_confirm", {}) and state["pending_confirm"].get("slot_id") == sid]
+        state["time_first"] = first
+        return bool(first)
 
     def _deliver_alerts(self, state: dict, alerts: list[dict]) -> list[AgentTurn]:
         out: list[AgentTurn] = []
@@ -379,7 +614,9 @@ class Controller:
             state["closed_by_alert"] = True
             for name in state["module_queue"]:
                 for s in self._module(name).slots:
-                    if s.required and s.id not in state["slot_values"]:
+                    if self._module(name).kind == "gating" and s.id not in state.get("gating_needed", []):
+                        continue
+                    if (s.required or s.always) and s.id not in state["slot_values"]:
                         state["slot_values"][s.id] = {"slot_id": s.id, "module": name, "value": None, "verbatim": None, "state": "not_asked", "turn_id": None, "source": "sweep", "confidence": None, "written_at": now_iso()}
             out.extend(self._close(state, after_alert=True))
         elif immediate:
@@ -389,8 +626,11 @@ class Controller:
     def _sweep(self, state: dict) -> list[AgentTurn]:
         for name in state["module_queue"]:
             for s in self._module(name).slots:
-                if s.required and s.id not in state["slot_values"]:
-                    state["slot_values"][s.id] = {"slot_id": s.id, "module": name, "value": None, "verbatim": None, "state": "not_asked", "turn_id": None, "source": "sweep", "confidence": None, "written_at": now_iso()}
+                if self._module(name).kind == "gating" and s.id not in state.get("gating_needed", []):
+                    continue
+                if (s.required or s.always) and s.id not in state["slot_values"]:
+                    st = "not_asked" if self._applies(state, s) else "not_applicable"
+                    state["slot_values"][s.id] = {"slot_id": s.id, "module": name, "value": None, "verbatim": None, "state": st, "turn_id": None, "source": "sweep", "confidence": None, "written_at": now_iso()}
         self._evaluate_rules(state, "sweep")
         state["phase"] = "final_invite"
         return [self._say(state, self.b.phrasings.final_something_else, "final_invite", phrasing_variant_id="final")]
@@ -401,6 +641,9 @@ class Controller:
             state["late_concerns"].append({**f, "turn_id": turn_id, "text": text.strip()})
         if not found and text.strip() and not re.match(r"^\s*(no|nope|nothing|that's it|that's all|no thanks)\b", text.strip(), re.I):
             state["late_concerns"].append({"term": None, "module": None, "turn_id": turn_id, "text": text.strip()})
+        if not self.b.parameters.closing_read_back:
+            state["read_back_done"] = False
+            return self._close(state, after_alert=False)
         state["phase"] = "read_back"
         return [self._say(state, f"{self.b.phrasings.read_back['intro']} {self._read_back_text(state)} {self.b.phrasings.read_back['check']}", "read_back")]
 
@@ -415,6 +658,8 @@ class Controller:
                 val = v["value"]
                 if isinstance(val, list):
                     val = ", ".join(x.replace("_", " ") for x in val)
+                elif s.value.type == "text" and isinstance(val, str):
+                    val = f'"{val.strip().rstrip(".")}"'   # the patient's own words are read back as a quotation
                 elif isinstance(val, str):
                     val = val.replace("_", " ")
                 parts.append(f"{s.intent.split(',')[0]}: {val}")
@@ -430,10 +675,12 @@ class Controller:
         out: list[AgentTurn] = []
         state["phase"] = "closing"
         same_day = [a for a in state["alerts"] if a["tier"] == "same_day"]
+        spoken: set[str] = set()
         for a in same_day:
-            if a.get("patient_message"):
+            if a.get("patient_message") and a["patient_message"] not in spoken:
+                spoken.add(a["patient_message"])
                 out.append(AgentTurn(text=a["patient_message"], move="alert", phase="closing", expression="serious", next="continue_speaking", alert_id=a["id"]))
-        primary = state["module_queue"][0] if state["module_queue"] else None
+        primary = next((n for n in state["module_queue"] if self._module(n).kind == "presentation"), None)
         closing = self._module(primary).closing if primary else None
         if closing is not None:
             watch = ", ".join(closing.watch_for)
@@ -443,6 +690,9 @@ class Controller:
         not_asked = [k for k, v in state["slot_values"].items() if v["state"] == "not_asked"]
         if not_asked:
             out.append(AgentTurn(text=self.b.scripts["not_asked_note"], move="close", phase="closing", expression="reassuring_neutral", next="continue_speaking"))
+        if self.b.phrasings.what_next:
+            wn = self.b.phrasings.what_next[0]
+            out.append(AgentTurn(text=wn.text, move="close", phase="closing", expression="reassuring_neutral", next="continue_speaking", phrasing_variant_id=wn.id))
         out.append(AgentTurn(text=self.b.scripts["goodbye"], move="goodbye", phase="closing", expression="warm", next="end"))
         state["phase"] = "ended"
         state["ended_at"] = now_iso()

@@ -8,7 +8,7 @@ reviewed: false
 review_notes: ["The collateral-history branch for dysphasia", "GP-version handling of immediate escalation", "Closing block is a first draft"]
 setting: both
 activates_on:
-  terms: [weak, weakness, can't move, arm won't work, dragging my leg, face drooping, droopy face, numb, numbness, pins and needles, tingling, slurred, can't find words, talking funny, gibberish, lost vision, curtain across my eye, can't see out of one eye, blurred in one eye]
+  terms: [weak, weakness, can't move, arm won't work, dragging my leg, face drooping, droopy face, droopy, face has dropped, numb, numbness, pins and needles, tingling, slurred, can't find words, talking funny, gibberish, lost vision, curtain across my eye, can't see out of one eye, blurred in one eye]
 slots:
   - id: st.last_known_well
     class: coverage
@@ -18,6 +18,7 @@ slots:
       - {id: p1, form: open, text: "What time were you last completely normal, with none of this? Give me a clock time if you can."}
     value: {type: clock_time}
     absolute_time: true
+    confirm: true
     verbatim: true
     negative_reporting: omit
   - id: st.symptom_onset
@@ -28,6 +29,7 @@ slots:
       - {id: p1, form: open, text: "And what time did you first notice the symptoms? That can be different from when you were last well."}
     value: {type: clock_time}
     absolute_time: true
+    confirm: true
     verbatim: true
     negative_reporting: omit
   - id: st.symptoms

@@ -9,7 +9,7 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass
 
-from app.content.checks import ANYTHING_ELSE, polarity_ok
+from app.content.checks import ANYTHING_ELSE, polarity_ok, strip_quotes
 
 STAND_DOWN = [
     r"\byou can wait\b", r"\bnothing to worry about\b", r"\bprobably nothing\b",
@@ -55,17 +55,18 @@ def check_transcript(turns: list[dict], slot_values: list[dict], alerts: list[di
     for i, t in agent_turns:
         text = t.get("text") or ""
         if t.get("phase") == "open":
-            if t.get("move") not in ("facilitate", "invite", "disclose", "open", "attend", "alert"):
+            if t.get("move") not in ("facilitate", "invite", "disclose", "open", "attend", "alert", "deflect", "capability", "transition"):
                 v.append(Violation("P4", i, f"open-phase agent move {t.get('move')}"))
         if t.get("move") == "invite" and ANYTHING_ELSE.search(text):
             v.append(Violation("P5", i, text))
         if "?" in text and not polarity_ok(text):
             v.append(Violation("P7", i, text))
         for pat in STAND_DOWN:
-            if re.search(pat, text, re.I):
+            if re.search(pat, strip_quotes(text), re.I):
                 v.append(Violation("P11", i, text))
         for pat in DIAGNOSIS_WORDS:
-            if re.search(pat, text, re.I) and t.get("move") not in ("disclose",):
+            # a question may name a past illness ("any recent infection?"); a statement may not label the presentation
+            if re.search(pat, strip_quotes(text), re.I) and t.get("move") not in ("disclose", "ask", "reask", "explain_why", "capability"):
                 v.append(Violation("boundary", i, f"diagnostic label in agent speech: {text}"))
     if any(t.get("move") == "summarise" for _, t in agent_turns):
         pass

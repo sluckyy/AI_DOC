@@ -10,6 +10,11 @@ continue_after_immediate_alert: false      # D-49
 saturation_invitations: 3                  # D-48: Build Spec F-8 says 2, Framework P13 says 3
 silence_end_of_turn_ms: 1200               # N-3: adjustable per deployment
 alert_acknowledgement_timeout_s: 120       # S-4: unacknowledged alerts escalate further after this
+closing_read_back: true                    # D-55: Framework P6/read-back kept; dialogue pack 13.4 says no closing summary; owner to rule
+capability_check: true                     # dialogue pack 2: hearing, language offer, someone present
+confidentiality:                           # S-12 [TBC governance]: scripted from the deployment's actual position; never a promise
+  ed: "What you tell me goes into your hospital record, and the doctors and nurses looking after you can see it. I can't promise more than that, and I won't guess about who else can see the record. Wording pending governance review."
+  gp_booking: "What you tell me goes to your GP and into your practice record. I can't promise more than that, and I won't guess about who else can see the record. Wording pending governance review."
 escalation:
   ed:
     immediate:

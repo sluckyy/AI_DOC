@@ -48,6 +48,7 @@ slots:
       - {id: p1, form: open, text: "What time did it start? Has it come back to normal since, and if so when?"}
     value: {type: clock_time}
     absolute_time: true
+    confirm: true
     verbatim: true
     negative_reporting: omit
   - id: vd.resolved

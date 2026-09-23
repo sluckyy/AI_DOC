@@ -25,22 +25,7 @@ slots:
     phrasings:
       - {id: p1, form: open, text: "When did you first notice it? A date, even roughly."}
     value: {type: text}
-    absolute_time: true
-    verbatim: true
-    negative_reporting: omit
-  - id: lm.change_over_time
-    class: red_flag
-    required: true
-    intent: change in size since first noticed; slow growth over weeks to months is more concerning than rapid painful growth over days
-    phrasings:
-      - {id: p1, form: open, text: "Has it changed size since you first noticed it? Has it been slowly getting bigger over weeks or months, did it come up quickly over a few days, has it stayed the same, or is it getting smaller?"}
-    value:
-      type: enum
-      options:
-        - {id: growing_slowly, synonyms: [slowly getting bigger, growing, bigger than it was, gradually, over months, over weeks, keeps growing]}
-        - {id: grew_fast_days, synonyms: [came up quickly, overnight, in a few days, suddenly, fast]}
-        - {id: same, synonyms: [same, stayed the same, hasn't changed, no change, always been there]}
-        - {id: smaller, synonyms: [smaller, going down, shrinking, getting smaller]}
+    absolute_time: false   # a date, not a clock time; F-14 read-back applies to clock times
     verbatim: true
     negative_reporting: omit
   - id: lm.size_comparator
@@ -62,16 +47,6 @@ slots:
     extraction: {yes_terms: ["yes", bigger, bigger than a golf ball, tennis ball, egg, fist, orange], no_terms: ["no", smaller, pea, grape, marble, about that size]}
     verbatim: true
     negative_reporting: explicit
-  - id: lm.pain
-    class: coverage
-    required: true
-    intent: whether the lump is painful; recorded as an answer, and painless is never reported as reassuring
-    phrasings:
-      - {id: p1, form: closed, text: "Is it painful, or does it hurt when you press on it?"}
-    value: {type: yes_no}
-    extraction: {yes_terms: ["yes", painful, hurts, sore, tender, aches], no_terms: ["no", painless, doesn't hurt, no pain]}
-    verbatim: true
-    negative_reporting: explicit
   - id: lm.recurrence
     class: red_flag
     required: true
@@ -80,6 +55,31 @@ slots:
       - {id: p1, form: closed, text: "Have you ever had a lump removed from that spot, or anywhere near it, even years ago?"}
     value: {type: yes_no}
     extraction: {yes_terms: ["yes", removed, cut out, taken out, had it out, excised, surgery there, came back], no_terms: ["no", never, first time, nothing removed]}
+    verbatim: true
+    negative_reporting: explicit
+  - id: lm.change_over_time
+    class: red_flag
+    required: true
+    intent: change in size since first noticed; slow growth over weeks to months is more concerning than rapid painful growth over days
+    phrasings:
+      - {id: p1, form: open, text: "Has it changed size since you first noticed it? Has it been slowly getting bigger over weeks or months, did it come up quickly over a few days, has it stayed the same, or is it getting smaller?"}
+    value:
+      type: enum
+      options:
+        - {id: growing_slowly, synonyms: [slowly getting bigger, growing, bigger than it was, gradually, over months, over weeks, keeps growing]}
+        - {id: grew_fast_days, synonyms: [came up quickly, overnight, in a few days, suddenly, fast]}
+        - {id: same, synonyms: [same, stayed the same, hasn't changed, no change, always been there]}
+        - {id: smaller, synonyms: [smaller, going down, shrinking, getting smaller]}
+    verbatim: true
+    negative_reporting: omit
+  - id: lm.pain
+    class: coverage
+    required: true
+    intent: whether the lump is painful; recorded as a documented answer only, and painlessness never lowers the tier or the handover's emphasis
+    phrasings:
+      - {id: p1, form: closed, text: "Is it painful, or does it hurt when you press on it?"}
+    value: {type: yes_no}
+    extraction: {yes_terms: ["yes", painful, hurts, sore, tender, aches], no_terms: ["no", painless, doesn't hurt, no pain]}
     verbatim: true
     negative_reporting: explicit
   - id: lm.deep_superficial
@@ -194,37 +194,37 @@ red_flags:
   - id: rf.breast_lump
     fires_when: "lm.breast_lump == 'yes'"
     tier: same_day
-    alert: {include_verbatim: true, template: "Breast lump; routes to referral regardless of pain. Nipple change: {lm.nipple_change}. Skin change: {lm.skin_change}. First noticed {lm.first_noticed}; change since: {lm.change_over_time}. Patient said: {verbatim}."}
+    alert: {include_verbatim: true, template: "Breast lump; routes to referral regardless of pain. Nipple change: {lm.nipple_change}. Skin change: {lm.skin_change}. First noticed {lm.first_noticed}; change since: {lm.change_over_time}. Patient said: \"{verbatim}\"."}
     suppressible: false
     source: "Breast row: a lump in any woman routes to referral regardless of the presence of pain; breast lump OR 110 for breast cancer"
   - id: rf.testicular_lump
     fires_when: "lm.testicular == 'yes'"
     tier: same_day
-    alert: {include_verbatim: true, template: "New testicular lump or swelling, flagged even if painful. Previous infection diagnosis: {lm.epididymitis_dx}. Nearly one third are first misdiagnosed as epididymitis, orchitis or hydrocele. Patient said: {verbatim}."}
+    alert: {include_verbatim: true, template: "New testicular lump or swelling, flagged even if painful. Previous infection diagnosis: {lm.epididymitis_dx}. Nearly one third are first misdiagnosed as epididymitis, orchitis or hydrocele. Patient said: \"{verbatim}\"."}
     suppressible: false
     source: "Master list: new testicular lump or swelling in a young man; testicular row: painful swelling does not exclude malignancy"
   - id: rf.lump_above_collarbone
     fires_when: "lm.above_collarbone == 'yes'"
     tier: same_day
-    alert: {include_verbatim: true, template: "Lump above the collarbone, the high-risk nodal site (34 to 86% risk of malignancy, especially over 40). Location in the patient's words: {lm.node_location}. Patient said: {verbatim}."}
+    alert: {include_verbatim: true, template: "Lump above the collarbone, the high-risk nodal site (34 to 86% risk of malignancy, especially over 40). Location in the patient's words: {lm.node_location}. Patient said: \"{verbatim}\"."}
     suppressible: false
     source: "Nodes row: treat above my collarbone as the high-risk site; supraclavicular nodes carry a 34-86% risk of malignancy"
   - id: rf.growing_large_or_recurrent
     fires_when: "lm.change_over_time == 'growing_slowly' or lm.size_over_golf_ball == 'yes' or lm.recurrence == 'yes'"
     tier: same_day
-    alert: {include_verbatim: true, template: "Soft tissue lump with a red-flag history: change over time {lm.change_over_time}, patient's size comparator {lm.size_comparator}, bigger than a golf ball {lm.size_over_golf_ball}, previous removal {lm.recurrence}. Increasing size is the best single indicator of malignancy; painless is not reassuring. Patient said: {verbatim}."}
+    alert: {include_verbatim: true, template: "Soft tissue lump with a red-flag history: change over time {lm.change_over_time}, patient's size comparator {lm.size_comparator}, bigger than a golf ball {lm.size_over_golf_ball}, previous removal {lm.recurrence}. Increasing size is the best single indicator of malignancy; painlessness does not lower suspicion. Patient said: \"{verbatim}\"."}
     suppressible: false
     source: "Lumps row: growing over weeks to months, larger than about 5 cm by the patient's own comparator, or recurrence after removal; 86% of masses meeting the criteria are malignant"
   - id: rf.constitutional_with_lump
     fires_when: "'weight_loss' in lm.constitutional or 'night_sweats' in lm.constitutional or 'fever' in lm.constitutional"
     tier: same_day
-    alert: {include_verbatim: true, template: "Lump with constitutional symptoms: {lm.constitutional}. Location in the patient's words: {lm.location}. Patient said: {verbatim}."}
+    alert: {include_verbatim: true, template: "Lump with constitutional symptoms: {lm.constitutional}. Location in the patient's words: {lm.location}. Patient said: \"{verbatim}\"."}
     suppressible: false
     source: "Routing row: associated weight loss or night sweats; nodes row routes fever, night sweats and weight loss to the constitutional rows"
   - id: rf.lump_any
     fires_when: "lm.change_over_time in ['grew_fast_days', 'same', 'smaller']"
     tier: flag
-    alert: {include_verbatim: true, template: "Lump reported. Location: {lm.location}. First noticed {lm.first_noticed}; change since: {lm.change_over_time}; size in the patient's comparator: {lm.size_comparator}; painful: {lm.pain}. Neither painlessness nor long duration is reassuring. Patient said: {verbatim}."}
+    alert: {include_verbatim: true, template: "Lump reported. Location: {lm.location}. First noticed {lm.first_noticed}; change since: {lm.change_over_time}; size in the patient's comparator: {lm.size_comparator}; painful: {lm.pain}. Neither painlessness nor long duration lowers suspicion. Patient said: \"{verbatim}\"."}
     suppressible: false
     source: "Lumps row: report all the features together; painless is not reassuring; size alone should not drive the handover's emphasis"
 closing:
@@ -233,4 +233,4 @@ closing:
   time_course: "What you have told me goes to the doctor before you are seen."
   where: "If it grows quickly, becomes hot and red, or you get a fever or feel unwell, this needs to be seen sooner rather than waiting for the appointment."
 prohibited: [converting the patient's size estimate to a measurement, treating painless as reassuring, treating a long duration or an unchanged lump as reassuring, reporting breast pain only rather than three separate answers for lump, nipple change and skin change]
-gaps: ["Initial imaging for soft tissue lumps is a configurable parameter: UK guidance is ultrasound-first, 2021 European guidance is MRI-first.", "Isolated breast pain with no lump, no nipple change and no skin change is the rare genuinely reassuring negative (no cancers in 588 episodes), but only when all three are established as separate answers; it is still recorded, never summarised as breast pain only.", "Depth, firmness and fixation are examination findings and are not recoverable by voice; the patient's description is recorded as such.", "Breast symptoms in men are not grounded in these sources."]
+gaps: ["Initial imaging for soft tissue lumps is a configurable parameter: UK guidance is ultrasound-first, 2021 European guidance is MRI-first.", "Isolated breast pain with no lump, no nipple change and no skin change is the one negative the sources support as uninformative for cancer (no cancers in 588 episodes), but only when all three are established as separate answers; it is still recorded, never summarised as breast pain only.", "Depth, firmness and fixation are examination findings and are not recoverable by voice; the patient's description is recorded as such.", "Breast symptoms in men are not grounded in these sources."]

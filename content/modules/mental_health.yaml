@@ -3,7 +3,7 @@
 module: mental_health
 display_name: how you have been feeling in yourself
 version: 0.1.0
-status: first_draft
+status: blocked
 enabled: false
 reviewed: false
 review_notes: ["Forwarded to a mental health specialist for wording, thresholds, escalation and disclosure-to-contact interval; not live until sign-off (D-50)", "Columbia Protocol wording must be administered exactly; not yet transcribed", "Direct risk questions are asked in both settings per the library — the specialist decides wording"]

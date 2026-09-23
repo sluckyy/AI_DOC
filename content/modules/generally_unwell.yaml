@@ -68,6 +68,7 @@ slots:
       - {id: p1, form: open, text: "When did you last pass urine? I need a clock time, even roughly, not just how long ago."}
     value: {type: clock_time}
     absolute_time: true
+    confirm: true
     verbatim: true
     negative_reporting: omit
   - id: gu.urine_18h

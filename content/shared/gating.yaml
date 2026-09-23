@@ -1,0 +1,143 @@
+# Shared gating questions (Build Specification F-16; dialogue pack 6.2, 8.1,
+# 13.1). Asked once per interview, cached, and referenced by every presentation
+# that lists the gate id under `gating:`. Two are standing questions asked of
+# everyone whatever the presenting complaint (always: true). Where a
+# presentation module already captured the same fact, the gate is prefilled
+# from that slot and not asked again (prefill_from).
+module: shared_gating
+kind: gating
+display_name: questions asked once
+version: 0.1.0
+status: grounded
+reviewed: false
+review_notes: ["Pregnancy gating wording and who is asked: O&G reviewer (dialogue pack 8.1)", "Blood thinner list wording is verbatim from the dialogue pack 6.2", "Standing bat and overseas-animal questions: wording per 13.1"]
+setting: both
+slots:
+  - id: gate.pregnancy_possible
+    class: context
+    required: false
+    intent: possible pregnancy, asked of anyone who could be, before any presentation that turns on it
+    stigmatised: true
+    preamble: "I ask this of everyone it could apply to. You can just say yes or no."
+    phrasings:
+      - {id: g-preg-v1, form: closed, text: "Is there any chance you could be pregnant?"}
+    value: {type: yes_no}
+    extraction: {yes_terms: ["yes", could be, maybe, possibly, might be, late, missed a period, pregnant], no_terms: ["no", no chance, not possible, can't be, impossible, i'm a man, had a hysterectomy, menopause, negative test, test was negative]}
+    prefill_from: [ab.pregnancy_possible, vb.pregnancy_status, dz.pregnancy_possible, hd.pregnancy, sz.pregnancy_possible, sy.pregnancy_possible, vo.pregnancy_possible]
+    verbatim: true
+    negative_reporting: explicit
+    gates: [abdominal_pain, vaginal_bleeding_early_pregnancy, vomiting, syncope, dizziness, urinary_symptoms, gi_bleeding, reduced_fetal_movements]
+  - id: gate.anticoagulant
+    class: context
+    required: false
+    intent: blood thinners asked by name, with the packet check when the name is unknown
+    phrasings:
+      - {id: g-antico-v1, form: closed, text: "Do you take any blood thinners? Things like warfarin, apixaban, rivaroxaban, clopidogrel, or aspirin?"}
+      - {id: g-antico-v2, form: closed, text: "If the packet is nearby, could you read me the name on it? If you can't, that's fine, I'll write down that you weren't sure."}
+    packet_check: "If the packet is nearby, could you read me the name on it? If you can't, that's fine, I'll write down that you weren't sure."
+    value: {type: yes_no}
+    extraction:
+      yes_terms: [warfarin, coumadin, apixaban, eliquis, rivaroxaban, xarelto, dabigatran, pradaxa, edoxaban, clopidogrel, plavix, aspirin, cartia, ticagrelor, brilinta, clexane, enoxaparin, heparin, blood thinner, thinners, "yes"]
+      no_terms: ["no", none, nothing like that, not on any, don't take any, no blood thinners]
+    prefill_from: [ctx.medications.anticoagulant, fa.anticoagulant_named, tr.anticoagulant_named, st.anticoagulant_named, gb.anticoagulants, hp.anticoagulants]
+    verbatim: true
+    negative_reporting: explicit
+    gates: [trauma_head_injury, falls, stroke_cluster, gi_bleeding, haemoptysis, haematuria, headache, syncope]
+  - id: gate.family_sudden_death
+    class: context
+    required: false
+    intent: family history of early sudden death, recurrent fainting, unexplained drowning or a single-vehicle crash
+    phrasings:
+      - {id: g-fhx-v1, form: closed, text: "Has anyone in your family died suddenly before the age of about fifty, or fainted a lot, or drowned or had a single-car crash that was never explained?"}
+    value: {type: yes_no}
+    extraction: {yes_terms: ["yes", died suddenly, sudden death, drowned, drowning, car crash, fainted a lot, my brother, my father, my mother, my uncle, my sister], no_terms: ["no", none, nobody, not that i know]}
+    prefill_from: [sy.family_sudden_death]
+    verbatim: true
+    negative_reporting: explicit
+    gates: [syncope, palpitations, chest_pain, seizure]
+  - id: gate.weight_loss_unexpected
+    class: context
+    required: false
+    intent: unexpected weight loss, as the patient reports it
+    phrasings:
+      - {id: g-wl-v1, form: closed, text: "Have you lost weight without trying to, over the last few months?"}
+    value: {type: yes_no}
+    extraction: {yes_terms: ["yes", lost weight, clothes are loose, belt, kilos, without trying], no_terms: ["no", same weight, put on weight, gained, dieting, on purpose]}
+    prefill_from: [dy.weight_loss, bh.weight_loss]
+    verbatim: true
+    negative_reporting: explicit
+    gates: [haemoptysis, dysphagia, bowel_habit, haematuria, fatigue, generally_unwell, lumps, cough_wheeze, abdominal_pain]
+  - id: gate.smoking
+    class: context
+    required: false
+    intent: smoking as cigarettes per day and years, the components of pack-years, never the product
+    phrasings:
+      - {id: g-smoke-v1, form: open, text: "Do you smoke, or did you? Roughly how many a day, and for how many years?"}
+    value: {type: text}
+    prefill_from: [hp.smoking_pack_years, hu.smoking_pack_years, wl.smoking, cw.smoking]
+    verbatim: true
+    negative_reporting: explicit
+    gates: [haemoptysis, haematuria, cough_wheeze, chest_pain, dysphagia, weight_loss, lumps]
+  - id: gate.immunosuppression
+    class: context
+    required: false
+    intent: immunosuppression asked by drug name, including oral steroids
+    phrasings:
+      - {id: g-immuno-v1, form: closed, text: "Do you take anything that lowers your immune system: prednisolone or other steroid tablets, methotrexate, chemotherapy, or medicines after a transplant?"}
+    value: {type: yes_no}
+    extraction: {yes_terms: ["yes", prednisolone, prednisone, steroids, methotrexate, chemo, chemotherapy, transplant, biologic, azathioprine, tacrolimus, mycophenolate, immune], no_terms: ["no", none, nothing like that]}
+    prefill_from: [fs.immunosuppressed, jt.immunosuppression]
+    verbatim: true
+    negative_reporting: explicit
+    gates: [fever_sepsis, joint_pain, generally_unwell, headache, rash, abdominal_pain]
+  - id: gate.atrial_fibrillation
+    class: context
+    required: false
+    intent: a previously diagnosed irregular heart rhythm, asked by name
+    phrasings:
+      - {id: g-af-v1, form: closed, text: "Have you ever been told you have an irregular heartbeat, or atrial fibrillation?"}
+    value: {type: yes_no}
+    extraction: {yes_terms: ["yes", atrial fibrillation, af, irregular heartbeat, irregular rhythm, fibrillation], no_terms: ["no", never, not that i know]}
+    prefill_from: [lp.sudden_af]
+    verbatim: true
+    negative_reporting: explicit
+    gates: [stroke_cluster, palpitations, syncope, dizziness, limb_pain, abdominal_pain]
+  - id: gate.bat_contact
+    class: context
+    required: false
+    always: true
+    intent: any contact with a bat, at any time, including handling; asked of everyone because elapsed time never de-escalates
+    phrasings:
+      - {id: g-bat-v1, form: closed, text: "Have you had any contact with a bat, a bite, a scratch, or handling one, at any time, even years ago?"}
+    value: {type: yes_no}
+    extraction: {yes_terms: ["yes", bat, flying fox, scratched, bit me, handled, picked it up, got it out], no_terms: ["no", never, not that i know, no bats]}
+    prefill_from: [wb.bat_contact]
+    verbatim: true
+    negative_reporting: explicit
+  - id: gate.overseas_animal
+    class: context
+    required: false
+    always: true
+    intent: bitten or scratched by any animal overseas, at any time
+    phrasings:
+      - {id: g-overseas-v1, form: closed, text: "Have you been bitten or scratched by any animal overseas?"}
+    value: {type: yes_no}
+    extraction: {yes_terms: ["yes", bitten, scratched, dog, monkey, cat, bali, thailand, india, overseas], no_terms: ["no", never, not overseas, haven't travelled]}
+    prefill_from: [wb.overseas_mammal]
+    verbatim: true
+    negative_reporting: explicit
+red_flags:
+  - id: rf.gate_bat_contact
+    fires_when: "gate.bat_contact == 'yes'"
+    tier: same_day
+    alert: {include_verbatim: true, template: "Bat contact reported at any time; needs public health notification per the configured pathway (bat_exposure_notification_pathway). Elapsed time does not lower urgency. Patient said: {verbatim}."}
+    suppressible: false
+    source: "Wounds and bites row: any bat contact, at any time, is same-day; dialogue pack 13.1"
+  - id: rf.gate_overseas_animal
+    fires_when: "gate.overseas_animal == 'yes'"
+    tier: same_day
+    alert: {include_verbatim: true, template: "Animal bite or scratch overseas reported; rabies exposure assessment needed whatever the elapsed time. Patient said: {verbatim}."}
+    suppressible: false
+    source: "Wounds and bites row: overseas mammal exposure; dialogue pack 13.1"
+prohibited: [inferring a drug from an adjacent mention, treating a negative gate as reassuring, converting smoking to pack-years in the patient's hearing]
+gaps: ["Organ inventory (who is asked the pregnancy question) is not captured; the gate is asked whenever a listed presentation is active, pending O&G review"]

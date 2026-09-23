@@ -76,7 +76,7 @@ def _persist_agent_turns(db: Session, conv: Conversation, turns: list[AgentTurn]
     order = db.query(Turn).filter(Turn.conversation_id == conv.id).count()
     for t in turns:
         ok, verdict = safety.screen(t.text)
-        text = t.text if ok else bundle.phrasings.deflect["diagnosis"]
+        text = t.text if ok else bundle.phrasings.deflection("diagnosis")
         rate = "-8%" if conv.state.get("register") != "older" else "-15%"
         syn = speech.synthesise(text, language=language, rate=rate, pitch="0%")
         tid = f"{conv.id}-a{order + 1}"
@@ -337,6 +337,23 @@ def transfer_setup(cid: str, db: Session = Depends(get_db)):
             "alert": {**alerts[-1], "alert_id": f"{cid}-{alerts[-1]['id']}"}}
 
 
+@router.post("/conversations/{cid}/contact-lost")
+def contact_lost(cid: str, db: Session = Depends(get_db)):
+    """S-14: the browser or telephony layer reports the line dropped. The alert stands and records lost contact;
+    the interview ends and the handover is marked partial. No call-back is placed (owner decision B10)."""
+    conv = db.get(Conversation, cid)
+    if conv is None:
+        raise HTTPException(404, "conversation not found")
+    state = dict(conv.state)
+    Controller(get_bundle()).contact_lost(state)
+    conv.state = state
+    db.add(AuditEvent(conversation_id=cid, actor="channel", action="contact_lost",
+                      detail={"open_immediate_alerts": [a["id"] for a in state.get("alerts", []) if a["tier"] == "immediate"]}))
+    db.commit()
+    return {"conversation_id": cid, "contact_lost": True, "contact_lost_at": state.get("contact_lost_at"), "phase": state["phase"],
+            "alerts": [a for a in state.get("alerts", []) if a["tier"] == "immediate"]}
+
+
 @router.post("/content/reload")
 def content_reload():
     """D-51: reload content from disk without a restart. A failing load keeps the old bundle."""
@@ -360,11 +377,13 @@ def content_status():
     findings = run_checks(bundle)
     return {
         "modules": [{"module": m.module, "display_name": m.display_name or m.module.replace("_", " "), "version": m.version, "status": m.status,
-                     "reviewed": m.reviewed, "reviewed_by": m.reviewed_by, "reviewed_on": m.reviewed_on, "slots": len(m.slots),
+                     "reviewed": m.reviewed, "reviewed_by": m.reviewed_by, "reviewed_on": m.reviewed_on, "slots": len(m.slots), "kind": m.kind,
+                     "review_status": m.effective_review_status,
                      "red_flags": [{"id": r.id, "tier": r.tier} for r in m.red_flags], "review_notes": m.review_notes} for m in bundle.modules.values()],
         "escalation": {setting: {tier: {"route": r.route, "transfer_target": r.transfer_target} for tier, r in tiers.items()} for setting, tiers in bundle.parameters.escalation.items()},
         "telephony": get_telephony_provider().name,
         "disabled_modules": bundle.versions.get("disabled_modules", {}),
+        "content_version": bundle.versions.get("content_version"), "content_mode": bundle.versions.get("content_mode"),
         "clinical_parameters": {k: {"status": v.get("status", "pending"), "value": v.get("value", v.get("positive_threshold"))} for k, v in bundle.parameters.clinical_parameters.items()},
         "context_version": bundle.context.version, "parameters": bundle.versions["parameters"], "languages": bundle.parameters.languages,
         "authoring_checks": {"passed": not findings, "findings": [str(f) for f in findings]},

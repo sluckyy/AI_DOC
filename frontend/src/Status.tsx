@@ -15,7 +15,7 @@ export function Status() {
     <div className="consent">
       <h1>Content and providers</h1>
       <p className="small">
-        {modules.length} modules live, {reviewed} reviewed for simulation. Parameters {s.parameters}; context v{s.context_version}.
+        {modules.length} modules live, {reviewed} reviewed for simulation. Content {s.content_version} ({s.content_mode} mode); parameters {s.parameters}; context v{s.context_version}.
         Authoring checks {s.authoring_checks?.passed ? "passed" : "FAILED"}. Telephony: {s.telephony}.
       </p>
       {disabled.length > 0 && (
@@ -25,13 +25,13 @@ export function Status() {
         <p className="small">Owner-set clinical parameters still pending (see design/09): {pending.map(([k]) => k).join(", ")}.</p>
       )}
       <table className="status-table">
-        <thead><tr><th>Module</th><th>Version</th><th>Reviewed</th><th>Slots</th><th>Red flags</th><th>Open review notes</th></tr></thead>
+        <thead><tr><th>Module</th><th>Version</th><th>Review status</th><th>Slots</th><th>Red flags</th><th>Open review notes</th></tr></thead>
         <tbody>
           {modules.map((m) => (
             <tr key={m.module}>
               <td>{m.display_name}</td>
               <td>{m.version}</td>
-              <td>{m.reviewed ? `yes (${m.reviewed_by || ""} ${m.reviewed_on || ""})` : "no"}</td>
+              <td>{m.review_status}{m.reviewed ? ` (${m.reviewed_by || ""} ${m.reviewed_on || ""})` : ""}</td>
               <td>{m.slots}</td>
               <td>{(m.red_flags || []).map((r: any) => `${r.id} [${r.tier}]`).join(", ")}</td>
               <td>{(m.review_notes || []).join("; ")}</td>

@@ -21,34 +21,48 @@ def _read(path: Path) -> dict:
         return yaml.safe_load(f) or {}
 
 
+def content_mode() -> str:
+    """simulation (default) loads grounded content; clinical refuses anything below reviewed (A9, C3, HAZ-8)."""
+    if os.getenv("REQUIRE_REVIEWED_CONTENT", "false").lower() == "true":
+        return "clinical"
+    return os.getenv("CONTENT_MODE", "simulation").lower()
+
+
 def load_bundle(root: Path | None = None, deployment: str | None = None) -> ContentBundle:
     root = root or content_dir()
     deployment = deployment or os.getenv("PARAMETERS_DEPLOYMENT", "sa_health_regional")
     modules: dict[str, Module] = {}
     disabled: dict[str, str] = {}
-    require_reviewed = os.getenv("REQUIRE_REVIEWED_CONTENT", "false").lower() == "true"
-    for path in sorted((root / "modules").glob("*.yaml")):
+    mode = content_mode()
+    paths = sorted((root / "modules").glob("*.yaml")) + sorted((root / "shared").glob("*_section*.yaml")) + sorted((root / "shared").glob("gating.yaml"))
+    for path in paths:
         m = Module.model_validate(_read(path))
-        if not m.enabled:
-            disabled[m.module] = m.version
+        rs = m.effective_review_status
+        if rs in ("first_draft", "blocked"):
+            disabled[m.module] = f"{m.version} ({rs})"       # A9: never loads
             continue
-        if require_reviewed and not m.reviewed:
-            raise RuntimeError(f"HAZ-8: module {m.module} v{m.version} is not marked reviewed; refusing to start (REQUIRE_REVIEWED_CONTENT=true)")
+        if mode == "clinical" and rs != "reviewed":
+            raise RuntimeError(f"HAZ-8 (C3): module {m.module} v{m.version} is {rs}, below reviewed; refusing to start in clinical mode")
         modules[m.module] = m
+    content_version = (root / "CONTENT_VERSION").read_text().strip() if (root / "CONTENT_VERSION").exists() else "0.0.0"
+    prohibited = _read(root / "shared" / "prohibited_phrases.yaml").get("phrases", []) if (root / "shared" / "prohibited_phrases.yaml").exists() else []
     context = ContextModule.model_validate(_read(root / "context.yaml"))
     parameters = Parameters.model_validate(_read(root / "parameters" / f"{deployment}.yaml"))
     phrasings = Phrasings.model_validate(_read(root / "phrasings" / "invitations.yaml"))
     lexicon = [t.lower() for t in _read(root / "lexicon" / "symptoms.yaml").get("terms", [])]
     scripts = _read(root / "scripts" / "fixed.yaml")
     versions = {
+        "content_version": content_version,
+        "content_mode": mode,
         "content": {name: m.version for name, m in modules.items()},
+        "review_status": {name: m.effective_review_status for name, m in modules.items()},
         "context": context.version,
         "parameters": f"{parameters.deployment}@{parameters.version}",
         "disabled_modules": disabled,
     }
     return ContentBundle(
         modules=modules, context=context, parameters=parameters, phrasings=phrasings,
-        lexicon=lexicon, scripts=scripts, versions=versions,
+        lexicon=lexicon, scripts=scripts, versions=versions, prohibited=prohibited,
     )
 
 

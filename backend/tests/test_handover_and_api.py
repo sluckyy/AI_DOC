@@ -115,7 +115,7 @@ def test_alert_acknowledgement_flow(client):
     cid = r.json()["conversation_id"]
     last = r.json()["agent_turns"][-1]
     alert_id = None
-    for line in ["Yes.", "I've got a tight pain in my chest right now.", "No.", "No.", "No.", "No.", "Yes that's right."]:
+    for line in ["Yes.", "Yes I can hear you.", "English is fine.", "No, just me.", "I've got a tight pain in my chest right now.", "No.", "No.", "No.", "No.", "Yes that's right."]:
         r = client.post(f"/conversations/{cid}/turns", json={"transcript": line})
         assert r.status_code == 200, r.text
         if r.json()["alerts"]:
@@ -151,7 +151,7 @@ def test_live_transfer_setup_and_content_reload(client):
     r = client.post("/conversations", json={"setting": "gp_booking", "language": "en"})
     cid = r.json()["conversation_id"]
     assert client.post(f"/conversations/{cid}/transfer").status_code == 409, "no alert yet"
-    for line in ["Yes.", "I've got a tight pain in my chest right now.", "No.", "No.", "No.", "No.", "Yes that's right."]:
+    for line in ["Yes.", "Yes I can hear you.", "English is fine.", "No, just me.", "I've got a tight pain in my chest right now.", "No.", "No.", "No.", "No.", "Yes that's right."]:
         r = client.post(f"/conversations/{cid}/turns", json={"transcript": line})
         if r.json()["phase"] == "ended":
             break
@@ -171,7 +171,7 @@ def test_disabled_module_is_listed_but_never_runs(client):
     assert s["clinical_parameters"]["haematuria_referral_age"]["status"] == "pending"
     r = client.post("/conversations", json={"setting": "ed", "language": "en"})
     cid = r.json()["conversation_id"]
-    client.post(f"/conversations/{cid}/turns", json={"transcript": "Yes."})
-    client.post(f"/conversations/{cid}/turns", json={"transcript": "I've been feeling really low and I can't cope."})
+    for line in ["Yes.", "Yes I can hear you.", "English is fine.", "No, just me.", "I've been feeling really low and I can't cope."]:
+        client.post(f"/conversations/{cid}/turns", json={"transcript": line})
     state = client.get(f"/conversations/{cid}").json()["state"]
     assert "mental_health" not in state.get("module_queue", [])

@@ -67,6 +67,16 @@ fake if unconfigured, so the demo never breaks.
 | `REQUIRE_REVIEWED_CONTENT=true` | HAZ-8 guard: refuse to start on any module still marked `reviewed: false` |
 | `ALLOW_MACHINE_TRANSLATION=true` | Lets Azure OpenAI word non-English turns; off until translations are validated (N-13) |
 
+`CONTENT_MODE=simulation` (default) loads `grounded` content; `CONTENT_MODE=clinical`
+refuses to start on anything below `reviewed` (Build Specification A9, C3).
+`first_draft` and `blocked` modules never load. `content/CONTENT_VERSION` is
+semver per C13 and travels in every handover.
+
+The simulated patient case pack (`content/simulation/cases.yaml`) runs as scripted
+tests under `backend/tests/simulation`: each critical criterion is an assertion
+against a requirement id. `pytest tests/simulation -q` runs them; the run also
+lints everything Dr Sam said and the handover against the prohibited phrase list.
+
 Content is reloadable without a restart: `POST /api/content/reload` re-reads
 `content/` and keeps the previous bundle if the new one fails the authoring
 checks (D-51). `GET /api/content/status` lists every module with its review

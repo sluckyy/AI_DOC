@@ -16,6 +16,7 @@ slots:
       - {id: p1, form: open, text: "What time did the pain start? I need a clock time, even roughly, not just how long ago."}
     value: {type: clock_time}
     absolute_time: true
+    confirm: true
     verbatim: true
     negative_reporting: omit
   - id: tt.acute

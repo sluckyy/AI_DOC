@@ -23,6 +23,10 @@ def run(bundle, open_lines, answers=None, setting="ed", consent=None, summary_re
         move = last["move"] if last else "disclose"
         if move == "disclose":
             line = "Yes, that's fine."
+        elif move == "capability":
+            line = {"cap.hearing": "Yes, I can hear you fine.", "cap.language": "English is fine.", "cap.present": "No, it's just me."}.get(last["slot_id"], "Yes.")
+        elif move == "confirm_time":
+            line = "Yes, that's right."
         elif move in ("open", "facilitate"):
             line = open_lines.pop(0) if open_lines else "That's all really."
         elif move == "invite":
@@ -154,7 +158,7 @@ def test_declined_consent_bails_out(bundle):
 def test_serious_question_is_deflected_not_answered(bundle):
     state, log = run(bundle, ["I've got chest pain, it's gone now. Is it serious?"], SETTLED_ANSWERS)
     texts = [a["text"] for role, a in log if role == "agent"]
-    assert any("I don't make that call" in t for t in texts)
+    assert any("I'm not able to tell you that" in t for t in texts), "dialogue pack 9 deflection"
     assert not any("nothing to worry" in t.lower() for t in texts)
 
 
@@ -170,7 +174,7 @@ def test_generic_module_used_for_ungrounded_presentation(bundle):
     answers = {"gen.onset": "Three days ago.", "gen.progression": "Getting worse.", "gen.triggers": "Bright light.",
                "gen.relief": "Lying down in the dark.", "gen.functional_impact": "I can't work.", "gen.associated": "Feeling sick."}
     state, log = run(bundle, ["I've had hiccups for three days."], answers)
-    assert state["module_queue"] == ["generic_symptom"]
+    assert [n for n in state["module_queue"] if bundle.modules[n].kind == "presentation"] == ["generic_symptom"]
     assert state["generic_problem"] == "hiccups"
     asked = [a["text"] for r, a in log if r == "agent" and a["move"] == "ask"]
     assert any("hiccups" in t for t in asked), "the generic module names the patient's own problem"

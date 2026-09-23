@@ -1,28 +1,90 @@
-# P5: "something else", never "anything else". P7: no negative polarity. Each
-# invitation has an id so the transition log can record which phrasing pulled
-# the last new symptom (P13, D-34).
+# The dialogue pack (Build Specification tab 5) as data. Every line Dr Sam says
+# outside a presentation module lives here, so clinicians mark up language, not
+# intent. Open-phase ids OP-1 to OP-12 are the research instrument (F-9): never
+# renumber, never re-text; deprecate with enabled: false and a note.
+#
+# P5 (Framework Specification, Heritage 2007): invitations say "something else",
+# never "anything else". Four continuation prompts in the pack say "anything
+# else"; they are carried verbatim under their frozen ids with enabled: false
+# until the owner rules on the conflict (D-54). P7: no negative polarity.
 opening:
-  - {id: open1, text: "What's brought you in today? Take your time."}
-  - {id: open2, text: "Tell me what's been going on. I'm listening."}
+  - {id: OP-1, text: "What's been going on?"}
+  - {id: OP-2, text: "Tell me what's been happening."}
+  - {id: OP-3, text: "What made you get in touch today?"}
 invitations:
-  - {id: inv1, text: "Is there something else you'd like to tell me about?"}
-  - {id: inv2, text: "Is there something else that's been bothering you, even if it seems unrelated?"}
-  - {id: inv3, text: "Before we go on, is there something else at all, even if it seems small?"}
-  - {id: inv4, text: "Is there something else on your mind about your health today?"}
+  - {id: OP-4, text: "Tell me more about that."}
+  - {id: OP-5, text: "What else have you noticed?"}
+  - {id: OP-6, text: "Anything else at all, even if it seems unrelated?", enabled: false, note: "P5 conflict (D-54): 'anything else'"}
+  - {id: OP-7, text: "Has anything else changed lately?", enabled: false, note: "P5 conflict (D-54): 'anything else'"}
+  - {id: OP-8, text: "Is there anything else that's been bothering you?", enabled: false, note: "P5 conflict (D-54): 'anything else'"}
+  - {id: OP-9, text: "If you think about the last few days, what else stands out?"}
+  - {id: OP-10, text: "What else has been different from usual?"}
+  - {id: OP-11, text: "Is there anything you haven't mentioned yet?", enabled: false, note: "P5 and P7 conflict (D-54): 'anything' and a negative frame"}
+  - {id: OP-12, text: "Anything else, even something small?", enabled: false, note: "P5 conflict (D-54): 'anything else'"}
+  - {id: OP-13, text: "Is there something else you'd like to tell me about?", note: "P5-compliant equivalent of OP-8, added by the build; id above the pack's range so the pack's ids stay frozen"}
+  - {id: OP-14, text: "Is there something else at all, even if it seems unrelated?", note: "P5-compliant equivalent of OP-6"}
+  - {id: OP-15, text: "Is there something else, even something small?", note: "P5-compliant equivalent of OP-12"}
 facilitators:
   - {id: fac1, text: "Mm-hm."}
   - {id: fac2, text: "Go on."}
   - {id: fac3, text: "I'm listening."}
   - {id: fac4, text: "Take your time."}
+transition:
+  - {id: tr1, text: "Thanks. I'd like to ask some more specific questions now."}
 summary:
   intro: "Let me make sure I've got this right."
   check: "Have I got that right? Tell me what I've missed or got wrong."
 read_back:
   intro: "Here's what I'll pass on to the doctor."
   check: "Tell me what I've got wrong, or what to add."
-final_something_else: "Before we finish, is there something else you were hoping to bring up?"
+final_something_else: "Before I finish, is there something else you wanted to mention that I haven't asked about?"
+what_next:
+  - {id: wn1, text: "I've written all this down for the doctor. They'll have it before they see you."}
+capability:
+  hearing: "Can you hear me clearly?"
+  language: "Would you rather do this in another language? I can speak {supported_languages}."
+  present: "Is anyone with you who might help with any of this?"
+  bail_out_1: "I think it'll be easier if you talk to a person. Let me put you through."
+  bail_out_2: "I'm not the right one to help with this. I'll hand you to someone now."
+# [VARIANT] sets rotate so a persistent asker never hears the identical line twice running (case C-17).
 deflect:
-  serious: "I don't make that call, and I'd be guessing if I tried. What I can do is make sure the doctor hears exactly what you've told me, and I'll put the things you're most worried about first."
-  diagnosis: "That's one for the doctor. I'll make sure they hear everything you've told me."
+  serious:
+    - "I'm not able to tell you that. I'm not a clinician. That's exactly what the doctor will look at."
+    - "I can't answer that, and I don't want to guess. What I can do is make sure the right person has all of this."
+  cancer:
+    - "I can't say. I'm writing down what you've told me so the doctor can look at it properly."
+    - "That's not something I'm able to tell you. Everything you've said goes to the doctor to look at."
+  hospital:
+    - "I can't advise you on that."
+    - "That's not something I can advise on. I'll make sure the doctor has what you've told me."
+  anxiety: "I'm not able to judge that. I'll pass on everything you've told me."
+  all_right: "I can't answer that, and I don't want to guess. What I can do is make sure the right person has all of this."
+  antibiotics: "That's not something I can decide."
+  seen_before:
+    - "I'm not able to compare. I just take down what you tell me."
+    - "I don't have a view to give you. My job is to take down what you tell me, as you say it."
+  diagnosis:
+    - "That's one for the doctor. I'll make sure they hear everything you've told me."
+    - "I can't tell you what it is. What I can do is get your words to the doctor exactly as you've said them."
+  why: "I ask everyone the same questions, so nothing gets missed."
+deflect_triggers:
+  serious: ["is it serious", "is this serious", "is it bad", "is this bad", "is it dangerous", "should i be worried", "do i need to worry", "don't need to worry", "is it my heart"]
+  cancer: ["is it cancer", "is this cancer", "think it's cancer", "could it be cancer", "could this be cancer"]
+  hospital: ["should i go to hospital", "do i need to go to hospital", "go to the hospital", "should i go to emergency", "call an ambulance"]
+  anxiety: ["just anxiety", "just my anxiety", "is it anxiety", "is it just stress", "just stress", "just my nerves"]
+  all_right: ["am i going to be all right", "am i going to be ok", "am i going to be okay", "will i be ok", "will i be all right"]
+  antibiotics: ["need antibiotics", "do i need antibiotics"]
+  seen_before: ["you must have seen this before", "seen this before", "you must have some idea", "what do you think it is", "tell me what you think", "just tell me what you think"]
+  diagnosis: ["what is it", "what's wrong with me", "what do you think is wrong", "what's causing it"]
+  why: ["why are you asking", "why do you ask", "why do you need to know", "what's that got to do with"]
+recovery:
+  missed: "Sorry, I missed that. Could you say it again?"
+  missed_again: "I'm having trouble hearing you. Let me put you through to a person."
+  distressed: "Take your time."
+  hurry: "Of course."
+  resume: "Thanks for calling back. We got as far as {topic}. Shall we pick up there?"
 explain_why:
   context: "Because of what you've described, I need to ask something specific."
+time:
+  ask: "What time did it start? As close as you can. Was it before or after something you remember, like a meal or the news?"
+  read_back: "So that's about {interval} ago. Have I got that right?"

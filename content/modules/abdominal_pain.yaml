@@ -6,20 +6,56 @@ reviewed: false
 review_notes: ["The under-triage mitigation for older patients", "Whether the equity finding should become a study outcome", "Closing block is a first draft"]
 setting: both
 activates_on:
-  terms: [tummy pain, guts hurting, cramps, stomach ache, colicky, abdominal pain, belly pain, pain in my stomach, pain in my belly, tummy ache, gut pain, stomach pain]
+  terms: [tummy pain, guts hurting, cramps, stomach ache, colicky, abdominal pain, belly pain, pain in my stomach, pain in my belly, tummy ache, gut pain, stomach pain, pain in my tummy, pain in my abdomen, tummy hurts, stomach hurts, sore tummy, sore stomach, lower abdomen, lower tummy, side of my tummy, side of my stomach, pain low down, pain down low, pelvic pain, pain in my pelvis, pain in my side, my side hurts]
 slots:
   - id: ab.pregnancy_possible
     class: context
     required: true
-    intent: possible pregnancy, asked early, because ectopic pregnancy can present with pain alone
+    intent: possible pregnancy, asked early, because ectopic pregnancy can present with pain alone; a negative home test is recorded as its own answer and never converted to "no", because it does not exclude ectopic pregnancy
     phrasings:
       - {id: p1, form: closed, text: "Because of where the pain is, I need to ask early: is there any chance you could be pregnant?"}
     value:
       type: enum
       options:
+        - {id: test_negative, synonyms: [test was negative, negative test, did a test, took a test, was negative, negative, tested negative]}
         - {id: "yes", synonyms: [could be, maybe, possibly, late period, missed period, pregnant, i am pregnant, might be]}
-        - {id: "no", synonyms: [not possible, no chance, can't be, menopause, hysterectomy, "no", not pregnant]}
+        - {id: unsure, synonyms: [not sure, don't know, unsure, no idea, hard to say, i suppose]}
+        - {id: not_possible, synonyms: [not possible, no chance, can't be, menopause, hysterectomy, "no", not pregnant, impossible]}
         - {id: not_applicable, synonyms: [i'm a man, male, not applicable, doesn't apply]}
+    verbatim: true
+    negative_reporting: explicit
+  - id: ab.home_pregnancy_test
+    class: context
+    required: true
+    intent: home pregnancy test result as the patient reports it, a delegated observation; recorded beside the pregnancy answer and never used to exclude pregnancy
+    phrasings:
+      - {id: p1, form: closed, text: "Have you done a home pregnancy test for this? If you have, when was it, and what did it show?"}
+    value:
+      type: enum
+      options:
+        - {id: negative, synonyms: [negative, was negative, said negative, one line, not pregnant on the test, came back negative]}
+        - {id: positive, synonyms: [positive, two lines, said pregnant, came back positive]}
+        - {id: not_done, synonyms: ["no", haven't done, not done, no test, didn't do, haven't tested, not applicable, doesn't apply]}
+    delegated_observation: true
+    verbatim: true
+    negative_reporting: explicit
+  - id: ab.last_period
+    class: coverage
+    required: true
+    intent: date of the last period and whether it was normal, in the patient's words; a late or lighter period keeps ectopic pregnancy in view whatever a home test showed
+    phrasings:
+      - {id: p1, form: open, text: "When was your last period, and was it normal for you? If periods aren't something that applies to you, just say so."}
+    value: {type: text}
+    verbatim: true
+    negative_reporting: omit
+  - id: ab.shoulder_tip
+    class: red_flag
+    required: true
+    intent: shoulder-tip pain, asked as its own question because patients do not connect it with abdominal pain
+    phrasings:
+      - {id: p1, form: closed, text: "Have you had any pain at the tip of either shoulder, even if you put it down to something else, like sleeping awkwardly?"}
+    value: {type: yes_no}
+    extraction: {yes_terms: ["yes", shoulder, shoulder tip, tip of my shoulder, top of my shoulder, aching shoulder], no_terms: ["no", no shoulder pain, shoulders are fine, nothing in my shoulder, not my shoulder]}
     verbatim: true
     negative_reporting: explicit
   - id: ab.onset_clock_time
@@ -74,11 +110,11 @@ slots:
   - id: ab.shock_symptoms
     class: red_flag
     required: true
-    intent: faintness, collapse, cold and clammy, shoulder-tip pain
+    intent: faintness, collapse, cold and clammy
     phrasings:
-      - {id: p1, form: closed, text: "Have you felt faint, collapsed, or gone cold and clammy? Any pain in the tip of your shoulder?"}
+      - {id: p1, form: closed, text: "Have you felt faint, collapsed, or gone cold and clammy?"}
     value: {type: yes_no}
-    extraction: {yes_terms: ["yes", faint, collapsed, clammy, cold and sweaty, dizzy, shoulder tip, shoulder pain, passed out], no_terms: ["no", none of those, nothing like that, feel fine otherwise]}
+    extraction: {yes_terms: ["yes", faint, collapsed, clammy, cold and sweaty, dizzy, passed out], no_terms: ["no", none of those, nothing like that, feel fine otherwise]}
     verbatim: true
     negative_reporting: explicit
   - id: ab.vomiting_bowels
@@ -120,14 +156,20 @@ slots:
     verbatim: true
     negative_reporting: explicit
 red_flags:
-  - id: rf.abdo_pain_possible_pregnancy_collapse
-    fires_when: "ab.pregnancy_possible == 'yes' and ab.shock_symptoms == 'yes'"
+  - id: rf.abdo_pain_possible_pregnancy_shoulder_tip
+    fires_when: "ab.pregnancy_possible in ['yes', 'test_negative', 'unsure'] and ab.shoulder_tip == 'yes'"
     tier: immediate
-    alert: {include_verbatim: true, template: "Possible early pregnancy with abdominal pain plus faintness, collapse or shoulder-tip pain. Patient said: {verbatim}."}
+    alert: {include_verbatim: true, template: "Abdominal pain with shoulder-tip pain in someone who could be pregnant. Pregnancy answer as recorded: {ab.pregnancy_possible}; home test as reported: {ab.home_pregnancy_test}; last period: {ab.last_period}. A negative home test does not exclude ectopic pregnancy. Patient said: {verbatim}."}
+    suppressible: false
+    source: "Master list: possible early pregnancy with abdominal pain plus shoulder-tip pain, dizziness or collapse; a home test result is a delegated observation, not an exclusion"
+  - id: rf.abdo_pain_possible_pregnancy_collapse
+    fires_when: "ab.pregnancy_possible in ['yes', 'test_negative', 'unsure'] and ab.shock_symptoms == 'yes'"
+    tier: immediate
+    alert: {include_verbatim: true, template: "Possible early pregnancy with abdominal pain plus faintness, collapse or clamminess. Pregnancy answer as recorded: {ab.pregnancy_possible}; home test as reported: {ab.home_pregnancy_test}. Patient said: {verbatim}."}
     suppressible: false
     source: "Master list: possible early pregnancy with abdominal pain plus shoulder-tip pain, dizziness or collapse"
   - id: rf.abdo_pain_possible_pregnancy
-    fires_when: "ab.pregnancy_possible == 'yes'"
+    fires_when: "ab.pregnancy_possible in ['yes', 'test_negative', 'unsure']"
     tier: same_day
     alert: {include_verbatim: true, template: "Pain in possible early pregnancy. Patient said: {verbatim}."}
     suppressible: false
@@ -156,4 +198,4 @@ closing:
   time_course: "Someone will speak with you today."
   where: "If any of those happen before then, call an ambulance rather than waiting."
 prohibited: [naming a likely diagnosis, reasoning from site alone]
-gaps: ["No examination of the abdomen, no vital signs. The handover carries the patient's age beside any severity statement because older patients under-report severity."]
+gaps: ["No examination of the abdomen, no vital signs. The handover carries the patient's age beside any severity statement because older patients under-report severity.", "A home pregnancy test result is the patient's own observation and is recorded as such; it is never treated as excluding pregnancy, and the pregnancy question is asked whether or not there has been any bleeding."]

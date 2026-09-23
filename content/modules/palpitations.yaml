@@ -6,7 +6,7 @@ reviewed: false
 review_notes: ["Whether symptoms occurring during the call should change GP-version appointment urgency (design proposal, not literature)", "Closing block is a first draft"]
 setting: both
 activates_on:
-  terms: [palpitations, heart racing, racing heart, fluttering, pounding, skipping, thumping, heart going fast, irregular heartbeat, heart pounding]
+  terms: [palpitations, heart racing, racing heart, heart's racing, heart's been racing, heart is racing, heart has been racing, heart keeps racing, heart's going fast, heart's been going, heart's pounding, heart's thumping, heart's fluttering, heart's skipping, heart rate, heartbeat, beating fast, beating really fast, fluttering, pounding, skipping, thumping, heart going fast, irregular heartbeat, heart pounding]
 slots:
   - id: pa.now
     class: red_flag
@@ -21,15 +21,16 @@ slots:
   - id: pa.rhythm
     class: coverage
     required: true
-    intent: regular or irregular, elicited by asking the patient to tap it out
+    intent: regular or irregular, elicited by asking the patient to tap it out; a delegated observation recorded in the patient's words, never named as a rhythm
     phrasings:
       - {id: p1, form: open, text: "Can you tap out the rhythm on the table for me, the way your heart was going? Was it steady, or all over the place?"}
     value:
       type: enum
       options:
         - {id: regular, synonyms: [regular, steady, even, same beat, constant]}
-        - {id: irregular, synonyms: [irregular, all over the place, uneven, random, skips, missed beats, chaotic]}
+        - {id: irregular, synonyms: [irregular, all over the place, uneven, random, skips, missed beats, chaotic, fast and irregular, jumping about, no pattern]}
         - {id: unsure, synonyms: [not sure, couldn't say, hard to say]}
+    delegated_observation: true
     verbatim: true
     negative_reporting: omit
   - id: pa.onset_offset
@@ -120,7 +121,7 @@ slots:
     phrasings:
       - {id: p1, form: closed, text: "Have you been told you have any heart problem, or had any heart tests before?"}
     value: {type: yes_no}
-    extraction: {yes_terms: ["yes", heart problem, heart disease, atrial fibrillation, af, valve, pacemaker, heart attack, angina, echo, heart tests], no_terms: ["no", never, nothing wrong with my heart, not that i know]}
+    extraction: {yes_terms: ["yes", heart problem, heart disease, atrial fibrillation, af, valve, pacemaker, heart attack, angina, echo, heart tests], no_terms: ["no", never been told, no heart problems, nothing wrong with my heart, not that i know]}
     evidence: {lr: "known heart disease LR+ 2.0 for an arrhythmic cause", discriminates: arrhythmia, citation: "outpatient palpitations likelihood ratio table, as tabulated in the Symptom Questioning Library", grade: A, population: pooled}
     verbatim: true
     negative_reporting: explicit
@@ -137,25 +138,25 @@ red_flags:
   - id: rf.palpitations_with_syncope
     fires_when: "pa.syncope == 'yes'"
     tier: immediate
-    alert: {include_verbatim: true, template: "Palpitations with syncope or near-syncope. Patient said: {verbatim}."}
+    alert: {include_verbatim: true, template: "Palpitations with syncope or near-syncope. Patient said: \"{verbatim}\"."}
     suppressible: false
     source: "Master list: syncope with palpitations"
   - id: rf.palpitations_with_chest_pain
     fires_when: "pa.chest_pain_breathless == 'yes'"
     tier: immediate
-    alert: {include_verbatim: true, template: "Palpitations with chest pain or breathlessness. Patient said: {verbatim}."}
+    alert: {include_verbatim: true, template: "Palpitations with chest pain or breathlessness. Patient said: \"{verbatim}\"."}
     suppressible: false
     source: "Cardiovascular table red flags"
   - id: rf.palpitations_now_gp
     fires_when: "pa.now == 'yes'"
     tier: same_day
-    alert: {include_verbatim: true, template: "Palpitations occurring during the call: a live opportunity for an ECG. Patient said: {verbatim}."}
+    alert: {include_verbatim: true, template: "Palpitations occurring during the call: a live opportunity for an ECG. Patient said: \"{verbatim}\"."}
     suppressible: false
     source: "Master list: palpitations occurring during the GP booking call (design proposal, not literature)"
   - id: rf.exertional_palpitations
     fires_when: "pa.exertional == 'yes'"
     tier: flag
-    alert: {include_verbatim: true, template: "Exertional palpitations. Patient said: {verbatim}."}
+    alert: {include_verbatim: true, template: "Exertional palpitations. Patient said: \"{verbatim}\"."}
     suppressible: false
     source: "Master list: exertional palpitations named as a red flag but given no tier; flagged pending cardiology review"
 closing:
@@ -164,4 +165,4 @@ closing:
   time_course: "Someone will speak with you today."
   where: "If it comes with any of those, call an ambulance rather than waiting."
 prohibited: [summarising the episodes as likely anxiety, naming a rhythm]
-gaps: ["No ECG. An anxiety history does not exclude an organic cause; panic is comorbid with an organic cause in up to 13% of cases."]
+gaps: ["No ECG. A prior mental-health attribution does not exclude an organic cause; the two coexist in up to 13% of cases."]

@@ -56,6 +56,27 @@ slots:
     extraction: {yes_terms: ["yes", stiff, can't bend, stiff neck, chin on my chest], no_terms: ["no", neck is fine, not stiff, moves fine]}
     verbatim: true
     negative_reporting: explicit
+  - id: hd.jaw_claudication
+    class: discriminating
+    required: true
+    intent: jaw claudication and scalp tenderness, asked concretely of everyone with a new headache; age is a parameter and is never embedded here
+    phrasings:
+      - {id: p1, form: closed, text: "Does your jaw ache when you chew, and ease when you stop? Is your scalp sore, for example when brushing your hair?"}
+    value: {type: yes_no}
+    extraction: {yes_terms: ["yes", jaw aches, when i chew, chewing, scalp sore, brushing my hair], no_terms: ["no", jaw is fine, scalp is fine, nothing like that]}
+    evidence: {lr: "jaw claudication LR+ 4.9 for giant cell arteritis; temporal location LR 0.97 (no information)", discriminates: giant cell arteritis, citation: "GCA meta-analysis of 68 studies, as tabulated in the Symptom Questioning Library", grade: A, population: pooled}
+    verbatim: true
+    negative_reporting: explicit
+  - id: hd.visual_symptom
+    class: red_flag
+    required: true
+    intent: any change in vision with this headache, including one that has since come back to normal
+    phrasings:
+      - {id: p1, form: closed, text: "With this headache, has your vision changed at all: gone blurry, dim or dark, or double, in one eye or both, even if it has come back to normal since?"}
+    value: {type: yes_no}
+    extraction: {yes_terms: ["yes", blurry, blurred, fuzzy, misty, dim, went dark, dark, lost, couldn't see, double, curtain, came back, one eye, left eye, right eye], no_terms: ["no", vision is fine, eyes are fine, no change, seeing fine, nothing with my vision]}
+    verbatim: true
+    negative_reporting: explicit
   - id: hd.neuro_deficit
     class: red_flag
     required: true
@@ -144,17 +165,6 @@ slots:
     value: {type: text}
     verbatim: true
     negative_reporting: omit
-  - id: hd.jaw_claudication
-    class: discriminating
-    required: false
-    intent: jaw claudication and scalp tenderness in a person over fifty with a new headache
-    phrasings:
-      - {id: p1, form: closed, text: "Does your jaw ache when you chew, and ease when you stop? Is your scalp sore, for example when brushing your hair?"}
-    value: {type: yes_no}
-    extraction: {yes_terms: ["yes", jaw aches, when i chew, chewing, scalp sore, brushing my hair], no_terms: ["no", jaw is fine, scalp is fine, nothing like that]}
-    evidence: {lr: "jaw claudication LR+ 4.9 for giant cell arteritis; temporal location LR 0.97 (no information)", discriminates: giant cell arteritis, citation: "GCA meta-analysis of 68 studies, as tabulated in the Symptom Questioning Library", grade: A, population: pooled}
-    verbatim: true
-    negative_reporting: explicit
 red_flags:
   - id: rf.thunderclap
     fires_when: "hd.thunderclap == 'seconds'"
@@ -168,6 +178,18 @@ red_flags:
     alert: {include_verbatim: true, template: "Headache with a neurological symptom, current or resolved. Patient said: {verbatim}."}
     suppressible: false
     source: "Stroke cluster: new focal symptoms including resolved"
+  - id: rf.headache_visual_symptom
+    fires_when: "hd.visual_symptom == 'yes'"
+    tier: immediate
+    alert: {include_verbatim: true, template: "Headache with a visual symptom, current or resolved. Patient said: {verbatim}."}
+    suppressible: false
+    source: "Stroke cluster: new focal symptoms including resolved; master list: sudden loss of vision in one eye, current or resolved"
+  - id: rf.jaw_claudication_with_visual_symptom
+    fires_when: "hd.jaw_claudication == 'yes' and hd.visual_symptom == 'yes'"
+    tier: immediate
+    alert: {include_verbatim: true, template: "Jaw claudication with a visual symptom, current or resolved, in a new headache: the second eye is at risk. Patient said: {verbatim}."}
+    suppressible: false
+    source: "Symptom Questioning Library headache row, GCA features: jaw claudication LR+ 4.9 with any visual symptom (GCA meta-analysis of 68 studies); temporal location LR 0.97 carries no information and is never a trigger; age is a parameter (ctx.age), not embedded"
   - id: rf.headache_fever_neck_stiffness
     fires_when: "hd.systemic == 'yes' and hd.neck_stiffness == 'yes'"
     tier: immediate

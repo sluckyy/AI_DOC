@@ -41,6 +41,7 @@ slots:
       - {id: p1, form: open, text: "When did you last feel the baby moving normally? Give me a clock time and the day, even roughly, not just how long ago."}
     value: {type: clock_time}
     absolute_time: true
+    confirm: true
     verbatim: true
     negative_reporting: omit
   - id: fm.movement_since

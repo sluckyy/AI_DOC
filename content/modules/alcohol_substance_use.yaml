@@ -114,6 +114,7 @@ slots:
       - {id: p1, form: open, text: "When did you last have a drink or use? I need a clock time, even roughly, rather than just how long ago."}
     value: {type: clock_time}
     absolute_time: true
+    confirm: true
     stigmatised: true
     preamble: "The timing helps the clinician, whatever the answer is."
     disclosure_group: substance

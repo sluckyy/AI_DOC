@@ -28,5 +28,6 @@ def test_rule_evaluation_missing_slot_is_undecidable():
 
 def test_every_module_has_closing_and_no_suppressible_rules(bundle):
     for m in bundle.modules.values():
-        assert m.closing is not None
+        if m.kind == "presentation":
+            assert m.closing is not None
         assert all(not rf.suppressible for rf in m.red_flags)

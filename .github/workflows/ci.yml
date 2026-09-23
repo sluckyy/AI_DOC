@@ -12,9 +12,12 @@ jobs:
       - uses: actions/setup-python@v5
         with: { python-version: "3.11" }
       - run: pip install -r requirements-test.txt
-      - name: Authoring checks (the eight build-time checks from the Framework Specification)
+      - name: Authoring checks (Framework Specification checks 1 to 8 plus Build Specification C2, C5, C6, C7, C9, C10)
         run: CONTENT_DIR=../content python -m app.content.checks
-      - name: Tests
+      - name: Clinical mode refuses unreviewed content (C3, HAZ-8)
+        run: |
+          if CONTENT_MODE=clinical CONTENT_DIR=../content python -c "from app.content.loader import load_bundle; load_bundle()"; then echo "clinical mode loaded unreviewed content" && exit 1; else echo "refused as required"; fi
+      - name: Tests (unit, API, and the simulated patient case pack)
         run: CONTENT_DIR=../content python -m pytest -q
   frontend:
     runs-on: ubuntu-latest

@@ -46,8 +46,10 @@ slots:
     intent: anticoagulant by name, never inferred; the highest-consequence single field in this group
     phrasings:
       - {id: p1, form: closed, text: "Do you take a blood thinner: warfarin, apixaban, rivaroxaban, dabigatran, or clexane injections?"}
+      - {id: p2, form: closed, text: "If the packet is nearby, could you read me the name on it? If you can't, that's fine, I'll write down that you weren't sure."}
+    packet_check: "If the packet is nearby, could you read me the name on it? If you can't, that's fine, I'll write down that you weren't sure."
     value: {type: yes_no}
-    extraction: {yes_terms: [warfarin, apixaban, eliquis, rivaroxaban, xarelto, dabigatran, pradaxa, clexane, heparin, blood thinner, "yes"], no_terms: ["no", none, nothing like that, don't take]}
+    extraction: {yes_terms: [warfarin, apixaban, eliquis, rivaroxaban, xarelto, dabigatran, pradaxa, edoxaban, clexane, enoxaparin, heparin, blood thinner, "yes"], no_terms: ["no", none, nothing like that, don't take]}
     verbatim: true
     negative_reporting: explicit
   - id: tr.antiplatelet_named
@@ -130,7 +132,7 @@ red_flags:
     suppressible: false
     source: "Master list: head injury with two or more episodes of vomiting"
   - id: rf.head_injury_anticoagulated
-    fires_when: "tr.head_struck == 'yes' and tr.anticoagulant_named == 'yes'"
+    fires_when: "tr.anticoagulant_named == 'yes' and tr.head_struck == 'yes'"
     tier: same_day
     alert: {include_verbatim: true, template: "Head injury on an anticoagulant (named by the patient). Patient said: {verbatim}."}
     suppressible: false

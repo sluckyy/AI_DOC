@@ -17,9 +17,9 @@ from typing import Protocol
 from app.content.schema import Slot
 
 CLOCK_RE = re.compile(
-    r"(\b(?:[01]?\d|2[0-3])(?::[0-5]\d)?\s?(?:am|pm|o'clock)\b|\b(?:[01]?\d|2[0-3]):[0-5]\d\b|"
-    r"\b(?:an?|one|two|three|four|five|six|seven|eight|nine|ten|twelve|half an?|\d+)\s+(?:hours?|minutes?|days?)\s+ago\b|"
-    r"\b(?:this morning|last night|yesterday|this afternoon|this evening|lunchtime|midnight|midday|at breakfast|at dinner|after dinner|overnight)\b)",
+    r"\b(\d{1,2}(:\d{2})?\s*(am|pm|a\.m\.|p\.m\.|o'clock)|midnight|midday|noon|lunchtime|breakfast|dinner|tea time|dawn|first thing"
+    r"|(this|in the|yesterday) (morning|afternoon|evening)|last night|bedtime"
+    r"|\d{1,2}(:\d{2})?(?=\b[^\d]{0,30}\b(yesterday|this morning|last night|today|tonight|ago)))",
     re.I,
 )
 NUMBER_RE = re.compile(r"\b(\d{1,3})\b")

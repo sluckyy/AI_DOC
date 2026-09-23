@@ -86,4 +86,4 @@ closing:
   time_course: "Someone will speak with you today."
   where: "If you feel faint or cannot pass anything and are vomiting, seek care the same day rather than waiting."
 prohibited: [letting the patient's explanation stand in for the finding, embedding a referral age threshold]
-gaps: ["Only 27% of colorectal cancers present with the two higher-risk symptoms; low-risk symptoms are recorded in full. Age and sex travel with this finding."]
+gaps: ["Most serious disease behind rectal bleeding presents without the two higher-risk features (weight loss, change in habit); low-risk symptoms are recorded in full and are not reassuring. Age and sex travel with this finding. No diagnosis or likelihood is offered to the patient or in this record."]

@@ -3,7 +3,7 @@
 # cross-cutting rules (not SOCRATES). No red flags; negatives never reassure.
 module: generic_symptom
 version: 0.1.0
-status: first_draft
+status: grounded
 reviewed: false
 setting: both
 activates_on:

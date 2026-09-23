@@ -1,0 +1,32 @@
+# Dialogue pack section 12 and Build Specification C5: built as assertions
+# against everything Dr Sam says (authored content at build time, generated
+# wording at run time), not as guidance. Patterns are case-insensitive regexes.
+phrases:
+  - {pattern: "\\bno red flags?\\b", because: "Negatives differ by presentation; the library's policy governs", ref: "invariant 5"}
+  - {pattern: "\\bnothing concerning\\b", because: "Negatives differ by presentation", ref: "invariant 5"}
+  - {pattern: "\\bsystems? review unremarkable\\b", because: "Global summary phrase", ref: "invariant 5"}
+  - {pattern: "\\bunremarkable\\b", because: "Global summary phrase", ref: "invariant 5"}
+  - {pattern: "\\bthat sounds like\\b", because: "Naming a diagnosis", ref: "F-27"}
+  - {pattern: "\\bthis is probably\\b", because: "Naming a diagnosis", ref: "F-27"}
+  - {pattern: "\\bit's probably\\b", because: "Prediction", ref: "F-27"}
+  - {pattern: "\\bprobably (just |only )?(nothing|fine|a virus|viral|muscular|anxiety)\\b", because: "Reassurance by prediction", ref: "invariant 2"}
+  - {pattern: "\\btry not to worry\\b", because: "Reassurance", ref: "invariant 2"}
+  - {pattern: "\\bdon't worry\\b", because: "Reassurance", ref: "invariant 2"}
+  - {pattern: "\\bnothing to worry about\\b", because: "Reassurance", ref: "invariant 2"}
+  - {pattern: "\\bi'm sure it's fine\\b", because: "Reassurance", ref: "invariant 2"}
+  - {pattern: "\\bthat sounds fine\\b", because: "Reassurance", ref: "invariant 2"}
+  - {pattern: "\\bshould be fine\\b", because: "Reassurance", ref: "invariant 2"}
+  - {pattern: "\\bthe good news is\\b", because: "Reassurance", ref: "invariant 2"}
+  - {pattern: "\\bat least\\b", because: "Reassurance by minimisation", ref: "invariant 2"}
+  - {pattern: "\\bthat's reassuring\\b", because: "A negative treated as reassuring", ref: "HAZ-2"}
+  - {pattern: "\\bsince there's no fever\\b", because: "Fever is absent in 43% of septic joints", ref: "HAZ-2"}
+  - {pattern: "\\bless urgent\\b", because: "Elapsed time never de-escalates", ref: "S-5"}
+  - {pattern: "\\bit's been a while, so\\b", because: "Elapsed time never de-escalates", ref: "S-5"}
+  - {pattern: "\\byour score is\\b", because: "The agent assembles no scores", ref: "F-21"}
+  - {pattern: "\\bscores? (of|is|was) \\d", because: "The agent assembles no scores", ref: "F-21"}
+  - {pattern: "\\bmost people with this\\b", because: "Prediction by another route", ref: "invariant 2"}
+  - {pattern: "\\bi understand how you feel\\b", because: "False claim; drifts toward reassurance", ref: "dialogue pack 12"}
+  - {pattern: "\\byou can wait\\b", because: "De-escalating disposition", ref: "P11"}
+  - {pattern: "\\bnot serious\\b", because: "A view on severity", ref: "invariant 2"}
+  - {pattern: "\\bno need to\\b", because: "De-escalating disposition", ref: "P11"}
+  - {pattern: "\\bsounds like (it's )?(just|only)\\b", because: "Minimisation", ref: "invariant 2"}

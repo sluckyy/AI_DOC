@@ -8,17 +8,43 @@ setting: both
 activates_on:
   terms: [bad back, back pain, back's gone, my back, spasm, sciatica, shooting down my leg, lower back, back has gone]
 slots:
-  - id: bp.cauda_equina
+  - id: bp.bladder_bowel
     class: red_flag
     required: true
-    intent: bladder or bowel dysfunction, saddle numbness, sexual dysfunction; the full set, asked of everyone
+    intent: trouble controlling the bladder or bowels, asked of everyone with back pain as its own question (dialogue pack 8.2)
     phrasings:
-      - {id: p1, form: closed, text: "Doctors ask everyone with back pain these: any trouble passing urine or holding it, any loss of control of your bowels, any numbness around your back passage or between your legs, or any change in sexual function?"}
+      - {id: p1, form: closed, text: "Have you had any trouble controlling your bladder or bowels?"}
     value: {type: yes_no}
-    extraction: {yes_terms: ["yes", can't pass urine, incontinent, wet myself, numb between my legs, numb around, saddle, bowels, sexual, erection, leaking], no_terms: ["no", none of those, all normal, nothing like that]}
+    extraction: {yes_terms: ["yes", can't pass urine, can't pee, can't go, incontinent, incontinence, wet myself, leaking, leaked, accident, accidents, lost control, can't hold it, can't control, soiled, retention, dribbling], no_terms: ["no", none, all normal, nothing like that, no trouble, no problems, both fine]}
     stigmatised: true
-    preamble: "Some of these questions are personal. They are asked of everyone with back pain, and only the clinician looking after you sees the answers."
+    preamble: "The next few questions are personal. They are asked of everyone with back pain, and only the clinician looking after you sees the answers."
     disclosure_group: continence
+    verbatim: true
+    negative_reporting: explicit
+  - id: bp.saddle_numbness
+    class: red_flag
+    required: true
+    intent: saddle numbness between the legs or around the back passage, asked of everyone with back pain as its own question (dialogue pack 8.2)
+    phrasings:
+      - {id: p1, form: closed, text: "Any numbness between your legs, around the back passage, or where you'd sit on a saddle?"}
+    value: {type: yes_no}
+    extraction: {yes_terms: ["yes", numb, numbness, pins and needles, tingling, tingly, can't feel, lost feeling, dead down there, less feeling], no_terms: ["no", not numb, feels normal, nothing like that, no numbness, feeling is normal]}
+    stigmatised: true
+    preamble: "This one is personal too, and it is asked of everyone with back pain."
+    disclosure_group: continence
+    verbatim: true
+    negative_reporting: explicit
+  - id: bp.sexual_function
+    class: red_flag
+    required: true
+    intent: change in sexual function since the back pain started, asked of everyone with back pain as its own question (dialogue pack 8.3)
+    phrasings:
+      - {id: p1, form: closed, text: "Have you noticed any change in sexual function since this started?"}
+    value: {type: yes_no}
+    extraction: {yes_terms: ["yes", erection, erections, can't climax, lost sensation, numb during, can't feel anything, it's changed, it's different, not working], no_terms: ["no", no change, same as usual, nothing like that, all normal, normal, nothing's changed, hasn't changed]}
+    stigmatised: true
+    preamble: "And the last of the personal ones, again asked of everyone with back pain."
+    disclosure_group: sexual
     verbatim: true
     negative_reporting: explicit
   - id: bp.bilateral_legs
@@ -95,21 +121,21 @@ slots:
     negative_reporting: omit
 red_flags:
   - id: rf.cauda_equina
-    fires_when: "bp.cauda_equina == 'yes'"
+    fires_when: "bp.bladder_bowel == 'yes' or bp.saddle_numbness == 'yes' or bp.sexual_function == 'yes'"
     tier: immediate
-    alert: {include_verbatim: true, template: "Bladder or bowel dysfunction, saddle numbness or sexual dysfunction with back pain. Patient said: {verbatim}."}
+    alert: {include_verbatim: true, template: "Bladder or bowel dysfunction, saddle numbness or change in sexual function with back pain: bladder or bowel control {bp.bladder_bowel}, saddle numbness {bp.saddle_numbness}, sexual function {bp.sexual_function}. Patient said: \"{verbatim}\"."}
     suppressible: false
     source: "Master list: bladder or bowel dysfunction, or saddle numbness, with back pain"
   - id: rf.bilateral_leg_symptoms
     fires_when: "bp.bilateral_legs == 'both'"
     tier: same_day
-    alert: {include_verbatim: true, template: "Bilateral leg symptoms with back pain. Patient said: {verbatim}."}
+    alert: {include_verbatim: true, template: "Bilateral leg symptoms with back pain. Patient said: \"{verbatim}\"."}
     suppressible: false
     source: "MSK table: bilateral leg symptoms; tier proposed for review"
   - id: rf.back_pain_flags
     fires_when: "bp.fever_weight_loss == 'yes' or bp.cancer_history == 'yes' or bp.night_pain == 'yes'"
     tier: flag
-    alert: {include_verbatim: true, template: "Back pain red flag positive (fever, weight loss, cancer history or night pain). Patient said: {verbatim}."}
+    alert: {include_verbatim: true, template: "Back pain red flag positive (fever, weight loss, cancer history or night pain). Patient said: \"{verbatim}\"."}
     suppressible: false
     source: "MSK table red flags"
 closing:
@@ -117,5 +143,5 @@ closing:
   watch_for: [trouble passing or holding urine, loss of bowel control, numbness between the legs, weakness in both legs]
   time_course: "Someone will speak with you today."
   where: "If any of those start, call an ambulance rather than waiting."
-prohibited: [reporting a negative red-flag screen as reassurance, saying "no red flags"]
+prohibited: [reporting a negative red-flag screen as reassurance, saying "no red flags", bundling continence, saddle numbness and sexual function into one question]
 gaps: ["A negative answer to one or two red-flag questions does not lower the likelihood of serious pathology. No examination of power, sensation or sphincter tone."]

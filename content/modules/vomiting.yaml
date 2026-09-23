@@ -31,12 +31,12 @@ slots:
     required: true
     intent: colour in the carer's or patient's own words, never normalised
     phrasings:
-      - {id: p1, form: open, text: "What colour is it? Describe it exactly, for example bright yellow like a highlighter, green, brown, red."}
+      - {id: p1, form: open, text: "What colour was it? Tell me in your own words."}
     value:
       type: enum
       options:
-        - {id: green, synonyms: [green, greenish, dark green]}
-        - {id: yellow, synonyms: [yellow, bright yellow, highlighter, yellowish]}
+        - {id: green, synonyms: [green, greenish, dark green, bile, bilious]}
+        - {id: yellow, synonyms: [yellow, yellowy, yellowish, bright yellow, highlighter, mustard]}
         - {id: red_blood, synonyms: [red, blood, bloody, coffee grounds, brown like coffee]}
         - {id: other, synonyms: [clear, milk, food, white, brown, normal]}
     verbatim: true
@@ -95,7 +95,7 @@ red_flags:
     tier: immediate
     alert: {include_verbatim: true, template: "Green or bright yellow vomit reported. Carer's words: {verbatim}. Age: {vo.who}."}
     suppressible: false
-    source: "Master list: green or bright yellow vomit in an infant; yellow is not resolved by further questioning (age gate to be applied when ctx.age is configured)"
+    source: "Master list: green or bright yellow vomit in an infant; yellow is not resolved by further questioning, and the colour is asked open (dialogue pack 7.4), never as a closed green-or-yellow choice (age gate to be applied when ctx.age is configured)"
   - id: rf.vomit_blood
     fires_when: "vo.colour_verbatim == 'red_blood'"
     tier: immediate
