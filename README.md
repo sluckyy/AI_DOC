@@ -81,6 +81,15 @@ tests under `backend/tests/simulation`: each critical criterion is an assertion
 against a requirement id. `pytest tests/simulation -q` runs them; the run also
 lints everything Dr Sam said and the handover against the prohibited phrase list.
 
+After the presenting complaint, Dr Sam runs the closing sections in
+`content/closing/`, in the order their files declare: a systems review whose
+positives route to their own question sets, medicines by category and per
+medicine, past history by five retrieval routes with a lay-anchored sweep,
+family history in three states with guideline thresholds named, function and
+situation as inputs never a score (with per-item pass-on consent), and social
+history. Each is a YAML module of `kind: closing`; a section can be re-ordered,
+disabled or replaced without code.
+
 Content is reloadable without a restart: `POST /api/content/reload` re-reads
 `content/` and keeps the previous bundle if the new one fails the authoring
 checks (D-51). `GET /api/content/status` lists every module with its review

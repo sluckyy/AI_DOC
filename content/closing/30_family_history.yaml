@@ -1,0 +1,233 @@
+# Closing section: family history (D-39; design/reference/family_history_2026-09-23.md).
+# Structured around triggers with an action attached, not around conditions:
+# the thresholds need who (degree of relationship, which side), what (the
+# specific diagnosis), when (age at diagnosis) and how many. The core question
+# names extended family explicitly, the cheapest gain in the reference: adding
+# "including your extended family" raised reported cancer history from 45.7%
+# to 65.1% in a randomised wording study. Reporting error is one-directional
+# (high specificity, low sensitivity): a report is worth much more than a
+# denial, a simple enquiry missed 55.8% of positive coronary histories, and
+# second-degree reporting sensitivity sits below 40%. So the section records
+# three states, denied, unknown and not asked, and opens with a branch for
+# adoption or estrangement so that not knowing never reads as a clean negative.
+# Presentation-triggered items (gates) ask the family history that changes the
+# differential in front of you, per the reference's acute presentations table.
+# The handover names the pattern and the threshold it crosses
+# (parameters.family_history_thresholds), never the eleven-relative list.
+module: family_history
+kind: closing
+order: 30
+display_name: your family's health
+version: 0.1.0
+status: grounded
+reviewed: false
+review_notes:
+  - "Self-report is accurate for first-degree breast and colon cancer (LR+ 41 and 23) and weak for second-degree relatives and less common sites; the handover must carry that asymmetry rather than a flat list"
+  - "Family history discriminates poorly at the individual level for common multifactorial disease (c-statistic 0.603 to 0.631 in the Aberdeen women); its value concentrates in monogenic patterns and presentation-specific decision points"
+  - "Collection without an action attached moved nothing in Family Healthware; the thresholds in parameters are what make this section more than a list"
+  - "Recall at the point of asking is bounded: 39% of MeTree patients learned of relatives' conditions only after going and asking them"
+  - "Family history should be scored as its own domain in the comparative study, against a consultant-taken structured family history, not pooled with the presenting complaint"
+  - "Australian thresholds (MJA 2018 colorectal categories, BreastScreen WA / Cancer Australia breast categories, 2023 CVD guideline, FH guidance) are the reference's; the parameters owner sets the deployment's values"
+setting: both
+slots:
+  # 1. Early branch: adoption, estrangement or a family that never talked about illness.
+  - id: fh.knowledge
+    class: context
+    required: true
+    always: true
+    intent: "early branch: whether the patient can give a family history at all, so that adoption or estrangement closes the section gracefully instead of producing a run of no answers that reads as a clean negative"
+    stigmatised: true
+    preamble: "Some people are adopted, or aren't in contact with their family, or their family never talked about illness. Any of those is fine to say."
+    phrasings:
+      - {id: fh-know-v1, form: closed, text: "Do you know your family's medical history?"}
+    value:
+      type: enum
+      options:
+        - {id: knows, synonyms: ["yes", i do, pretty well, most of it, i know it, yes i do]}
+        - {id: adopted_or_estranged, synonyms: [adopted, estranged, no contact, don't know them, never knew my father, never knew my mother, never met them, donor, foster, we don't talk, don't speak to them, no idea]}
+        - {id: partial, synonyms: [some of it, bits, partly, a bit, my mum's side, my dad's side, only one side, not all of it]}
+    verbatim: true
+    negative_reporting: explicit
+  # 2. Core question, with the extended family named in the prompt (the wording study).
+  - id: fh.core
+    class: coverage
+    required: true
+    always: true
+    asked_when: "fh.knowledge != 'adopted_or_estranged'"
+    intent: "the core family history with extended family named explicitly; who, what it was, and roughly how old, recorded as said"
+    phrasings:
+      - {id: fh-core-v1, form: open, text: "Has anyone in your family, including your extended family, grandparents, aunts, uncles and cousins on either side, had cancer, heart disease or a stroke before about sixty-five, diabetes, or died suddenly when young? Tell me who, what it was, and roughly how old they were."}
+    value: {type: text}
+    none_terms: ["no", none, nobody, no one, nothing like that, nothing that i know of, not that i know of]
+    verbatim: true
+    negative_reporting: explicit
+  # 3. Trigger-specific follow-ups, structured so the handover can name the threshold (D-39).
+  - id: fh.crc_first_degree_count
+    class: coverage
+    required: false
+    asked_if_mentioned: [bowel cancer, colon cancer, colorectal, rectal cancer, bowel]
+    intent: "count of first-degree relatives with colorectal cancer, for the MJA 2018 category thresholds"
+    phrasings:
+      - {id: fh-crc-n-v1, form: closed, text: "How many of your parents, brothers, sisters or children had bowel cancer?"}
+    value: {type: number}
+    verbatim: true
+    negative_reporting: explicit
+  - id: fh.crc_youngest_age
+    class: coverage
+    required: false
+    asked_if_mentioned: [bowel cancer, colon cancer, colorectal, rectal cancer, bowel]
+    intent: "age at diagnosis of the youngest affected relative with colorectal cancer, the under-fifty-five criterion"
+    phrasings:
+      - {id: fh-crc-age-v1, form: closed, text: "How old was the youngest of them when it was found?"}
+    value: {type: number}
+    verbatim: true
+    negative_reporting: explicit
+  - id: fh.breast_first_degree_count
+    class: coverage
+    required: false
+    asked_if_mentioned: [breast cancer, ovarian cancer, ovary]
+    intent: "count of first-degree relatives with breast or ovarian cancer, for the BreastScreen WA / Cancer Australia categories"
+    phrasings:
+      - {id: fh-br-n-v1, form: closed, text: "How many of your parents, brothers, sisters or children had breast or ovarian cancer?"}
+    value: {type: number}
+    verbatim: true
+    negative_reporting: explicit
+  - id: fh.breast_youngest_age
+    class: coverage
+    required: false
+    asked_if_mentioned: [breast cancer, ovarian cancer, ovary]
+    intent: "age at diagnosis of the youngest affected relative with breast or ovarian cancer, the under-fifty criterion"
+    phrasings:
+      - {id: fh-br-age-v1, form: closed, text: "How old was the youngest of them when it was found?"}
+    value: {type: number}
+    verbatim: true
+    negative_reporting: explicit
+  - id: fh.breast_high_risk_feature
+    class: coverage
+    required: false
+    asked_if_mentioned: [breast cancer, ovarian cancer, ovary]
+    intent: "the high-risk features that turn two close relatives into a genetic risk assessment referral"
+    phrasings:
+      - {id: fh-br-hr-v1, form: closed, text: "Was any of it in both breasts, in a man, before forty, or is there Ashkenazi Jewish ancestry in the family?"}
+    value:
+      type: set
+      options:
+        - {id: bilateral, synonyms: [both breasts, both sides, bilateral]}
+        - {id: male_breast_cancer, synonyms: [in a man, my father, my brother, my uncle had it, male]}
+        - {id: ashkenazi, synonyms: [ashkenazi, jewish, jewish ancestry]}
+        - {id: under_40, synonyms: [before forty, under forty, in her thirties, in her twenties, very young]}
+        - {id: none, synonyms: ["no", none, none of those, nothing like that]}
+    verbatim: true
+    negative_reporting: explicit
+  - id: fh.cvd_premature
+    class: coverage
+    required: false
+    asked_if_mentioned: [heart attack, heart disease, stroke, bypass, stent, angina, cholesterol]
+    intent: "premature cardiovascular disease in a first-degree relative, the reclassification factor in the 2023 Australian CVD guideline"
+    phrasings:
+      - {id: fh-cvd-v1, form: closed, text: "Was that a parent, brother, sister or child, and were they under fifty-five for a man or sixty-five for a woman when it happened?"}
+    value: {type: yes_no}
+    extraction:
+      yes_terms: ["yes", my dad, my mum, my father, my mother, my brother, my sister, in his forties, in his fifties, in her fifties, in her forties, young, early]
+      no_terms: ["no", grandfather, grandmother, uncle, aunt, cousin, in his seventies, in her eighties, older, old age]
+      unknown_terms: [don't know, not sure, no idea, never knew, wouldn't know]
+    verbatim: true
+    negative_reporting: explicit
+  - id: fh.familial_hypercholesterolaemia
+    class: coverage
+    required: false
+    asked_if_mentioned: [cholesterol, familial hypercholesterolaemia, fh]
+    intent: "known familial hypercholesterolaemia or markedly raised cholesterol running in the family, the cascade-testing trigger"
+    phrasings:
+      - {id: fh-fh-v1, form: closed, text: "Has anyone in the family been told they have very high cholesterol that runs in the family?"}
+    value: {type: yes_no}
+    extraction:
+      yes_terms: ["yes", runs in the family, familial, very high cholesterol, all of us have it, genetic cholesterol]
+      no_terms: ["no", just ordinary cholesterol, nobody, none]
+      unknown_terms: [don't know, not sure, no idea, never knew, wouldn't know]
+    verbatim: true
+    negative_reporting: explicit
+  # 4. Presentation-triggered items: the family history that changes today's assessment.
+  - id: fh.sudden_death_young
+    class: coverage
+    required: false
+    gates: [syncope, palpitations, chest_pain, seizure]
+    prefill_from: [gate.family_sudden_death]
+    intent: "sudden or unexplained death in a first-degree relative under forty, or known inherited arrhythmia or cardiomyopathy; prefilled from the shared gate when already asked"
+    phrasings:
+      - {id: fh-sd-v1, form: closed, text: "Has a parent, brother, sister or child died suddenly or without explanation before about forty, or been told they have an inherited heart rhythm or heart muscle condition?"}
+    value: {type: yes_no}
+    extraction:
+      yes_terms: ["yes", died suddenly, sudden death, dropped dead, drowned, in his sleep, cardiomyopathy, long qt, brugada, inherited heart condition, defibrillator]
+      no_terms: ["no", nobody, none, not that i know of]
+      unknown_terms: [don't know, not sure, no idea, never knew, wouldn't know]
+    verbatim: true
+    negative_reporting: explicit
+  - id: fh.aortic_connective
+    class: coverage
+    required: false
+    gates: [chest_pain, back_pain]
+    intent: "aortic dissection, aneurysm, Marfan or other connective tissue disease in a first-degree relative"
+    phrasings:
+      - {id: fh-aorta-v1, form: closed, text: "Has anyone in the family had a torn aorta, an aneurysm, or Marfan syndrome or another connective tissue condition?"}
+    value: {type: yes_no}
+    extraction:
+      yes_terms: ["yes", aorta, aortic, aneurysm, dissection, marfan, ehlers-danlos, connective tissue, torn artery]
+      no_terms: ["no", nobody, none, not that i know of]
+      unknown_terms: [don't know, not sure, no idea, never knew, wouldn't know]
+    verbatim: true
+    negative_reporting: explicit
+  - id: fh.vte
+    class: coverage
+    required: false
+    gates: [chest_pain, breathlessness, leg_swelling, limb_pain]
+    intent: "venous thromboembolism in a first-degree relative, especially unprovoked or under fifty"
+    phrasings:
+      - {id: fh-vte-v1, form: closed, text: "Has a parent, brother, sister or child had a blood clot in the leg or lung, especially before fifty or without an obvious cause?"}
+    value: {type: yes_no}
+    extraction:
+      yes_terms: ["yes", clot, dvt, embolism, pulmonary embolism, clot in the leg, clot in the lung, blood thinners for a clot, thrombophilia, factor five]
+      no_terms: ["no", nobody, none, not that i know of]
+      unknown_terms: [don't know, not sure, no idea, never knew, wouldn't know]
+    verbatim: true
+    negative_reporting: explicit
+  - id: fh.sah_pkd
+    class: coverage
+    required: false
+    gates: [headache]
+    intent: "subarachnoid haemorrhage or polycystic kidney disease in a first-degree relative"
+    phrasings:
+      - {id: fh-sah-v1, form: closed, text: "Has anyone in the family had a bleed on the brain from a burst blood vessel, or polycystic kidneys?"}
+    value: {type: yes_no}
+    extraction:
+      yes_terms: ["yes", bleed on the brain, brain haemorrhage, subarachnoid, burst blood vessel, aneurysm in the head, polycystic, cysts on the kidneys, kidneys full of cysts]
+      no_terms: ["no", nobody, none, not that i know of]
+      unknown_terms: [don't know, not sure, no idea, never knew, wouldn't know]
+    verbatim: true
+    negative_reporting: explicit
+  - id: fh.child
+    class: coverage
+    required: false
+    gates: [unwell_child]
+    intent: "for an unwell child: consanguinity, prior unexplained infant or childhood death, and known metabolic or genetic conditions in the family"
+    phrasings:
+      - {id: fh-child-v1, form: open, text: "Are the child's parents related to each other by blood? Has any baby or child in the family died unexpectedly, or has anyone been told of a metabolic or genetic condition?"}
+    value: {type: text}
+    none_terms: ["no", none, nothing like that, no to all of those, not related, nobody]
+    verbatim: true
+    negative_reporting: explicit
+red_flags:
+  - id: rf.fh_sudden_death_young
+    fires_when: "fh.sudden_death_young == 'yes'"
+    tier: flag
+    alert: {include_verbatim: true, template: "Family history of sudden or unexplained death in a first-degree relative under forty, or an inherited arrhythmia or cardiomyopathy, in a presentation where it changes the assessment. Patient said: {verbatim}."}
+    suppressible: false
+    source: "Family history evidence base, acute presentations table: syncope, palpitations or cardiac arrest in a young person with sudden or unexplained death in a first-degree relative under 40, or known inherited arrhythmia or cardiomyopathy"
+prohibited:
+  - collapsing "unknown" into "no"; asked and denied, asked and unknown, and not asked are three different values
+  - reporting "no family history" without the list of what was asked
+  - treating a denial as lowering risk for second-degree relatives; reporting sensitivity there is below 40%
+gaps:
+  - "The GP version's second pass after the patient checks with relatives (which relatives, about what, picked up before the appointment) is a script line, not yet built"
+  - "Thresholds are named by the handover from parameters.family_history_thresholds, which the parameters owner has not yet set; this section records the raw who, what, age and count"
+  - "The depressive presentation row (bipolar disorder in a first-degree relative) belongs to the mental health section, which is disabled pending specialist input (D-50)"

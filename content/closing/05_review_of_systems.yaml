@@ -1,0 +1,175 @@
+# Closing section: a quick check through the body (D-37; Build Specification F-10,
+# F-16). A full systems review run after saturation because asking is cheap; the
+# false-positive load transfers to the handover, not to the patient. The controller
+# reconciles silently any positive already in the presenting complaint, sends benign
+# positives to the collapsed structured layer, and activates the named presentation
+# module for a positive that moves the differential or is a red flag (route_to).
+# Weiner 2020: about three quarters of documented ROS negatives in practice were never
+# asked; an agent that asks has true documented negatives, so every item is asked of
+# everyone and every negative is reported explicitly. A negative here never reassures.
+module: review_of_systems
+kind: closing
+order: 5
+display_name: a quick check through the body
+version: 0.1.0
+status: grounded
+reviewed: false
+review_notes:
+  - "The mental health module is blocked pending specialist sign-off (D-50); the mood and sleep item here has no route and a low-mood positive is surfaced as a flag only, never followed up by the agent"
+  - "Item wording per system is a GP reviewer decision; the list per stem is the owner's call on interview length"
+  - "Whether the early-pregnancy bleeding item is asked of everyone in the genitourinary sweep, or only where gate.pregnancy_possible applies, is an O&G reviewer decision"
+  - "Routing targets are presentation modules under content/modules; the controller has not yet implemented route_to or the silent reconciliation of duplicates"
+setting: both
+slots:
+  - id: ros.cardiorespiratory
+    class: coverage
+    required: false
+    always: true
+    intent: heart and lung symptoms in the last few weeks, each named, with a positive routed to its presentation module
+    phrasings:
+      - {id: ros-cr-v1, form: closed, text: "Now a quick check through the body. In the last few weeks, have you had any of these: chest pain, breathlessness, a racing or thumping heart, a cough, coughing up blood, or swollen ankles?"}
+    value:
+      type: set
+      options:
+        - {id: chest_pain, synonyms: ["chest pain", "pain in my chest", "tight chest", "chest tightness", "pressure in my chest"]}
+        - {id: breathlessness, synonyms: ["breathless", "breathlessness", "short of breath", "out of breath", "can't catch my breath", "puffed"]}
+        - {id: palpitations, synonyms: ["racing heart", "thumping heart", "palpitations", "heart racing", "heart pounding", "fluttering", "skipping beats"]}
+        - {id: cough, synonyms: ["cough", "coughing", "a cough", "wheeze", "wheezy"]}
+        - {id: coughing_blood, synonyms: ["coughing up blood", "coughed up blood", "blood in my phlegm", "blood when i cough", "bloody sputum"]}
+        - {id: ankle_swelling, synonyms: ["swollen ankles", "ankle swelling", "swollen legs", "puffy ankles", "my legs swell", "swollen feet"]}
+        - {id: none, synonyms: ["none", "none of those", "no", "nothing like that", "no to all of those"]}
+    route_to: {chest_pain: chest_pain, breathlessness: breathlessness, palpitations: palpitations, cough: cough_wheeze, coughing_blood: haemoptysis, ankle_swelling: leg_swelling}
+    evidence: {citation: "Mitchell 1992 (cardiopulmonary and GI ROS in 550 admissions, about 5% yield); ROS evidence base, implications for the agent", note: "A positive here is a routing event, not a finding; an unselected positive carries almost no information on its own (Kroenke)"}
+    verbatim: true
+    negative_reporting: explicit
+  - id: ros.gastrointestinal
+    class: coverage
+    required: false
+    always: true
+    intent: gut symptoms in the last few weeks, each named, with a positive routed to its presentation module
+    phrasings:
+      - {id: ros-gi-v1, form: closed, text: "In the last few weeks, have you had any of these: tummy pain, vomiting, a change in your bowels, blood in your poo, or trouble swallowing?"}
+    value:
+      type: set
+      options:
+        - {id: abdominal_pain, synonyms: ["tummy pain", "stomach pain", "belly pain", "abdominal pain", "pain in my stomach", "cramps", "gut pain"]}
+        - {id: vomiting, synonyms: ["vomiting", "vomited", "throwing up", "been sick", "spewing", "nausea"]}
+        - {id: bowel_change, synonyms: ["change in my bowels", "bowels have changed", "diarrhoea", "constipation", "constipated", "loose", "going more often", "bowel habit"]}
+        - {id: blood_in_stool, synonyms: ["blood in my poo", "blood in my stool", "blood when i go to the toilet", "black poo", "black stools", "blood from the back passage", "bleeding from the bottom"]}
+        - {id: dysphagia, synonyms: ["trouble swallowing", "hard to swallow", "food sticks", "food gets stuck", "can't swallow", "swallowing"]}
+        - {id: none, synonyms: ["none", "none of those", "no", "nothing like that", "no to all of those"]}
+    route_to: {abdominal_pain: abdominal_pain, vomiting: vomiting, bowel_change: bowel_habit, blood_in_stool: gi_bleeding, dysphagia: dysphagia}
+    evidence: {citation: "Mitchell 1992 (cardiopulmonary and GI ROS, about 5% yield); ROS evidence base, implications for the agent"}
+    verbatim: true
+    negative_reporting: explicit
+  - id: ros.genitourinary
+    class: coverage
+    required: false
+    always: true
+    intent: urinary and genital symptoms in the last few weeks, each named, with a positive routed to its presentation module
+    phrasings:
+      - {id: ros-gu-v1, form: closed, text: "In the last few weeks, have you had any of these: burning when you pass urine or going more often, blood in your urine, pain in a testicle, or vaginal bleeding while pregnant or possibly pregnant?"}
+    value:
+      type: set
+      options:
+        - {id: urinary_symptoms, synonyms: ["burning", "stings when i wee", "burning when i pee", "going more often", "frequency", "weeing a lot", "urgency", "cystitis", "uti"]}
+        - {id: blood_in_urine, synonyms: ["blood in my urine", "blood in my wee", "blood when i pee", "red urine", "pink urine", "haematuria"]}
+        - {id: testicular_pain, synonyms: ["pain in a testicle", "testicle pain", "my balls", "pain in my testicles", "sore testicle", "swollen testicle"]}
+        - {id: bleeding_early_pregnancy, synonyms: ["vaginal bleeding", "bleeding and i'm pregnant", "bleeding while pregnant", "spotting", "bleeding down below"]}
+        - {id: none, synonyms: ["none", "none of those", "no", "nothing like that", "no to all of those"]}
+    route_to: {urinary_symptoms: urinary_symptoms, blood_in_urine: haematuria, testicular_pain: testicular_pain, bleeding_early_pregnancy: vaginal_bleeding_early_pregnancy}
+    evidence: {citation: "ROS evidence base, implications for the agent; Verdon and Siemens 1997 (20-item ROS, 10.5% of patients with a new diagnosis)"}
+    verbatim: true
+    negative_reporting: explicit
+  - id: ros.neurological
+    class: coverage
+    required: false
+    always: true
+    intent: nervous system symptoms in the last few weeks, each named, with a positive routed to its presentation module
+    phrasings:
+      - {id: ros-neuro-v1, form: closed, text: "In the last few weeks, have you had any of these: headaches, dizziness, fainting, a fit or seizure, weakness or numbness or trouble with your speech, a change in your vision, or confusion?"}
+    value:
+      type: set
+      options:
+        - {id: headache, synonyms: ["headache", "headaches", "head pain", "migraine", "my head"]}
+        - {id: dizziness, synonyms: ["dizziness", "dizzy", "light-headed", "lightheaded", "the room spins", "vertigo", "giddy", "unsteady"]}
+        - {id: fainting, synonyms: ["fainting", "fainted", "passed out", "blacked out", "collapsed", "keeled over"]}
+        - {id: fits, synonyms: ["a fit", "fit", "fits", "seizure", "seizures", "convulsion", "shaking all over"]}
+        - {id: weakness_numbness_speech, synonyms: ["weakness", "weak arm", "weak leg", "numbness", "numb", "pins and needles", "trouble with my speech", "slurred", "couldn't get my words out", "face drooping", "droopy face"]}
+        - {id: vision_change, synonyms: ["change in my vision", "vision", "blurred", "blurry", "double vision", "lost my sight", "can't see properly", "flashing lights", "curtain"]}
+        - {id: confusion, synonyms: ["confusion", "confused", "muddled", "not making sense", "forgetful", "foggy"]}
+        - {id: none, synonyms: ["none", "none of those", "no", "nothing like that", "no to all of those"]}
+    route_to: {headache: headache, dizziness: dizziness, fainting: syncope, fits: seizure, weakness_numbness_speech: stroke_cluster, vision_change: visual_disturbance, confusion: confusion}
+    evidence: {citation: "ROS evidence base, implications for the agent: the roughly 10% of positives that move the differential or are red flags go to the narrative handover; Rodriguez 2010 (a short serious ROS of red flags)"}
+    verbatim: true
+    negative_reporting: explicit
+  - id: ros.musculoskeletal_skin
+    class: coverage
+    required: false
+    always: true
+    intent: back, neck, joint, limb and skin symptoms in the last few weeks, each named, with a positive routed to its presentation module
+    phrasings:
+      - {id: ros-msk-v1, form: closed, text: "In the last few weeks, have you had any of these: back pain, neck pain, a hot or swollen joint, pain in an arm or leg, a rash, a new lump, or a wound or bite?"}
+    value:
+      type: set
+      options:
+        - {id: back_pain, synonyms: ["back pain", "my back", "sore back", "bad back", "lower back"]}
+        - {id: neck_pain, synonyms: ["neck pain", "my neck", "sore neck", "stiff neck"]}
+        - {id: hot_swollen_joint, synonyms: ["hot joint", "swollen joint", "hot and swollen", "my knee is swollen", "red joint", "joint pain", "sore joint"]}
+        - {id: limb_pain, synonyms: ["pain in my arm", "pain in my leg", "arm pain", "leg pain", "calf pain", "sore leg", "sore arm", "pain in a limb"]}
+        - {id: rash, synonyms: ["rash", "spots", "blotches", "hives", "itchy skin", "red patches"]}
+        - {id: lump, synonyms: ["lump", "a new lump", "a lump", "swelling under the skin", "bump", "growth"]}
+        - {id: wound_or_bite, synonyms: ["wound", "cut", "bite", "bitten", "scratch", "sore that won't heal", "an ulcer", "stung"]}
+        - {id: none, synonyms: ["none", "none of those", "no", "nothing like that", "no to all of those"]}
+    route_to: {back_pain: back_pain, neck_pain: neck_pain, hot_swollen_joint: joint_pain, limb_pain: limb_pain, rash: rash, lump: lumps, wound_or_bite: wounds_bites}
+    evidence: {citation: "ROS evidence base, implications for the agent; Verdon and Siemens 1997 (33.8% of positives addressed and judged benign, which go to the structured layer only)"}
+    verbatim: true
+    negative_reporting: explicit
+  - id: ros.constitutional
+    class: coverage
+    required: false
+    always: true
+    intent: constitutional symptoms and falls in the last few weeks, the case-finding items with independent screening evidence, each named, with a positive routed to its presentation module
+    phrasings:
+      - {id: ros-const-v1, form: closed, text: "In the last few weeks, have you had any of these: a fever, losing weight without trying, feeling very tired, sweating at night, feeling generally unwell, or a fall?"}
+    value:
+      type: set
+      options:
+        - {id: fever, synonyms: ["fever", "temperature", "hot and cold", "shivers", "chills", "rigors", "feverish"]}
+        - {id: weight_loss, synonyms: ["losing weight", "lost weight", "weight loss", "clothes are loose", "without trying", "weight dropping off"]}
+        - {id: tiredness, synonyms: ["very tired", "tired", "tiredness", "exhausted", "no energy", "fatigue", "worn out", "wiped out"]}
+        - {id: night_sweats, synonyms: ["sweating at night", "night sweats", "wake up drenched", "soaked sheets", "sweats"]}
+        - {id: generally_unwell, synonyms: ["generally unwell", "unwell", "not right", "off colour", "just not myself", "run down", "not well"]}
+        - {id: fall, synonyms: ["a fall", "fall", "fell", "fallen", "fell over", "had a tumble", "went down", "tripped"]}
+        - {id: none, synonyms: ["none", "none of those", "no", "nothing like that", "no to all of those"]}
+    route_to: {fever: fever_sepsis, weight_loss: weight_loss, tiredness: fatigue, night_sweats: weight_loss, generally_unwell: generally_unwell, fall: falls}
+    evidence: {citation: "ROS evidence base, what the evidence supports: case-finding items with independent screening evidence (unintentional weight loss, B symptoms, falls)"}
+    verbatim: true
+    negative_reporting: explicit
+  - id: ros.mood_sleep
+    class: coverage
+    required: false
+    always: true
+    intent: low mood and poor sleep in the last few weeks, as case-finding items; no route, because the mental health module is blocked pending specialist sign-off (D-50); a low-mood positive is surfaced as a flag only
+    phrasings:
+      - {id: ros-mood-v1, form: closed, text: "And in the last few weeks, have you had either of these: feeling low or down, or trouble sleeping?"}
+    value:
+      type: set
+      options:
+        - {id: low_mood, synonyms: ["feeling low", "low", "down", "feeling down", "depressed", "flat", "miserable", "hopeless", "low mood", "teary", "can't be bothered"]}
+        - {id: poor_sleep, synonyms: ["trouble sleeping", "can't sleep", "poor sleep", "insomnia", "waking early", "waking up at night", "sleeping badly", "not sleeping"]}
+        - {id: none, synonyms: ["none", "neither", "no", "nothing like that", "sleeping fine", "mood is fine"]}
+    evidence: {citation: "ROS evidence base, what the evidence supports: case-finding items with independent screening evidence (depression); dialogue pack 10 (mental health not approved, does not ship without specialist sign-off)", note: "No screener items are administered here; the licensed instrument belongs to the blocked mental health module"}
+    verbatim: true
+    negative_reporting: explicit
+red_flags:
+  - id: rf.ros_low_mood
+    fires_when: "'low_mood' in ros.mood_sleep"
+    tier: flag
+    alert: {include_verbatim: true, template: "Low mood reported in the systems review. The mental health section is not live (D-50), so this is surfaced as a flag only and was not explored further. Patient said: {verbatim}."}
+    suppressible: false
+    source: "ROS evidence base: depression is a case-finding item with independent screening evidence; mental health module blocked pending specialist sign-off (D-50, dialogue pack 10)"
+prohibited: ["\"systems review unremarkable\" or any global negative phrase in the handover", treating a negative as reassurance]
+gaps:
+  - "No study has measured the yield of an AI-conducted systems review against a reference standard (ROS evidence base, gaps)"
+  - "ROS-elicited symptoms are a separate stratum in the agreement analysis, so they do not dominate disagreement against the emergency doctors' histories (D-37)"

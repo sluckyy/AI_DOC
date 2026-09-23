@@ -15,6 +15,14 @@ from app.content.schema import ContentBundle
 from app.providers.terminology import TerminologyProvider, FakeTerminology
 
 
+def _label(intent: str) -> str:
+    """The short label for a slot: the first clause, and after any 'route:'-style prefix."""
+    label = intent.split(",")[0].split(";")[0].strip()
+    if ": " in label and len(label.split(": ")[0].split()) <= 3:
+        label = label.split(": ", 1)[1]
+    return label
+
+
 def _fmt(value) -> str:
     if value is None:
         return "not asked"
@@ -31,6 +39,50 @@ def _tone_sentence(state: dict) -> str | None:
         return "Seemed settled throughout."
     top = max(set(labels), key=labels.count)
     return f"Seemed {top.replace('_', ' ')} at times during the interview (derived from wording and pace; not a clinical finding)."
+
+
+def _num(state: dict, slot_id: str):
+    v = state.get("slot_values", {}).get(slot_id)
+    if not v or v.get("state") != "filled":
+        return None
+    try:
+        return int(v["value"])
+    except (TypeError, ValueError):
+        return None
+
+
+def _family_pattern_lines(state: dict, bundle: ContentBundle) -> list[str]:
+    """D-39: hand over the pattern and the threshold it crosses, from the structured follow-ups, never from free text."""
+    th = bundle.parameters.family_history_thresholds or {}
+    lines: list[str] = []
+    knowledge = state.get("slot_values", {}).get("fh.knowledge", {}).get("value")
+    if knowledge == "adopted_or_estranged":
+        lines.append("Family history: not known to the patient (adopted, estranged or no family contact). This is 'unknown', not 'negative'.")
+        return lines
+    crc_n, crc_age = _num(state, "fh.crc_first_degree_count"), _num(state, "fh.crc_youngest_age")
+    c2, c3 = th.get("colorectal_category_2", {}), th.get("colorectal_category_3", {})
+    if crc_n is not None:
+        if c3 and crc_n >= c3.get("first_degree_count", 3):
+            lines.append(f"Family history pattern: {crc_n} first-degree relatives with bowel cancer. Meets {c3.get('label')}.")
+        elif c2 and (crc_n >= c2.get("first_degree_count", 2) or (crc_age is not None and crc_age < c2.get("or_one_first_degree_under_age", 55))):
+            lines.append(f"Family history pattern: {crc_n} first-degree relative(s) with bowel cancer" + (f", youngest at {crc_age}" if crc_age is not None else "") + f". Meets {c2.get('label')}.")
+        else:
+            lines.append(f"Family history: {crc_n} first-degree relative(s) with bowel cancer" + (f", youngest at {crc_age}" if crc_age is not None else "") + "; below the configured referral thresholds, clinician to confirm.")
+    br_n, br_age = _num(state, "fh.breast_first_degree_count"), _num(state, "fh.breast_youngest_age")
+    bm = th.get("breast_moderate_risk", {})
+    if br_n is not None and br_n > 0:
+        feats = state.get("slot_values", {}).get("fh.breast_high_risk_feature", {}).get("value") or []
+        feats = [f for f in feats if f != "none"] if isinstance(feats, list) else []
+        if feats:
+            lines.append(f"Family history pattern: {br_n} first-degree relative(s) with breast or ovarian cancer with high-risk feature(s) {', '.join(feats).replace('_', ' ')}. Genetic risk assessment criteria apply (Cancer Australia categories); clinician to confirm.")
+        elif bm and br_age is not None and br_age < bm.get("first_degree_under_age", 50):
+            lines.append(f"Family history pattern: {br_n} first-degree relative(s) with breast cancer, youngest at {br_age}. Meets {bm.get('label')}.")
+        else:
+            lines.append(f"Family history: {br_n} first-degree relative(s) with breast cancer" + (f", youngest at {br_age}" if br_age is not None else "") + "; clinician to compare against the configured categories.")
+    cvd = state.get("slot_values", {}).get("fh.cvd_premature", {})
+    if cvd.get("state") == "filled" and cvd.get("value") == "yes":
+        lines.append(f"Family history pattern: premature cardiovascular disease in a first-degree relative, as the patient reports it. {th.get('premature_cvd', {}).get('label', '')}".strip())
+    return lines
 
 
 def generate(state: dict, bundle: ContentBundle, terminology: TerminologyProvider | None = None, versions: dict | None = None, metadata: dict | None = None) -> dict:
@@ -70,14 +122,35 @@ def generate(state: dict, bundle: ContentBundle, terminology: TerminologyProvide
     problems = [p["term"] for p in state.get("problems", [])]
     if problems:
         narrative.append("Problems named by the patient: " + ", ".join(problems) + ".")
-    # 3. Per module findings, per-slot negative reporting
+    # 3. Per module findings, per-slot negative reporting. Blocks are built per module, then ordered per D-44:
+    #    presenting complaint and its modules; function and situation (three or four lines, D-47); the systems review;
+    #    past history (never opening the summary); medicines; family pattern; social; the shared gates.
+    blocks: dict[str, list[str]] = {}
     for m in modules:
         found: list[str] = []
         negatives: list[str] = []
         not_asked: list[str] = []
         unknown: list[str] = []
+        withheld: list[str] = []
+        repeats: dict[str, list[str]] = {}
+        instances = [(k, v) for k, v in state["slot_values"].items() if "#" in k and v.get("module") == m.module]
         for s in m.slots:
             v = state["slot_values"].get(s.id)
+            if s.repeat_over:
+                for k, iv in sorted(instances, key=lambda kv: int(kv[0].split("#")[1]) if kv[0].split("#")[1].isdigit() else 0):
+                    if not k.startswith(s.id + "#"):
+                        continue
+                    structured.append({
+                        "slot_id": k, "module": m.module, "module_version": m.version, "class": s.slot_class, "intent": s.intent,
+                        "item": iv.get("item"), "value": iv.get("value"), "verbatim": iv.get("verbatim"), "state": iv["state"],
+                        "turn_id": iv.get("turn_id"), "source": iv.get("source"), "provenance": "patient_reported" if iv["state"] == "filled" else "structural",
+                        "evidence": None, "negative_reporting": s.negative_reporting,
+                    })
+                    if iv["state"] == "filled":
+                        repeats.setdefault(s.intent.split(":")[0], []).append(f'{iv.get("item") or "item"}: "{(iv.get("verbatim") or _fmt(iv.get("value")))[:160]}"')
+                    elif iv["state"] == "unknown":
+                        unknown.append(f'{iv.get("item") or "item"}: patient could not say; not verified')
+                continue
             entry = {
                 "slot_id": s.id, "module": m.module, "module_version": m.version, "class": s.slot_class,
                 "intent": s.intent, "value": v["value"] if v else None, "verbatim": v.get("verbatim") if v else None,
@@ -85,22 +158,31 @@ def generate(state: dict, bundle: ContentBundle, terminology: TerminologyProvide
                 "turn_id": v.get("turn_id") if v else None, "source": v.get("source") if v else None,
                 "provenance": "patient_reported" if v and v["state"] == "filled" else "structural",
                 "evidence": (s.evidence.lr if s.evidence and not s.evidence.gap else None),
-                "negative_reporting": s.negative_reporting,
+                "negative_reporting": s.negative_reporting, "instrument": s.instrument,
             }
+            if v is not None and v.get("pass_on") is False:
+                # D-47: the patient declined to have this passed on; the record carries the fact, not the content
+                entry.update({"value": None, "verbatim": None, "state": "withheld_by_patient", "provenance": "structural"})
+                structured.append(entry)
+                withheld.append(_label(s.intent))
+                continue
             structured.append(entry)
             if v is not None and v["state"] == "not_applicable":
                 continue   # an answer-driven branch that did not apply (F-13)
             if v is None or v["state"] == "not_asked":
-                if s.required:
+                if s.required or s.always:
                     not_asked.append(s.intent)
                 continue
             if v["state"] == "unknown":
-                label = s.intent.split(",")[0].split(";")[0]
-                unknown.append(f"{label}: patient could not say; not verified" + (f' ("{v.get("verbatim", "")[:100]}")' if v.get("verbatim") else ""))
+                label = _label(s.intent)
+                if m.kind == "closing":
+                    unknown.append(f"{label}: asked; the patient did not know")
+                else:
+                    unknown.append(f"{label}: patient could not say; not verified" + (f' ("{v.get("verbatim", "")[:100]}")' if v.get("verbatim") else ""))
                 continue
             val = v["value"]
             is_negative = val in ("no", "none", []) or (isinstance(val, list) and val == ["none"])
-            label = s.intent.split(",")[0].split(";")[0]
+            label = _label(s.intent)
             if is_negative:
                 if s.negative_reporting == "explicit":
                     negatives.append(f"{label}: no")
@@ -108,17 +190,49 @@ def generate(state: dict, bundle: ContentBundle, terminology: TerminologyProvide
             line = f"{label}: {_fmt(val)}"
             if v.get("verbatim") and s.verbatim and s.value.type != "text":
                 line += f' ("{v["verbatim"][:120]}")'
+            if s.pass_on_consent and v.get("pass_on") is True:
+                line += " (patient agreed to pass this on)"
             found.append(line)
-        if found:
-            narrative.append(f"{(m.display_name or m.module.replace('_', ' ')).capitalize()}: " + "; ".join(found) + ".")
-        if negatives:
-            narrative.append("Documented negatives (each was asked): " + "; ".join(negatives) + ".")
+        lines: list[str] = []
+        title = (m.display_name or m.module.replace("_", " ")).capitalize()
+        if m.kind == "closing" and m.module == "review_of_systems":
+            # D-37: benign positives sit in the structured layer; routed ones appear as their own module above.
+            groups = sum(1 for s_ in m.slots if state["slot_values"].get(s_.id, {}).get("state") == "filled")
+            routed = [r["option"].replace("_", " ") for r in state.get("ros_elicited", [])]
+            if found:
+                lines.append(f"Systems review (asked in {groups} groups; positives recorded in the structured layer, not explored unless routed): " + "; ".join(found) + ".")
+            elif groups:
+                lines.append(f"Systems review: asked in {groups} groups; every item asked and denied. Each denial is a documented negative only.")
+            if routed:
+                lines.append("Routed from the systems review to their own question sets: " + ", ".join(dict.fromkeys(routed)) + " (a separate stratum in the agreement analysis, D-37).")
+        else:
+            if found:
+                lines.append(f"{title}: " + "; ".join(found) + ".")
+            for label, items in repeats.items():
+                lines.append(f"{label}, per item: " + "; ".join(items) + ".")
+            if negatives:
+                lines.append("Documented negatives (each was asked): " + "; ".join(negatives) + ".")
         if unknown:
-            narrative.append("Asked, no usable answer: " + "; ".join(unknown) + ".")
+            lines.append("Asked, no usable answer: " + "; ".join(unknown) + ".")
+        if withheld:
+            lines.append("Withheld at the patient's request (asked and answered; not passed on): " + "; ".join(withheld) + ".")
         if not_asked:
-            narrative.append("Not asked: " + "; ".join(not_asked) + ".")
-        if m.gaps:
-            narrative.append("Gaps: " + " ".join(m.gaps))
+            lines.append("Not asked: " + "; ".join(not_asked) + ".")
+        if m.gaps and m.kind == "presentation" and (found or repeats or negatives or unknown):
+            lines.append("Gaps: " + " ".join(m.gaps))   # section gaps are reviewer notes; they stay in the coding document
+        blocks[m.module] = lines
+    fh_lines = _family_pattern_lines(state, bundle)
+    order = [m.module for m in modules if m.kind == "presentation"]
+    order += [m.module for m in modules if m.kind == "closing" and m.module == "functional_situational"]
+    order += [m.module for m in modules if m.kind == "closing" and m.module == "review_of_systems"]
+    order += [m.module for m in modules if m.kind == "closing" and m.module in ("past_history", "medications")]
+    order += [m.module for m in modules if m.kind == "closing" and m.module == "family_history"]
+    order += [m.module for m in modules if m.kind == "closing" and m.module not in ("functional_situational", "review_of_systems", "past_history", "medications", "family_history")]
+    order += [m.module for m in modules if m.kind == "gating"]
+    for name in order:
+        narrative.extend(blocks.get(name, []))
+        if name == "family_history":
+            narrative.extend(fh_lines)
     undecidable = state.get("undecidable_rules", [])
     if undecidable:
         narrative.append("Red-flag rules that could not be decided because a slot was not asked: " + "; ".join(f"{u['rule_id']} (missing {', '.join(u['missing'])})" for u in undecidable) + ".")
@@ -146,13 +260,14 @@ def generate(state: dict, bundle: ContentBundle, terminology: TerminologyProvide
                               "prompt": "Left empty by the agent. The clinician nominates which condition occasioned the episode."},
         "reason_for_encounter": {"patient_words": pv, "structured_symptom_set": concept_terms, "concepts": concepts, "provenance": "patient_reported"},
         "symptom_detail": {"items": symptom_detail, "provenance": "patient_reported"},
-        "pre_existing_conditions": {"items": [e for e in structured if e["slot_id"] == "cs.past_history"], "provenance": "patient_reported", "note": "in the patient's words; full past history section is a later slice"},
+        "pre_existing_conditions": {"items": [e for e in structured if e["slot_id"].startswith("pm.")], "provenance": "patient_reported", "note": "five retrieval routes plus a lay-anchored sweep; the patient's labels as given, never corrected (D-44)"},
         "onset_relative_to_presentation": {"items": [e for e in structured if e["slot_id"].endswith("clock_time")], "provenance": "patient_reported"},
-        "medications": {"items": [e for e in structured if e["slot_id"].startswith("ctx.medications") or e["slot_id"] in ("cs.medications", "cs.allergies", "gate.anticoagulant", "gate.immunosuppression")], "provenance": "patient_reported", "note": "captured by name and read back; 'patient could not say' is distinct from 'none' and from 'not asked' (F-17)"},
+        "medications": {"items": [e for e in structured if e["slot_id"].startswith(("ctx.medications", "md.")) or e["slot_id"] in ("gate.anticoagulant", "gate.immunosuppression")], "provenance": "patient_reported", "note": "category-prompted inventory, per medicine as actually taken; 'patient could not say' is distinct from 'none' and from 'not asked' (F-17, D-38); reconciliation against a dispensing source is phase 3"},
         "external_cause": {"items": [e for e in structured if e["slot_id"] in ("gate.bat_contact", "gate.overseas_animal") or e["slot_id"].startswith("wb.")], "provenance": "patient_reported"},
-        "behavioural_risk_factors": {"items": [e for e in structured if e["slot_id"] in ("gate.smoking",) or e["slot_id"].startswith("au.")], "provenance": "patient_reported"},
-        "social_and_functional": {"items": [], "provenance": "patient_reported"},
-        "obstetric_status": {"items": [], "provenance": "patient_reported"},
+        "behavioural_risk_factors": {"items": [e for e in structured if e["slot_id"] in ("gate.smoking", "so.smoking") or e["slot_id"].startswith(("au.", "so.audit", "so.drug"))], "provenance": "patient_reported", "note": "instrument items recorded as answered; no score is assembled (F-21, D-41)"},
+        "family_history": {"items": [e for e in structured if e["slot_id"].startswith("fh.")], "pattern": _family_pattern_lines(state, bundle), "provenance": "patient_reported", "note": "three states: denied, unknown, not asked (D-39)"},
+        "social_and_functional": {"items": [e for e in structured if e["slot_id"].startswith(("fn.", "so.")) and not e["slot_id"].startswith(("so.audit", "so.drug", "so.smoking"))], "provenance": "patient_reported", "note": "inputs only, never a frailty score (D-47); items the patient declined to pass on are marked withheld"},
+        "obstetric_status": {"items": [e for e in structured if e["slot_id"] in ("gate.pregnancy_possible", "ab.pregnancy_possible", "ab.home_pregnancy_test", "ab.last_period") or e["slot_id"].startswith(("fm.", "vb."))], "provenance": "patient_reported"},
         "safety_net_events": {"items": alerts, "provenance": "structural"},
         "how_the_patient_seemed": {"text": tone, "provenance": "derived"},
         "gaps": {"items": [g for m in modules for g in m.gaps] + [e["intent"] for e in structured if e["state"] == "not_asked"], "provenance": "structural"},

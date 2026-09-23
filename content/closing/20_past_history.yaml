@@ -1,0 +1,316 @@
+# Closing section: past medical history (D-44; design/reference/past_medical_history_2026-09-23.md).
+# Built as the reference's five retrieval routes run in its order: self-label
+# first (fastest), event, care contact, surveillance last (lowest hit rate),
+# then the lifetime sweep, the named-condition sweep with lay anchors, and the
+# catch-all. Every route is asked in the present tense; "ever" appears only
+# where the past changes current management (admissions, operations, cancer).
+# The treatment route (medicines, the "what's that one for" conversion, stopped
+# medicines, anticoagulants) lives in the medications section, not here.
+# Within a route: one rephrasing, then move on. Across routes: never stop early;
+# the routes are independent, so a productive self-label route says nothing
+# about the surveillance route. The named-condition sweep is skipped for any
+# condition that already surfaced (skipped_if_mentioned), which is the
+# reference's stopping rule for step 7.
+# No red flags here: past-history items doing diagnostic work in a presentation
+# are asked inside that presentation module, and D-44 promotes them into the
+# presenting-complaint narrative. Handover ordering (past history never opens
+# the summary) is the handover layer's job, not this file's.
+module: past_history
+kind: closing
+order: 20
+display_name: your health in the past
+version: 0.1.0
+status: grounded
+reviewed: false
+review_notes:
+  - "Should the GP booking-call version and the ED version run the same five routes? Downie 2013 gives the same cancer answer ten times the meaning by setting, but a reduced GP set risks missing the one patient it mattered for"
+  - "Is the named-condition sweep acceptable to patients after five routes of open questioning, or does it read as an interrogation?"
+  - "Where should the anticoagulation question sit? Currently in the treatment route (medications section) and the shared gate; the library flags it as disposition-changing, which argues for earlier"
+  - "Does the surveillance route survive contact with real patients, or do people not know what is being watched?"
+  - "Is withholding a past psychiatric diagnosis from the opening line of the handover defensible, or does it read as concealment to a clinician who finds it later in the structured layer? (D-44, a design position, not evidenced)"
+setting: both
+slots:
+  # 1. Self-label, present tense. Record the label as given; never correct it here.
+  - id: pm.self_label
+    class: coverage
+    required: true
+    always: true
+    intent: "self-label route, present tense: conditions the patient owns as an identity, recorded as given and reconciled later"
+    phrasings:
+      - {id: pm-self-v1, form: open, text: "What health problems are you dealing with at the moment?"}
+    value: {type: text}
+    none_terms: [none, nothing, no health problems, nothing really, fit and healthy, nothing at the moment, no problems]
+    verbatim: true
+    negative_reporting: explicit
+  - id: pm.self_label_rephrase
+    class: coverage
+    required: false
+    always: true
+    asked_when: "pm.self_label == 'none'"
+    intent: "the one within-route rephrasing the stopping rule allows: a patient who says no to health problems often says yes to something they see the doctor about"
+    phrasings:
+      - {id: pm-self-v2, form: open, text: "Is there anything you see the doctor about regularly, even if it is well controlled?"}
+    value: {type: text}
+    none_terms: [none, nothing, "no", nothing regular, only check-ups, just check-ups]
+    verbatim: true
+    negative_reporting: explicit
+  # 3. Event route, lifetime (inherently lifetime; no separate present-tense form).
+  - id: pm.admissions
+    class: coverage
+    required: true
+    always: true
+    intent: "event route: hospital admissions overnight, ever, with what for and roughly when; anchored recall dates events better than diagnoses"
+    phrasings:
+      - {id: pm-adm-v1, form: open, text: "Have you ever been in hospital overnight? What for, and roughly when?"}
+    value: {type: text}
+    none_terms: [never, "no", none, never been in hospital, only to have the kids, only for the births]
+    verbatim: true
+    negative_reporting: explicit
+  - id: pm.operations
+    class: coverage
+    required: true
+    always: true
+    intent: "event route: operations however long ago, approximate year, and anything left in place; altered anatomy is permanent"
+    phrasings:
+      - {id: pm-ops-v1, form: open, text: "Any operations, however long ago? Roughly what year, and was anything left in place: a stent, mesh, a joint replacement, a pacemaker?"}
+    value: {type: text}
+    none_terms: [never, "no", none, no operations, never had an operation, nothing]
+    verbatim: true
+    negative_reporting: explicit
+  # 4. Care contact, present tense. Named exemplars are retrieval cues inside one question, not separate questions.
+  - id: pm.care_contacts
+    class: coverage
+    required: true
+    always: true
+    intent: "care-contact route: specialists, clinics and allied health the patient sees regularly and what for; recovers the specialist-managed conditions the self-label route loses"
+    phrasings:
+      - {id: pm-care-v1, form: open, text: "Which doctors or clinics do you see regularly, apart from your GP? Anyone else, a physio, psychologist, podiatrist, dietitian, anyone like that? What for?"}
+    value: {type: text}
+    none_terms: [none, nobody, no one, only my gp, just my gp, just the gp, "no"]
+    verbatim: true
+    negative_reporting: explicit
+  # 5. Surveillance, present tense, last of the five because its hit rate is lowest.
+  - id: pm.surveillance
+    class: coverage
+    required: true
+    always: true
+    intent: "surveillance route: anything monitored but untreated (early kidney disease, a small aneurysm, a lung nodule, hepatitis B), what is watched and when the last check was; the only route that reaches conditions with no label, no drug and no admission"
+    phrasings:
+      - {id: pm-surv-v1, form: open, text: "Is anyone keeping an eye on anything: regular blood tests, scans, or scopes you go back for? What is being watched, and when was the last one?"}
+    value: {type: text}
+    none_terms: ["no", none, nothing, nothing like that, not that i know of, nobody]
+    verbatim: true
+    negative_reporting: explicit
+  # 6. Lifetime sweep. Operations and admissions are already covered at route 3;
+  # stopped medicines are asked in the medications section. Cancer is the one left.
+  - id: pm.cancer_ever
+    class: discriminating
+    required: true
+    always: true
+    intent: "lifetime sweep: any treatment for cancer, ever; the single highest-weight past-history item, and one whose meaning changes by setting"
+    phrasings:
+      - {id: pm-ca-v1, form: closed, text: "Have you ever been treated for cancer, even years ago? Surgery, chemotherapy or radiotherapy?"}
+    value: {type: yes_no}
+    extraction:
+      yes_terms: ["yes", cancer, tumour, melanoma, lymphoma, leukaemia, chemo, chemotherapy, radiotherapy, radiation, mastectomy, had it removed, in remission]
+      no_terms: ["no", never, no cancer, nothing like that]
+      unknown_terms: [not sure, don't know, can't remember, they never said]
+    evidence:
+      lr: "post-test probability 33% (22-46) for spinal malignancy in ED with a history of cancer in back pain, 7% (3-16) in primary care"
+      discriminates: "spinal malignancy in back pain; the same answer carries different weight by setting"
+      citation: "Downie 2013, as tabulated in the past medical history evidence base"
+      grade: B
+      population: "ED and primary care back pain"
+      note: "Asked of everyone as a lifetime sweep; the back pain module carries its own item where it is doing diagnostic work in that presentation (D-44)"
+    verbatim: true
+    negative_reporting: explicit
+  # 7. Named-condition sweep, lay anchors not labels, each skipped when the
+  # condition already surfaced on an earlier route (the reference's stopping rule).
+  - id: pm.hypertension
+    class: coverage
+    required: false
+    always: true
+    intent: "named-condition sweep, hypertension by treatment anchor (self-label kappa 0.30 to 0.82)"
+    phrasings:
+      - {id: pm-htn-v1, form: closed, text: "Are you on anything for blood pressure?"}
+    value: {type: yes_no}
+    extraction:
+      yes_terms: ["yes", blood pressure, blood pressure tablet, hypertension, ramipril, perindopril, amlodipine, candesartan, irbesartan, telmisartan, metoprolol, atenolol]
+      no_terms: ["no", nothing for blood pressure, not on anything, none]
+      unknown_terms: [not sure, don't know, not sure what it's for, couldn't tell you]
+    skipped_if_mentioned: [blood pressure, hypertension, ramipril, perindopril, amlodipine, candesartan, irbesartan, telmisartan, metoprolol, atenolol]
+    verbatim: true
+    negative_reporting: explicit
+  - id: pm.heart_failure
+    class: coverage
+    required: false
+    always: true
+    intent: "named-condition sweep, heart failure by fluid-tablet and admission anchor (self-label sensitivity 20 to 69%)"
+    phrasings:
+      - {id: pm-hf-v1, form: closed, text: "Do you take fluid tablets? Have you ever been admitted with fluid on the lungs or swollen legs?"}
+    value: {type: yes_no}
+    extraction:
+      yes_terms: ["yes", fluid tablet, fluid tablets, water tablet, frusemide, furosemide, lasix, spironolactone, fluid on the lungs, swollen legs, heart failure, weak heart]
+      no_terms: ["no", never, no fluid tablets, none]
+      unknown_terms: [not sure, don't know, couldn't tell you]
+    skipped_if_mentioned: [heart failure, frusemide, furosemide, lasix, fluid tablet, spironolactone]
+    verbatim: true
+    negative_reporting: explicit
+  - id: pm.ischaemic_heart_disease
+    class: coverage
+    required: false
+    always: true
+    intent: "named-condition sweep, ischaemic heart disease by event anchor (MI self-label kappa 0.36 to 0.75)"
+    phrasings:
+      - {id: pm-ihd-v1, form: closed, text: "Have you ever had a heart attack, a stent, or bypass surgery?"}
+    value: {type: yes_no}
+    extraction:
+      yes_terms: ["yes", heart attack, stent, stents, bypass, angina, angiogram, blocked artery, cardiac arrest]
+      no_terms: ["no", never, nothing with my heart, none]
+      unknown_terms: [not sure, don't know, they thought it might have been]
+    skipped_if_mentioned: [heart attack, stent, bypass, angina, angiogram]
+    verbatim: true
+    negative_reporting: explicit
+  - id: pm.stroke_tia
+    class: coverage
+    required: false
+    always: true
+    intent: "named-condition sweep, stroke or TIA by lay anchor including the transient form (self-label kappa 0.34 to 0.55, PPV 27%)"
+    phrasings:
+      - {id: pm-cva-v1, form: closed, text: "Have you ever had a stroke, or a mini-stroke where the weakness or speech trouble went away?"}
+    value: {type: yes_no}
+    extraction:
+      yes_terms: ["yes", stroke, mini-stroke, mini stroke, tia, weakness that went away, speech went funny, small stroke]
+      no_terms: ["no", never, no stroke, none]
+      unknown_terms: [not sure, don't know, they weren't sure]
+    skipped_if_mentioned: [stroke, tia, mini-stroke, mini stroke]
+    verbatim: true
+    negative_reporting: explicit
+  - id: pm.chronic_kidney_disease
+    class: coverage
+    required: false
+    always: true
+    intent: "named-condition sweep, chronic kidney disease by what-you-were-told anchor (self-label kappa 0.52)"
+    phrasings:
+      - {id: pm-ckd-v1, form: closed, text: "Has anyone told you your kidneys don't work as well as they should?"}
+    value: {type: yes_no}
+    extraction:
+      yes_terms: ["yes", kidneys, kidney, renal, dialysis, kidney function, kidneys are a bit low]
+      no_terms: ["no", never, nothing about my kidneys, none]
+      unknown_terms: [not sure, don't know, nobody has said]
+    skipped_if_mentioned: [kidney, renal, dialysis]
+    verbatim: true
+    negative_reporting: explicit
+  - id: pm.copd_asthma
+    class: coverage
+    required: false
+    always: true
+    intent: "named-condition sweep, COPD or asthma by inhaler anchor (COPD self-label sensitivity 35%)"
+    phrasings:
+      - {id: pm-resp-v1, form: closed, text: "Do you use any puffers or inhalers?"}
+    value: {type: yes_no}
+    extraction:
+      yes_terms: ["yes", puffer, puffers, inhaler, inhalers, ventolin, symbicort, seretide, asthma, emphysema, copd]
+      no_terms: ["no", never, no puffers, none]
+      unknown_terms: [not sure, don't know, used to years ago]
+    skipped_if_mentioned: [asthma, copd, emphysema, puffer, inhaler, ventolin, symbicort, seretide]
+    verbatim: true
+    negative_reporting: explicit
+  - id: pm.bleeding_clotting
+    class: coverage
+    required: false
+    always: true
+    intent: "named-condition sweep, bleeding tendency or previous venous clot, not separately studied for self-report accuracy"
+    phrasings:
+      - {id: pm-clot-v1, form: closed, text: "Do you bleed or bruise easily? Have you ever had a clot in the leg or lung?"}
+    value: {type: yes_no}
+    extraction:
+      yes_terms: ["yes", bleed easily, bruise easily, clot, dvt, embolism, clot in the leg, clot in the lung, haemophilia, von willebrand]
+      no_terms: ["no", never, no clots, none]
+      unknown_terms: [not sure, don't know]
+    skipped_if_mentioned: [clot, dvt, embolism, bleed easily, haemophilia]
+    verbatim: true
+    negative_reporting: explicit
+  - id: pm.rheumatoid
+    class: coverage
+    required: false
+    always: true
+    intent: "named-condition sweep, rheumatoid arthritis by care-contact and drug anchor (self-label sensitivity 17.5%, kappa 0.25)"
+    phrasings:
+      - {id: pm-ra-v1, form: closed, text: "Do you see a rheumatologist? Are you on methotrexate or anything like it?"}
+    value: {type: yes_no}
+    extraction:
+      yes_terms: ["yes", rheumatologist, rheumatoid, methotrexate, arthritis clinic, biologic, humira, enbrel]
+      no_terms: ["no", never, none, nothing like that]
+      unknown_terms: [not sure, don't know]
+    skipped_if_mentioned: [rheumatoid, rheumatologist, methotrexate, arthritis]
+    verbatim: true
+    negative_reporting: explicit
+  - id: pm.diabetes
+    class: coverage
+    required: false
+    always: true
+    intent: "named-condition sweep, diabetes; the label works (self-label kappa 0.83) so it is asked plainly"
+    phrasings:
+      - {id: pm-dm-v1, form: closed, text: "Do you have diabetes?"}
+    value: {type: yes_no}
+    extraction:
+      yes_terms: ["yes", diabetes, diabetic, sugar, metformin, insulin, type two, type one, borderline]
+      no_terms: ["no", never, no diabetes, none]
+      unknown_terms: [not sure, don't know, they said borderline once]
+    skipped_if_mentioned: [diabetes, diabetic, metformin, insulin, sugar]
+    verbatim: true
+    negative_reporting: explicit
+  - id: pm.atrial_fibrillation
+    class: coverage
+    required: false
+    always: true
+    intent: "named-condition sweep, atrial fibrillation by irregular-pulse anchor (self-label sensitivity 65%); prefilled from the shared gate when already asked"
+    phrasings:
+      - {id: pm-af-v1, form: closed, text: "Has anyone told you your heart beats irregularly, or that you have an irregular pulse?"}
+    value: {type: yes_no}
+    extraction:
+      yes_terms: ["yes", irregular, irregular heartbeat, irregular pulse, atrial fibrillation, af, fibrillation, flutter]
+      no_terms: ["no", never, nobody has said, none]
+      unknown_terms: [not sure, don't know, nobody has checked]
+    prefill_from: [gate.atrial_fibrillation]
+    skipped_if_mentioned: [atrial fibrillation, af, irregular heartbeat, irregular pulse, fibrillation, flecainide, amiodarone, sotalol]
+    verbatim: true
+    negative_reporting: explicit
+  - id: pm.immunosuppression
+    class: coverage
+    required: false
+    always: true
+    intent: "named-condition sweep, immunosuppression by drug name and splenectomy, not separately studied; prefilled from the shared gate when already asked"
+    phrasings:
+      - {id: pm-immuno-v1, form: closed, text: "Are you on steroids, methotrexate, or anything that affects your immune system? Have you had your spleen removed?"}
+    value: {type: yes_no}
+    extraction:
+      yes_terms: ["yes", steroids, prednisolone, prednisone, methotrexate, immune system, chemo, chemotherapy, transplant, biologic, azathioprine, tacrolimus, mycophenolate, spleen, splenectomy]
+      no_terms: ["no", never, none, nothing like that]
+      unknown_terms: [not sure, don't know]
+    prefill_from: [gate.immunosuppression]
+    skipped_if_mentioned: [prednisolone, prednisone, steroids, methotrexate, chemotherapy, transplant, biologic, azathioprine, tacrolimus, mycophenolate, spleen removed, splenectomy, immune system]
+    verbatim: true
+    negative_reporting: explicit
+  # 8. Catch-all: closes the section on the patient's own judgement.
+  - id: pm.catch_all
+    class: coverage
+    required: true
+    always: true
+    intent: "catch-all on the patient's own judgement, closing the section after the checklist"
+    phrasings:
+      - {id: pm-catch-v1, form: open, text: "Is there anything in your medical history you think I should know about that I haven't asked?"}
+    value: {type: text}
+    none_terms: ["no", nothing, none, nothing else, not that i can think of, that's everything, that's it]
+    verbatim: true
+    negative_reporting: explicit
+red_flags: []
+prohibited:
+  - correcting the patient's label at elicitation; record it as given and reconcile in the handover
+  - '"no significant past history" or any global negative phrase; the handover lists what was asked and what was said'
+  - using a psychiatric diagnosis as a framing descriptor for the patient (D-44)
+gaps:
+  - "No well-powered validation of ED-obtained past medical history against a reference standard exists; where the agent's history and the record disagree, the handover shows both rather than resolving silently"
+  - "The lay anchors are English idiom; fluid tablets and mini-stroke do not translate directly, so the anchors must be built per language rather than translated (N-13)"
+  - "Only 15.4% of ED trauma patients aged 75 and over could supply the history without documents or a third party; the cross-cutting bail-out rules end the section early and flag what was not covered"

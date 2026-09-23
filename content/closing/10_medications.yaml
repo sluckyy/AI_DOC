@@ -1,0 +1,241 @@
+# Closing section: medicines and allergies (D-38; Build Specification F-16, F-17;
+# dialogue pack 6). Asked of everyone after the presentation modules. A systematic
+# inventory, not a saturation search: the open question recovers prescribed oral
+# medicines and little else, so each category the evidence names is prompted
+# individually (Huber 2017: patients with a discrepancy 69.9% to 29.6% with a
+# category checklist; Monte 2015: omissions of herbal 89.1%, non-prescription 76.1%,
+# vitamins 73.0%, supplements 67.3%). "Didn't know", "not asked" and "none" are three
+# distinct values (F-17): none_terms record "none", unknown_terms record "unknown",
+# and an unasked slot is reported as not asked. Blood thinners are asked by name in
+# the shared gate (gate.anticoagulant) and are not repeated here.
+module: medications
+kind: closing
+order: 10
+display_name: medicines and allergies
+version: 0.1.0
+status: grounded
+reviewed: false
+review_notes:
+  - "Pharmacist review of the category prompts, the per-medicine questions and the allergy wording (medication evidence base, eight questioning rules)"
+  - "The eight category prompts after the open question are the owner's call on interview length; the evidence supports every one of them individually, and the section may be tolerable only with grouping as authored"
+  - "The contraception and hormone therapy prompt is asked of everyone; who is asked is a reviewer decision"
+  - "The GP booking call cannot assume a carer, a dose pack or a bag of boxes is present; the ED room version can prompt for them (medication evidence base, structural note)"
+setting: both
+slots:
+  - id: md.list
+    class: coverage
+    required: false
+    always: true
+    intent: the medicines the patient names unprompted, in their own words; uncertainty is recorded as unknown and never resolved into a confident list
+    phrasings:
+      - {id: md-list-v1, form: open, text: "What medicines do you take? Take your time, including anything you get over the counter."}
+      - {id: md-list-unsure, form: open, text: "That's fine. I'll write down that you were unsure. Is there a packet nearby you could read the name from?", use_when: "the patient is unsure of a name, describes a medicine by colour or shape, or defers to a carer"}
+    packet_check: "That's fine. I'll write down that you were unsure. Is there a packet nearby you could read the name from?"
+    value: {type: text}
+    none_terms: ["none", "nothing", "no medicines", "no tablets", "don't take anything", "no"]
+    extraction:
+      unknown_terms: ["not sure", "can't remember", "don't know", "i'd have to check", "a small white one", "a little white one", "ask my wife", "ask my husband", "ask my carer", "my daughter knows", "my son knows"]
+    evidence: {citation: "Dialogue pack 6.1 and 6.4 (verbatim stem and unsure line); medication evidence base rule 1 (an open question recovers prescribed oral medicines and little else) and rule 7 (flag confidence, not just content)", note: "A confidently wrong medication list is worse than a flagged incomplete one"}
+    verbatim: true
+    negative_reporting: explicit
+  - id: md.otc
+    class: coverage
+    required: false
+    always: true
+    intent: over-the-counter and pharmacy-only medicines, prompted by category because they are not volunteered
+    phrasings:
+      - {id: md-otc-v1, form: closed, text: "Do you take anything you buy from the pharmacy or supermarket, such as painkillers, antihistamines, laxatives or antacids?"}
+    value: {type: text}
+    none_terms: ["none", "nothing", "no", "nothing like that", "nothing from the pharmacy"]
+    evidence: {citation: "Huber 2017 (analgesic discrepancies 34 to 4 with a checklist); Monte 2015 (non-prescription omitted 76.1%); Elliott 2023 (72.1% of omissions were over-the-counter)", note: "Category prompt from the medication evidence base prompt inventory"}
+    verbatim: true
+    negative_reporting: explicit
+  - id: md.supplements
+    class: coverage
+    required: false
+    always: true
+    intent: vitamins, minerals, supplements, herbal and complementary medicines
+    phrasings:
+      - {id: md-supp-v1, form: closed, text: "Do you take any vitamins, minerals or supplements, or any herbal or complementary medicines?"}
+    value: {type: text}
+    none_terms: ["none", "nothing", "no", "nothing like that", "no vitamins"]
+    evidence: {citation: "Monte 2015 (herbal omitted 89.1%, vitamins 73.0%, supplements 67.3%)", note: "Category prompt from the medication evidence base prompt inventory"}
+    verbatim: true
+    negative_reporting: explicit
+  - id: md.drops_inhalers_topicals
+    class: coverage
+    required: false
+    always: true
+    intent: eye or ear drops, nasal sprays, inhalers and nebulised medicines, creams, ointments and patches
+    phrasings:
+      - {id: md-top-v1, form: closed, text: "Do you use any eye or ear drops, nasal sprays, inhalers or puffers, or any creams, ointments or patches?"}
+    value: {type: text}
+    none_terms: ["none", "nothing", "no", "nothing like that", "no drops", "no inhalers"]
+    evidence: {citation: "Huber 2017 (ophthalmological preparation discrepancies 15 to 8 with a checklist); medication evidence base prompt inventory", note: "Three inventory categories grouped into one prompt for tolerability"}
+    verbatim: true
+    negative_reporting: explicit
+  - id: md.injections_intermittent
+    class: coverage
+    required: false
+    always: true
+    intent: injectable medicines and anything dosed weekly, monthly or less often, which a daily-medicines question misses
+    phrasings:
+      - {id: md-inj-v1, form: closed, text: "Do you have any injections, such as insulin, blood thinners, biologics or a depot injection, or anything you take weekly, monthly or less often, such as methotrexate, a bone medicine or B12?"}
+    value: {type: text}
+    none_terms: ["none", "nothing", "no", "nothing like that", "no injections"]
+    evidence: {citation: "Medication evidence base prompt inventory: injectables (insulin, anticoagulants, biologics, depot antipsychotics) and intermittent dosing (methotrexate, bisphosphonates, denosumab, B12, depots)", note: "Two inventory categories grouped into one prompt"}
+    verbatim: true
+    negative_reporting: explicit
+  - id: md.contraception_hormones
+    class: coverage
+    required: false
+    always: true
+    intent: contraception and hormone therapy, which patients often do not count as medicines
+    phrasings:
+      - {id: md-horm-v1, form: closed, text: "Do you use any contraception, or take any hormone therapy, such as the pill, an implant, an injection, HRT or testosterone?"}
+    value: {type: text}
+    none_terms: ["none", "nothing", "no", "nothing like that", "not applicable", "doesn't apply"]
+    evidence: {citation: "Medication evidence base prompt inventory: contraception and hormone therapy"}
+    verbatim: true
+    negative_reporting: explicit
+  - id: md.prn
+    class: coverage
+    required: false
+    always: true
+    intent: medicines taken only when needed, roughly a third of all errors
+    phrasings:
+      - {id: md-prn-v1, form: closed, text: "Is there anything you take only when you need it, rather than every day?"}
+    value: {type: text}
+    none_terms: ["none", "nothing", "no", "nothing like that"]
+    evidence: {citation: "Medication evidence base: PRN medicines account for roughly a third of all errors"}
+    verbatim: true
+    negative_reporting: explicit
+  - id: md.recent_changes
+    class: coverage
+    required: false
+    always: true
+    intent: anything started, changed, stopped or finished recently, including short courses, and who stopped it; cessation is invisible to every data source
+    phrasings:
+      - {id: md-chg-v1, form: open, text: "Has anything been started, changed, stopped or finished recently, including a short course like antibiotics? If something was stopped, who stopped it: you, your GP, or a specialist?"}
+    value: {type: text}
+    none_terms: ["none", "nothing", "no", "nothing has changed", "no changes", "all the same"]
+    evidence: {citation: "Elliott 2023 (16.9% of recorded medicines were ones the patient had stopped); Monte 2015 (78.9% of inaccurate lists contained stopped medicines); medication evidence base rule 3", note: "Dispensing and prescribing records are blind to cessation by design"}
+    verbatim: true
+    negative_reporting: explicit
+  - id: md.other_sources
+    class: coverage
+    required: false
+    always: true
+    intent: medicines obtained from someone else, from overseas or online
+    phrasings:
+      - {id: md-src-v1, form: closed, text: "Do you take anything that came from someone else, from overseas, or that you bought online?"}
+    value: {type: text}
+    none_terms: ["none", "nothing", "no", "nothing like that"]
+    evidence: {citation: "Medication evidence base prompt inventory: medicines obtained from someone else, from overseas, or online"}
+    verbatim: true
+    negative_reporting: explicit
+  - id: md.per_medicine
+    class: coverage
+    required: false
+    repeat_over: md.list
+    asked_when: "md.list != 'none'"
+    intent: "per medicine: dose and frequency actually taken, what it is for, who started it, missed doses"
+    phrasings:
+      - {id: md-per-v1, form: open, text: "For {item}: what dose do you take, and how often do you actually take it? What is it for, who started it, and do you ever miss doses?"}
+    value: {type: text}
+    extraction:
+      unknown_terms: ["not sure", "can't remember", "don't know", "whatever it says on the box", "i'd have to check"]
+    evidence: {citation: "Elliott 2023 (dose-regimen errors in 25.1% of medicines captured); medication evidence base rule 2 (ask per medicine, not per list)", note: "What the patient actually takes, never what the label says"}
+    verbatim: true
+    negative_reporting: explicit
+  - id: md.high_risk
+    class: red_flag
+    required: false
+    always: true
+    intent: the high-risk classes asked by name in one targeted check; blood thinners are asked by name in the shared gate and are not repeated
+    phrasings:
+      - {id: md-hr-v1, form: closed, text: "One check that doctors always make: do you take insulin or diabetes tablets, strong painkillers such as oxycodone, morphine or tramadol, epilepsy medicines, or anything for your immune system such as steroid tablets or methotrexate?"}
+    value:
+      type: set
+      options:
+        - {id: insulin_or_diabetes, synonyms: ["insulin", "diabetes tablets", "diabetic tablets", "sugar tablets", "metformin", "gliclazide", "diabetes", "for my sugar", "ozempic", "jardiance"]}
+        - {id: opioid, synonyms: ["oxycodone", "endone", "targin", "morphine", "tramadol", "tapentadol", "palexia", "codeine", "panadeine forte", "fentanyl", "patch for pain", "strong painkillers", "buprenorphine", "methadone"]}
+        - {id: immunosuppressant, synonyms: ["steroid tablets", "steroids", "prednisolone", "prednisone", "methotrexate", "immune system", "azathioprine", "tacrolimus", "mycophenolate", "biologic", "chemo", "chemotherapy", "transplant medicines"]}
+        - {id: antiepileptic, synonyms: ["epilepsy medicines", "epilepsy", "fits", "seizure tablets", "sodium valproate", "epilim", "levetiracetam", "keppra", "carbamazepine", "tegretol", "lamotrigine", "phenytoin"]}
+        - {id: none, synonyms: ["none", "none of those", "nothing like that", "no"]}
+    evidence: {citation: "Wai: 20% of patients had a high-risk medication discrepancy; medication evidence base rule 8 (anticoagulants, antiplatelets, insulin and other antihyperglycaemics, opioids, immunosuppressants and antiepileptics warrant a targeted confirmation loop)", note: "Anticoagulants and antiplatelets are covered by gate.anticoagulant (dialogue pack 6.2)"}
+    verbatim: true
+    negative_reporting: explicit
+  - id: md.capability
+    class: context
+    required: false
+    always: true
+    intent: "administration capability and storage: swallowing, inhaler or drops technique, dexterity, vision for labels, who gives the medicines (self, carer, dose pack, community nurse), and where they are kept"
+    phrasings:
+      - {id: md-cap-v1, form: open, text: "A few practical things. Do you have any trouble swallowing tablets, using an inhaler or drops, opening the packets, or reading the labels? Who gives you your medicines, yourself, a carer, a dose pack from the pharmacy, or a nurse, and where are they kept?"}
+    value: {type: text}
+    none_terms: ["none", "no trouble", "no problems", "no", "all fine", "manage fine"]
+    evidence: {citation: "ACSQHC guidance (storage at home and anything affecting administration); medication evidence base rule 5 (capture administration capability, not just the regimen)", note: "Where the half of Kripalani's cohort who needed help with a tablet lives; voice has an advantage over a screen here"}
+    verbatim: true
+    negative_reporting: explicit
+  - id: md.allergies
+    class: coverage
+    required: false
+    always: true
+    intent: allergy or adverse drug reaction, as the patient names it; an affirmative nil known is recorded as none
+    phrasings:
+      - {id: md-all-v1, form: closed, text: "Are you allergic to any medicine, or have you had a bad reaction to one?"}
+    value: {type: text}
+    none_terms: ["none", "nothing", "no allergies", "not that i know of", "nil known", "no"]
+    extraction:
+      unknown_terms: ["not sure", "can't remember", "don't know", "there was something", "my mum would know", "it's on my record"]
+    evidence: {citation: "Kiechle 2018 (41% discrepancy between self-report and the record; full description of the reaction in 18.4% of charts); Australian minimum dataset (medicine name, type of reaction, date, or an affirmative nil known)"}
+    verbatim: true
+    negative_reporting: explicit
+  - id: md.allergy_reaction
+    class: coverage
+    required: false
+    always: true
+    asked_when: "md.allergies != 'none'"
+    intent: what happened, in the patient's own words, when it was, whether it was treated, and whether the medicine has been taken since
+    phrasings:
+      - {id: md-rxn-v1, form: open, text: "What happened, in your own words? When was it, were you treated for it, and have you had that medicine since?"}
+    value: {type: text}
+    evidence: {citation: "Kiechle 2018 (a full description present in 18.4% of charts); medication evidence base rule 4 (capture allergy reactions verbatim, with type and timing)", note: "\"my lips swelled up and I went to hospital\" carries information that \"penicillin allergy\" destroys"}
+    verbatim: true
+    negative_reporting: explicit
+  - id: md.allergy_type
+    class: coverage
+    required: false
+    always: true
+    asked_when: "md.allergies != 'none'"
+    intent: true allergy distinguished from intolerance or side effect, as the patient describes it, never adjudicated by the agent
+    phrasings:
+      - {id: md-typ-v1, form: closed, text: "Was it the kind of reaction with a rash, hives, swelling or trouble breathing, or more like feeling sick, dizzy or unwell on it?"}
+    value:
+      type: enum
+      options:
+        - {id: true_allergy, synonyms: ["rash", "hives", "swelling", "swelled up", "lips", "throat", "anaphylaxis", "breathing", "couldn't breathe", "collapse", "collapsed", "epipen"]}
+        - {id: intolerance, synonyms: ["nausea", "sick", "vomited", "dizzy", "headache", "upset stomach", "diarrhoea", "muscle", "aches", "drowsy", "unwell on it"]}
+        - {id: unsure, synonyms: ["not sure", "can't remember", "don't know", "i was a baby", "hard to say"]}
+    evidence: {citation: "Medication evidence base: true allergy (rash, urticaria, angioedema, anaphylaxis, bronchospasm) recorded separately from intolerance or side effect (nausea, dizziness, myalgia), which is frequently recorded as allergy and wrongly bars a useful drug"}
+    verbatim: true
+    negative_reporting: explicit
+red_flags:
+  - id: rf.high_risk_medicine_prompted
+    fires_when: "'none' not in md.high_risk"
+    tier: flag
+    alert: {include_verbatim: true, template: "High-risk medicine category reported on the targeted check: {md.high_risk}. This must be confirmed against the named list before it is relied on; the agent has not reconciled it. Patient's medicine list: {md.list}. Patient said: {verbatim}."}
+    suppressible: false
+    source: "Medication evidence base rule 8: 20% of patients in Wai had a high-risk medication discrepancy; a targeted confirmation loop and, where unresolved, an explicit note to the clinician in the patient's words (S-3)"
+  - id: rf.allergy_true
+    fires_when: "md.allergy_type == 'true_allergy'"
+    tier: flag
+    alert: {include_verbatim: true, template: "Reaction described in the pattern of a true allergy. Medicine as the patient named it: {md.allergies}. What happened: {md.allergy_reaction}. Patient said: {verbatim}."}
+    suppressible: false
+    source: "Kiechle 2018: a full description of the allergy or reaction was present in only 18.4% of charts, and 5.6% of patients received a medicine potentially interacting with a documented allergy; Australian minimum dataset (type and date of reaction, not just the agent name)"
+prohibited: [resolving an uncertain name into a confident list, recording "none" when the patient did not know, inferring a drug from an adjacent mention, converting a lay description into a drug name]
+gaps:
+  - "Reconciliation against a dispensing source and surfacing the disagreements is phase 3 (D-38); this section records what the patient says they take, with confidence flagged"
+  - "The GP booking call ends by asking the patient to bring their medicines to the appointment (D-38); that is a script line, not a slot"
+  - "The read-back of the medicine list (dialogue pack 6.3) is the controller's closing read-back (D-55), not a slot here"

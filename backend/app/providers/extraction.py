@@ -27,11 +27,12 @@ NEGATION_BEFORE = re.compile(r"\b(no|not|never|without|haven't|hasn't|didn't|don
 
 
 @dataclass
-class Proposal:
+class Proposal:  # noqa: D101
     slot_id: str
     value: object
     verbatim: str
     confidence: float
+    state: str = "filled"     # "unknown" when the person said they do not know (a third state, D-39)
 
 
 class ExtractionProvider(Protocol):
@@ -73,6 +74,8 @@ class RulesExtraction:
                 return Proposal(slot.id, "no", text.strip(), 0.7)
             if yes_hit or bare_yes:
                 return Proposal(slot.id, "yes", text.strip(), 0.7)
+            if not opportunistic and ex.unknown_terms and any(_contains(t, term) for term in ex.unknown_terms):
+                return Proposal(slot.id, None, text.strip(), 0.7, state="unknown")   # asked, unknown: a third state (D-39)
             return None
         if vt in ("enum", "set"):
             hits: list[str] = []
@@ -96,10 +99,23 @@ class RulesExtraction:
             return None
         if vt == "number":
             m = NUMBER_RE.search(text)
-            return Proposal(slot.id, int(m.group(1)), text.strip(), 0.6) if m else None
+            if m:
+                return Proposal(slot.id, int(m.group(1)), text.strip(), 0.6)
+            words = {"none": 0, "zero": 0, "no one": 0, "nobody": 0, "one": 1, "two": 2, "three": 3, "four": 4, "five": 5, "six": 6, "seven": 7, "eight": 8, "nine": 9, "ten": 10,
+                     "eleven": 11, "twelve": 12, "thirteen": 13, "fourteen": 14, "fifteen": 15, "sixteen": 16, "seventeen": 17, "eighteen": 18, "nineteen": 19, "twenty": 20}
+            for w, n in words.items():
+                if _contains(t, w):
+                    return Proposal(slot.id, n, text.strip(), 0.6)
+            return None
         if vt == "text":
             if len(text.strip()) < 2:
                 return None
+            if slot.none_terms and not opportunistic:
+                norm = re.sub(r"[^a-z' ]", " ", text.lower()).strip()
+                for term in slot.none_terms:
+                    tl = term.lower()
+                    if norm == tl or norm.startswith(tl + " ") or re.fullmatch(re.escape(tl) + r"( (thanks|really|at all|that i know of|that i know|i think|no))*", norm):
+                        return Proposal(slot.id, "none", text.strip(), 0.7)
             return Proposal(slot.id, text.strip(), text.strip(), 0.5)
         return None
 

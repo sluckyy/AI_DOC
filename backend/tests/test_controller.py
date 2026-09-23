@@ -10,7 +10,7 @@ CONSENT = {"ai_disclosure": True, "tone_adaptation": True, "summary_to_clinician
 
 
 def run(bundle, open_lines, answers=None, setting="ed", consent=None, summary_reply="Yes, that's right.",
-        final_reply="No, that's it.", read_back_reply="Yes that's right.", max_turns=80):
+        final_reply="No, that's it.", read_back_reply="Yes that's right.", max_turns=320):
     ctrl = Controller(bundle)
     state = new_state(setting, "en", consent or CONSENT)
     log = [("agent", t.as_dict()) for t in ctrl.start(state)]
@@ -91,7 +91,9 @@ def test_settled_chest_pain_full_history(bundle):
     assert state["closing_delivered"]["uncertainty"]
     agent_text = " ".join(a["text"] for role, a in log if role == "agent").lower()
     assert "anything else" not in agent_text
-    assert "heart attack" not in agent_text and "angina" not in agent_text
+    # a past-history question may name an illness ("ever had a heart attack?"); a statement never labels this presentation
+    statements = " ".join(a["text"] for role, a in log if role == "agent" and a.get("move") not in ("ask", "reask", "explain_why", "capability")).lower()
+    assert "heart attack" not in statements and "angina" not in statements
     assert any(a["move"] == "summarise" for role, a in log if role == "agent")
     assert any(a["move"] == "read_back" for role, a in log if role == "agent")
 
