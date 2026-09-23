@@ -34,7 +34,8 @@ def load_bundle(root: Path | None = None, deployment: str | None = None) -> Cont
     modules: dict[str, Module] = {}
     disabled: dict[str, str] = {}
     mode = content_mode()
-    paths = sorted((root / "modules").glob("*.yaml")) + sorted((root / "shared").glob("*_section*.yaml")) + sorted((root / "shared").glob("gating.yaml"))
+    paths = sorted((root / "modules").glob("*.yaml")) + sorted((root / "shared").glob("gating.yaml")) + sorted((root / "closing").glob("*.yaml"))
+    loaded: list[Module] = []
     for path in paths:
         m = Module.model_validate(_read(path))
         rs = m.effective_review_status
@@ -43,6 +44,9 @@ def load_bundle(root: Path | None = None, deployment: str | None = None) -> Cont
             continue
         if mode == "clinical" and rs != "reviewed":
             raise RuntimeError(f"HAZ-8 (C3): module {m.module} v{m.version} is {rs}, below reviewed; refusing to start in clinical mode")
+        loaded.append(m)
+    # presentation modules and gating first, then closing sections in their declared order
+    for m in sorted(loaded, key=lambda x: ({"presentation": 0, "gating": 1, "closing": 2}[x.kind], x.order, x.module)):
         modules[m.module] = m
     content_version = (root / "CONTENT_VERSION").read_text().strip() if (root / "CONTENT_VERSION").exists() else "0.0.0"
     prohibited = _read(root / "shared" / "prohibited_phrases.yaml").get("phrases", []) if (root / "shared" / "prohibited_phrases.yaml").exists() else []

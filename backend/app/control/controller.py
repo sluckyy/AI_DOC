@@ -162,14 +162,92 @@ class Controller:
             needed = set(state.get("gating_needed", []))
             self._prefill_gates(state)
             return [s for s in m.slots if s.id in needed and s.id not in state["slot_values"]]
-        out = [s for s in m.slots if (s.required or s.always) and s.id not in state["slot_values"] and self._applies(state, s)]
+        out: list[Slot] = []
+        for s in m.slots:
+            if not self._candidate(m, s) or not self._applies(state, s, m.kind):
+                continue
+            if s.repeat_over:
+                out.extend(inst for inst in self._repeat_instances(state, s) if inst.id not in state["slot_values"])
+            elif s.id not in state["slot_values"]:
+                out.append(s)
         first = state.get("time_first") or []
         if first:
             out.sort(key=lambda s_: 0 if s_.id in first else 1)
         return out
 
-    def _applies(self, state: dict, slot: Slot) -> bool:
+    ITEM_NOISE = re.compile(r"^(and|also|then|plus|just|only|um|er|oh|well|i think|i take|there's|there is|the|a|an|some|my)\b\s*", re.I)
+    ITEM_NEGATIVE = re.compile(r"^(nothing|none|no|nope|that's (it|all)|not sure|i don't know|don't know|i'm not sure)\b", re.I)
+
+    @classmethod
+    def _split_items(cls, text: str) -> list[str]:
+        """Medicine names as the patient listed them (D-38: ask per medicine, never per list). Uncertain
+        descriptions ("a little white one for my heart") are kept as items so the uncertainty is asked about, not resolved."""
+        raw = re.split(r",|;|\band\b|\bplus\b|\balso\b|\.\s+", text)
+        items: list[str] = []
+        for r in raw:
+            t = r.strip(" .")
+            t = cls.ITEM_NOISE.sub("", t).strip(" .")
+            if not t or cls.ITEM_NEGATIVE.match(t) or len(t.split()) > 8:
+                continue
+            if t.lower() in (x.lower() for x in items):
+                continue
+            items.append(t)
+        return items[:10]
+
+    def _mention_corpus(self, state: dict) -> str:
+        """Everything the person has said so far, for asked_if_mentioned / skipped_if_mentioned (PMH sweep, family follow-ups)."""
+        bits = [state.get("presenting_verbatim") or ""]
+        bits += [t for _, t in state.get("_person_turns", [])]
+        for v in state["slot_values"].values():
+            if v.get("verbatim"):
+                bits.append(v["verbatim"])
+            if isinstance(v.get("value"), str):
+                bits.append(v["value"])
+        return " ".join(bits).lower()
+
+    @staticmethod
+    def _mentioned(corpus: str, terms: list[str]) -> bool:
+        return any(re.search(r"(?<![a-z])" + re.escape(t.lower()) + r"(?![a-z])", corpus) for t in terms)
+
+    def _resolve_slot(self, m: Module, slot_id: str) -> Slot | None:
+        """A repeat instance "md.per_medicine#2" resolves to a copy of its parent slot carrying the instance id."""
+        base, _, _ = slot_id.partition("#")
+        slot = m.slot(base)
+        if slot is None or "#" not in slot_id:
+            return slot
+        return slot.model_copy(update={"id": slot_id})
+
+    def _repeat_instances(self, state: dict, slot: Slot) -> list[Slot]:
+        src = state["slot_values"].get(slot.repeat_over or "")
+        if not src or src.get("state") != "filled" or src.get("value") in (None, "none", "no", []):
+            return []
+        items = self._split_items(str(src.get("verbatim") or src.get("value") or ""))
+        state.setdefault("repeat_items", {})[slot.id] = items
+        return [slot.model_copy(update={"id": f"{slot.id}#{i}"}) for i, _ in enumerate(items)]
+
+    def _candidate(self, m: Module, slot: Slot) -> bool:
+        """Which slots a section tries to ask. Presentation modules ask required slots; a closing section also asks
+        slots that are conditional on a gate, an answer, a mention, a recipient or a repeat source."""
+        if slot.required or slot.always:
+            return True
+        if m.kind == "closing":
+            return bool(slot.gates or slot.asked_when or slot.asked_if_mentioned or slot.repeat_over or slot.recipient_key)
+        return False
+
+    def _applies(self, state: dict, slot: Slot, module_kind: str = "presentation") -> bool:
         """F-13: a branch depends only on prior answers. Undecidable (a referenced slot unfilled) means ask."""
+        if module_kind == "closing" and slot.gates and not slot.always:
+            if not any(g in state["module_queue"] for g in slot.gates):
+                return False
+        if slot.recipient_key is not None:
+            if not self.b.parameters.situational_recipients.get(slot.recipient_key):
+                return False   # D-47: no named recipient for a positive answer, so the question is not asked
+        if slot.asked_if_mentioned or slot.skipped_if_mentioned:
+            corpus = self._mention_corpus(state)
+            if slot.asked_if_mentioned and not self._mentioned(corpus, slot.asked_if_mentioned):
+                return False
+            if slot.skipped_if_mentioned and self._mentioned(corpus, slot.skipped_if_mentioned):
+                return False
         if not slot.asked_when:
             return True
         res = evaluate(slot.asked_when, self._rule_values(state))
@@ -515,6 +593,11 @@ class Controller:
                 phrasing = slot.phrasings[min(attempts, len(slot.phrasings) - 1)] if slot.phrasings else None
                 text = phrasing.text if phrasing else slot.intent
                 text = text.replace("{problem}", state.get("generic_problem", "problem"))
+                if "#" in slot.id:
+                    base, _, idx = slot.id.partition("#")
+                    items = state.get("repeat_items", {}).get(base, [])
+                    item = items[int(idx)] if idx.isdigit() and int(idx) < len(items) else "that one"
+                    text = text.replace("{item}", item)
                 turns: list[AgentTurn] = []
                 if not state.get("_transition_said") and self.b.phrasings.transition:
                     state["_transition_said"] = True
@@ -556,13 +639,33 @@ class Controller:
             if state["phase"] == "ended":
                 return out
             return out + self._ask_next(state)
-        current = m.slot(state["current_slot"]) if state.get("current_slot") else None
+        pass_on = state.get("pending_pass_on")
+        if pass_on:
+            # D-47: the written record is a separate consent; a no keeps the answer out of the handover
+            state["pending_pass_on"] = None
+            sv = state["slot_values"].get(pass_on["slot_id"])
+            if sv is not None:
+                agreed = bool(AFFIRM.search(text)) and not re.match(r"^\s*(no|nope|rather not|don't|do not|not really)\b", text.strip(), re.I)
+                sv["pass_on"] = agreed
+                sv["pass_on_verbatim"] = text.strip()
+                sv["pass_on_turn_id"] = turn_id
+            return self._ask_next(state)
+        current = self._resolve_slot(m, state["current_slot"]) if state.get("current_slot") else None
         filled_now = False
         if current is not None and current.id not in state["slot_values"]:
             prop = self.extraction.propose(current, text, state.get("language", "en"))
             if prop is not None:
-                self._write(state, name, current, prop.value, prop.verbatim, turn_id, confidence=prop.confidence)
+                self._write(state, name, current, prop.value, prop.verbatim, turn_id, confidence=prop.confidence, st=prop.state)
+                if "#" in current.id:
+                    base, _, idx = current.id.partition("#")
+                    items = state.get("repeat_items", {}).get(base, [])
+                    state["slot_values"][current.id]["item"] = items[int(idx)] if idx.isdigit() and int(idx) < len(items) else None
                 filled_now = True
+                routed = self._route_from_review(state, current, prop.value, turn_id)
+                if current.pass_on_consent and prop.state == "filled" and prop.value not in (None, "none", "no", [], ["none"]):
+                    state["pending_pass_on"] = {"slot_id": current.id}
+                    line = self.b.scripts.get("pass_on_ask", "Is it all right if I pass that on to the doctor?")
+                    return [self._say(state, line, "ask", slot_id=f"{current.id}.pass_on")]
                 if current.absolute_time and current.value.type == "clock_time":
                     now = datetime.now(timezone.utc).astimezone()
                     dt = parse_clock(text, now)
@@ -605,6 +708,27 @@ class Controller:
         state["time_first"] = first
         return bool(first)
 
+    def _route_from_review(self, state: dict, slot: Slot, value, turn_id: str) -> list[str]:
+        """D-37 / F-10: a systems-review positive routes to its presentation module, inserted right after the review
+        so it is questioned before the remaining closing sections. Positives already covered are reconciled silently."""
+        if not slot.route_to or not isinstance(value, list):
+            return []
+        superseded = {x for n in state["module_queue"] for x in self._module(n).supersedes}
+        added: list[str] = []
+        for opt in value:
+            target = slot.route_to.get(opt)
+            if not target or target not in self.b.modules or self._module(target).kind != "presentation":
+                continue
+            state.setdefault("ros_elicited", []).append({"option": opt, "module": target, "turn_id": turn_id, "slot_id": slot.id})
+            if target in state["module_queue"] or target in superseded or target in added:
+                continue
+            idx = state["module_queue"].index(state["active_module"]) if state.get("active_module") in state["module_queue"] else 0
+            state["module_queue"].insert(idx + 1 + len(added), target)
+            state["problems"].append({"term": opt.replace("_", " "), "module": target, "turn_id": turn_id, "pulled_by": "review_of_systems"})
+            self._opportunistic_fill(state, target, state.get("_person_turns", []))
+            added.append(target)
+        return added
+
     def _deliver_alerts(self, state: dict, alerts: list[dict]) -> list[AgentTurn]:
         out: list[AgentTurn] = []
         immediate = [a for a in alerts if a["tier"] == "immediate"]
@@ -614,9 +738,12 @@ class Controller:
             state["closed_by_alert"] = True
             for name in state["module_queue"]:
                 for s in self._module(name).slots:
-                    if self._module(name).kind == "gating" and s.id not in state.get("gating_needed", []):
+                    mod = self._module(name)
+                    if mod.kind == "gating" and s.id not in state.get("gating_needed", []):
                         continue
-                    if (s.required or s.always) and s.id not in state["slot_values"]:
+                    if s.repeat_over:
+                        continue
+                    if self._candidate(mod, s) and s.id not in state["slot_values"]:
                         state["slot_values"][s.id] = {"slot_id": s.id, "module": name, "value": None, "verbatim": None, "state": "not_asked", "turn_id": None, "source": "sweep", "confidence": None, "written_at": now_iso()}
             out.extend(self._close(state, after_alert=True))
         elif immediate:
@@ -626,10 +753,13 @@ class Controller:
     def _sweep(self, state: dict) -> list[AgentTurn]:
         for name in state["module_queue"]:
             for s in self._module(name).slots:
-                if self._module(name).kind == "gating" and s.id not in state.get("gating_needed", []):
+                mod = self._module(name)
+                if mod.kind == "gating" and s.id not in state.get("gating_needed", []):
                     continue
-                if (s.required or s.always) and s.id not in state["slot_values"]:
-                    st = "not_asked" if self._applies(state, s) else "not_applicable"
+                if s.repeat_over:
+                    continue   # instances exist only for items named; nothing to sweep
+                if self._candidate(mod, s) and s.id not in state["slot_values"]:
+                    st = "not_asked" if self._applies(state, s, mod.kind) else "not_applicable"
                     state["slot_values"][s.id] = {"slot_id": s.id, "module": name, "value": None, "verbatim": None, "state": st, "turn_id": None, "source": "sweep", "confidence": None, "written_at": now_iso()}
         self._evaluate_rules(state, "sweep")
         state["phase"] = "final_invite"
@@ -652,6 +782,8 @@ class Controller:
         for name in state["module_queue"]:
             m = self._module(name)
             for s in m.slots:
+                if m.kind == "closing" and not s.read_back:
+                    continue   # the closing summary reads back the presentation and the gates; sections are summarised in the handover
                 v = state["slot_values"].get(s.id)
                 if not v or v["state"] != "filled":
                     continue
@@ -690,6 +822,12 @@ class Controller:
         not_asked = [k for k, v in state["slot_values"].items() if v["state"] == "not_asked"]
         if not_asked:
             out.append(AgentTurn(text=self.b.scripts["not_asked_note"], move="close", phase="closing", expression="reassuring_neutral", next="continue_speaking"))
+        if state["setting"] == "gp_booking" and not after_alert:
+            if any(n == "medications" for n in state["module_queue"]) and self.b.scripts.get("bring_medicines"):
+                out.append(AgentTurn(text=self.b.scripts["bring_medicines"], move="close", phase="closing", expression="reassuring_neutral", next="continue_speaking"))
+            fh = state["slot_values"].get("fh.core")
+            if fh and fh.get("state") == "filled" and self.b.scripts.get("family_followup_gp"):
+                out.append(AgentTurn(text=self.b.scripts["family_followup_gp"], move="close", phase="closing", expression="reassuring_neutral", next="continue_speaking"))
         if self.b.phrasings.what_next:
             wn = self.b.phrasings.what_next[0]
             out.append(AgentTurn(text=wn.text, move="close", phase="closing", expression="reassuring_neutral", next="continue_speaking", phrasing_variant_id=wn.id))

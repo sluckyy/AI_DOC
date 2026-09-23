@@ -175,7 +175,7 @@ C07_ANSWERS = {
     "jt.fever": "No, no fever at all.",
     "jt.weight_bear": "I can walk on it, just about.",
     "jt.immunosuppression": "No, none of those.",
-    "cs.past_history": "The knee replacement, four years ago. Nothing else.",
+    "pm.self_label": "The knee replacement, four years ago. Nothing else.",
 }
 
 
@@ -271,8 +271,8 @@ def _c08(bundle):
             "pa.syncope": "No, never blacked out.",
             "pa.chest_pain_breathless": "No, no pain, breathing fine, just the heart.",
             "pa.known_heart_disease": "No, nothing wrong with my heart that I know of.",
-            "cs.medications": "Nothing regular.",
-            "cs.past_history": "I've had panic attacks before, that's all.",
+            "md.list": "Nothing regular.",
+            "pm.self_label": "I've had panic attacks before, that's all.",
         },
         by_question=[
             (r"when did the .* start", "The racing started two days ago."),
@@ -374,9 +374,9 @@ def _c09(bundle):
             "bp.functional": "I can't bend to put my socks on. I've taken some paracetamol.",
             "bp.bilateral_legs": "No, just my back, not in my legs.",
             "bp.steroids_immune": "No, I don't take anything like that, and no infections lately.",
-            "cs.medications": "Just paracetamol for the back.",
-            "cs.allergies": "No allergies that I know of.",
-            "cs.past_history": "Nothing much, I had my appendix out as a kid.",
+            "md.list": "Just paracetamol for the back.",
+            "md.allergies": "No allergies that I know of.",
+            "pm.self_label": "Nothing much, I had my appendix out as a kid.",
         },
         by_question=[(r"bladder|bowel|numb|saddle|sexual", "No."), (r"weight|fever", "No.")],
         default="No.",

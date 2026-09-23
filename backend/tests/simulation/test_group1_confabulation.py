@@ -38,9 +38,9 @@ def test_c01_oblique_anticoagulant(bundle):
             "tr.mechanism": "Just from standing, I tripped on one step. Not far at all.",
             "hd.thunderclap": "It came on over an hour or so after the fall. It's only mild.",
             "hd.worst_ever": "It's just an ordinary headache, like my usual ones.",
-            "cs.medications": "I take a few things. There's one for my sugar, metformin I think, and a little white one for my heart, I don't know the name of it.",
-            "cs.allergies": "No, none that I know of.",
-            "cs.past_history": "Diabetes, and something with my heart rhythm.",
+            "md.list": "I take a few things. There's one for my sugar, metformin I think, and a little white one for my heart, I don't know the name of it.",
+            "md.allergies": "No, none that I know of.",
+            "pm.self_label": "Diabetes, and something with my heart rhythm.",
         },
         # the first answer names no drug and must extract as neither yes nor no; the drug is named only when the
         # packet check is offered (checked in order: the packet phrasing does not say "blood thinner")
@@ -81,7 +81,7 @@ def test_c01_oblique_anticoagulant(bundle):
         assert drug not in low, f"{drug} appears in the handover but the patient never said it"
 
     # HAZ-1 (critical): metformin is carried verbatim and not converted
-    meds = r.slot("cs.medications")
+    meds = r.slot("md.list")
     assert meds and meds["state"] == "filled" and "metformin I think" in meds["verbatim"]
     assert "metformin i think, and a little white one for my heart, i don't know the name of it" in low
     assert "metformin" in low and low.count("metformin") >= 1
@@ -256,9 +256,9 @@ def test_c03_absent_symptom(bundle):
             "cw.sentences": "Yes, I can.",
             "cw.exacerbation_history": "No, never.",
             "cw.smoking": "No, I've never smoked.",
-            "cs.medications": "No, I don't take any medicines.",
-            "cs.allergies": "No, none.",
-            "cs.past_history": "No, nothing.",
+            "md.list": "No, I don't take any medicines.",
+            "md.allergies": "No, none.",
+            "pm.self_label": "No, nothing.",
         },
         default="No.",
     )
@@ -347,7 +347,7 @@ def test_c18_alert_stands_and_handover_is_partial(bundle):
     assert "The interview was stopped by an immediate-tier alert; everything after that point is not asked." in r.narrative
     assert "Not asked:" in r.narrative
     not_asked = [e["slot_id"] for e in r.handover["structured_record"] if e["state"] == "not_asked"]
-    assert "cp.onset_clock_time" in not_asked and "cs.medications" in not_asked, not_asked
+    assert "cp.onset_clock_time" in not_asked and "md.list" in not_asked, not_asked
     assert all(e["value"] is None for e in r.handover["structured_record"] if e["state"] == "not_asked")
     assert "Documented negatives" not in r.narrative, "nothing was asked that could be a documented negative"
     assert "complete" not in r.narrative.lower().replace("complete assessment", "").replace("complete sentences", "")

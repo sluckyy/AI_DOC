@@ -1,0 +1,189 @@
+# Closing section: social history (D-40; design/reference/social_history_2026-09-23.md).
+# Asked of everyone after the presentation modules. Contextual probing over
+# checklists: occupation always, one open contextual probe, smoking, the AUDIT-C
+# and single-item drug screen administered verbatim and never scored (D-41),
+# caring responsibilities and social connection captured narratively. Systematic
+# social-risk items are asked only where a local response exists; for a regional
+# network those are transport, accommodation and carer availability, which sit in
+# the functional and situational section under their recipient keys (D-47).
+module: social_history
+kind: closing
+order: 50
+display_name: your work and your life outside health
+version: 0.1.0
+status: grounded
+reviewed: false
+review_notes: ["AUDIT-C and single-item drug screen items are copied from the alcohol_substance_use module so the wording is identical wherever they are asked; when that module has already run in this interview the answers are prefilled and the items are not repeated (prefill_from).", "D-41: answers are recorded as option ids only; no AUDIT-C score is computed or reported anywhere.", "The AUDIT-C lead-in is the dialogue pack 8.6 line 'I ask everyone these next questions.' on the first item; items two and three keep the short copied preambles because the P8 check requires one on every stigmatised item.", "Occupation none_terms record 'retired', 'not working' and 'unemployed' as none; a retired patient's former occupation is only captured when they go on to say what it was, which the question invites.", "Caring, isolation and the contextual probe carry per-item pass-on consent (D-47); the controller does not yet implement it.", "No validated social-risk instrument exists (Henrikson review); the narrative items are not comparable to a reference standard."]
+setting: both
+slots:
+  - id: so.occupation
+    class: coverage
+    required: true
+    always: true
+    intent: "current or former occupation and any exposure in it that bears on health, the neglected diagnostic component of the social history"
+    phrasings:
+      - {id: p1, form: open, text: "What do you do for work, or what did you do? Anything in it that could affect your health: dust, chemicals, heavy lifting, shift work?"}
+    value: {type: text}
+    none_terms: [retired, not working, unemployed]
+    verbatim: true
+    negative_reporting: omit
+  - id: so.context
+    class: coverage
+    required: true
+    always: true
+    intent: "the contextual probe: anything in the patient's life that makes the problem harder to deal with or that a workable plan has to take into account (Weiner)"
+    phrasings:
+      - {id: p1, form: open, text: "Is there anything going on in your life at the moment that makes this harder to deal with, or that the doctor should know about to make a plan that will work for you?"}
+    value: {type: text}
+    none_terms: ["no", nothing, not really, nothing i can think of, nothing like that, no not really, all good]
+    pass_on_consent: true
+    verbatim: true
+    negative_reporting: omit
+  - id: so.smoking
+    class: coverage
+    required: true
+    always: true
+    intent: "smoking or vaping as cigarettes per day and years, the components of pack-years, never the product; prefilled from the gating question when already asked"
+    phrasings:
+      - {id: p1, form: open, text: "Do you smoke or vape, or did you? Roughly how many a day, and for how many years?"}
+    value: {type: text}
+    none_terms: ["no", never, never smoked, non-smoker, i don't smoke, don't smoke, never have]
+    prefill_from: [gate.smoking]
+    verbatim: true
+    negative_reporting: explicit
+  - id: so.audit_c_frequency
+    class: discriminating
+    required: true
+    always: true
+    instrument: AUDIT-C
+    intent: "AUDIT-C item one, frequency of drinking, recorded as the answer's option id and never as a score in-module"
+    phrasings:
+      - {id: p1, form: closed, text: "How often do you have a drink containing alcohol? Never, monthly or less, two to four times a month, two to three times a week, or four or more times a week?"}
+    value:
+      type: enum
+      options:
+        - {id: never, synonyms: [never, i don't drink, don't drink, teetotal, not at all]}
+        - {id: monthly_or_less, synonyms: [monthly or less, once a month, less than once a month, rarely, hardly ever, special occasions]}
+        - {id: two_to_four_per_month, synonyms: ["two to four times a month", "2 to 4 times a month", "2-4 times a month", every couple of weeks, a few times a month, most weekends]}
+        - {id: two_to_three_per_week, synonyms: ["two to three times a week", "2 to 3 times a week", "2-3 times a week", couple of times a week, a few times a week]}
+        - {id: four_or_more_per_week, synonyms: ["four or more times a week", "4 or more times a week", most days, every day, daily, nearly every day, every night]}
+    evidence: {gap: true, gap_reason: "The library gives the AUDIT-C as three items scored 0 to 12 with more than three points positive in one primary care validation, but tabulates no likelihood ratio per item; scoring itself is an open owner decision (D-41)"}
+    stigmatised: true
+    preamble: "I ask everyone these next questions. There are no right or wrong answers, and only the clinician looking after you sees them."
+    disclosure_group: substance
+    prefill_from: [au.audit_frequency]
+    verbatim: true
+    negative_reporting: explicit
+  - id: so.audit_c_typical_day
+    class: discriminating
+    required: true
+    always: true
+    instrument: AUDIT-C
+    intent: "AUDIT-C item two, standard drinks on a typical drinking day, recorded as the answer's option id; the unit of a standard drink is a deployment parameter"
+    phrasings:
+      - {id: p1, form: closed, text: "How many standard drinks containing alcohol do you have on a typical day when you are drinking? One or two, three or four, five or six, seven to nine, or ten or more?"}
+    value:
+      type: enum
+      options:
+        - {id: one_or_two, synonyms: ["one or two", "1 or 2", "one", "two", just one, a couple, one glass, a glass of wine]}
+        - {id: three_or_four, synonyms: ["three or four", "3 or 4", "three", "four", a few]}
+        - {id: five_or_six, synonyms: ["five or six", "5 or 6", "five", "six", half a dozen]}
+        - {id: seven_to_nine, synonyms: ["seven to nine", "7 to 9", "seven", "eight", "nine"]}
+        - {id: ten_or_more, synonyms: ["ten or more", "10 or more", "ten", a bottle of spirits, a carton, a slab, a cask, more than ten, lost count]}
+    evidence: {gap: true, gap_reason: "As for item one; no per-item likelihood ratio in the library and scoring is an open owner decision (D-41)"}
+    stigmatised: true
+    preamble: "Same as before: this is asked of everyone, and there is no judgement in it."
+    disclosure_group: substance
+    prefill_from: [au.audit_typical_day]
+    verbatim: true
+    negative_reporting: explicit
+  - id: so.audit_c_six_or_more
+    class: discriminating
+    required: true
+    always: true
+    instrument: AUDIT-C
+    intent: "AUDIT-C item three, frequency of six or more drinks on one occasion, recorded as the answer's option id"
+    phrasings:
+      - {id: p1, form: closed, text: "How often do you have six or more drinks on one occasion? Never, less than monthly, monthly, weekly, or daily or almost daily?"}
+    value:
+      type: enum
+      options:
+        - {id: never, synonyms: [never, not ever, no never]}
+        - {id: less_than_monthly, synonyms: [less than monthly, less than once a month, rarely, once in a blue moon, a few times a year, christmas]}
+        - {id: monthly, synonyms: [monthly, once a month, about once a month]}
+        - {id: weekly, synonyms: [weekly, once a week, every weekend, most weekends, saturdays]}
+        - {id: daily_or_almost_daily, synonyms: [daily, almost daily, every day, most days, every night, nearly every day]}
+    evidence: {gap: true, gap_reason: "As for item one; no per-item likelihood ratio in the library and scoring is an open owner decision (D-41)"}
+    stigmatised: true
+    preamble: "Last one about alcohol, and again it is the same question everyone gets."
+    disclosure_group: substance
+    prefill_from: [au.audit_six_or_more]
+    verbatim: true
+    negative_reporting: explicit
+  - id: so.drug_single_item
+    class: discriminating
+    required: true
+    always: true
+    instrument: "single-item drug use screen"
+    intent: "single-item drug use screen, validated wording, recorded as the patient's number of times in the past year"
+    phrasings:
+      - {id: p1, form: closed, text: "How many times in the past year have you used an illegal drug or used a prescription medication for non-medical reasons?"}
+    value: {type: text}
+    none_terms: [never, none, "0", zero, no times, not at all, not once, haven't]
+    evidence: {lr: "self-reported current use: sensitivity 82.8%, specificity 93.6%, LR+ 12.9, LR− 0.2; drug problem or use disorder: sensitivity 87.0%, specificity 92.8%, LR+ 12.0, LR− 0.1; test characteristics affected very little by demographic characteristics", discriminates: current drug use and drug use disorder, citation: "single-item drug use screen, Smith 2010, as tabulated in the Symptom Questioning Library", grade: B, population: primary care}
+    stigmatised: true
+    preamble: "The next question is about drugs. It is asked of everyone in exactly these words, and a straight answer helps the clinician look after you safely, for example with the medicines they choose."
+    disclosure_group: substance
+    prefill_from: [au.drug_single_item]
+    verbatim: true
+    negative_reporting: explicit
+  - id: so.wants_help_to_stop
+    class: red_flag
+    required: false
+    asked_when: "so.audit_c_frequency != 'never' or so.drug_single_item != 'none'"
+    intent: "whether the patient is asking for help to stop or cut down, in their own words, for routing to addiction medicine; asked only when the screens record any drinking or use"
+    phrasings:
+      - {id: p1, form: closed, text: "Is part of why you are calling that you would like help to stop or cut down?"}
+    value: {type: yes_no}
+    extraction: {yes_terms: ["yes", want to stop, want to cut down, need help, help me stop, get off it, quit, want to quit, can't stop on my own], no_terms: ["no", not really, not today, i'm fine with it, no thanks]}
+    stigmatised: true
+    preamble: "Plenty of people call for exactly this reason, and it is a reasonable thing to ask for."
+    disclosure_group: substance
+    prefill_from: [au.wants_help_to_stop]
+    verbatim: true
+    negative_reporting: explicit
+  - id: so.caring
+    class: coverage
+    required: true
+    always: true
+    intent: "caring responsibilities, which determine whether any plan involving admission or rest is feasible; captured in free text"
+    phrasings:
+      - {id: p1, form: open, text: "Do you look after anyone who depends on you: children, a parent, a partner?"}
+    value: {type: text}
+    none_terms: ["no", nobody, no one, no-one, none, not really, just me, only myself]
+    pass_on_consent: true
+    verbatim: true
+    negative_reporting: omit
+  - id: so.isolation
+    class: coverage
+    required: true
+    always: true
+    intent: "social connection and isolation, as the patient describes it; captured narratively because isolation carries mortality and readmission risk comparable to medical factors and no brief validated item exists"
+    stigmatised: true
+    preamble: "I ask everyone about this, because how much company people have makes a difference to how they manage, and there is no judgement in it."
+    phrasings:
+      - {id: p1, form: open, text: "How often do you see or speak with people you're close to?"}
+    value: {type: text}
+    none_terms: [nobody, no one, no-one, hardly ever, hardly anyone, never, not really anyone, there isn't anyone]
+    pass_on_consent: true
+    verbatim: true
+    negative_reporting: omit
+red_flags:
+  - id: rf.so_wants_help_alcohol
+    fires_when: "so.wants_help_to_stop == 'yes'"
+    tier: flag
+    alert: {include_verbatim: true, template: "Patient is asking for help to stop or cut down; route to addiction medicine. Patient said: {verbatim}."}
+    suppressible: false
+    source: "Library alcohol and substance row: patients who call specifically seeking help to stop are flagged for addiction medicine review; alcohol screening and brief intervention is USPSTF grade B (social history evidence base)"
+prohibited: [scoring the AUDIT-C or reporting any score, judging or commenting on the amount, advising the patient to cut down or stop, importing a US social-risk screen, asking a systematic social item where no local response exists, treating a positive screen as a diagnosis]
+gaps: ["No validated social-risk instrument exists; the narrative items are not comparable to a reference standard (Henrikson review, BJGP Open 2025).", "Occupational exposure follow-up is narrative only; no structured exposure inventory.", "The Aboriginal and Torres Strait Islander health assessment (MBS 715) social and cultural items are not integrated.", "Housing stability, food security and financial strain are not asked, because no local response is named for them (D-40); they are among the domains with the strongest outcome evidence.", "Interpersonal safety (USPSTF grade B for intimate partner violence screening in women of reproductive age) is not asked here; it belongs with the mental health and risk section pending specialist sign-off.", "Whether the agent may compute the AUDIT-C or the single-item screen result is an owner decision (D-41) not yet made; this section records option ids only."]

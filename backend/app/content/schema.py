@@ -34,6 +34,7 @@ class ValueSpec(BaseModel):
 class Extraction(BaseModel):
     yes_terms: list[str] = Field(default_factory=list)
     no_terms: list[str] = Field(default_factory=list)
+    unknown_terms: list[str] = Field(default_factory=list)   # D-39: "asked, unknown" is a third state, distinct from denied
 
 
 class Evidence(BaseModel):
@@ -68,6 +69,15 @@ class Slot(BaseModel):
     disclosure_group: str | None = None   # F-36: substance, sexual, continence, risk
     always: bool = False                  # gating/closing: asked of everyone (dialogue pack 13.1)
     asked_when: str | None = None         # answer-driven branch (F-13): a rule expression over filled slots; false skips the slot as not applicable
+    none_terms: list[str] = Field(default_factory=list)      # text slots: an answer matching one of these is recorded as the value "none"
+    asked_if_mentioned: list[str] = Field(default_factory=list)    # asked only when a prior answer in this interview mentions one of these terms
+    skipped_if_mentioned: list[str] = Field(default_factory=list)  # PMH named-condition sweep: skipped when the condition already surfaced
+    recipient_key: str | None = None      # D-47: a situational item is asked only where parameters name a recipient for a positive answer
+    repeat_over: str | None = None        # D-38: asked once per item named in the listed slot's answer; phrasing may use {item}
+    pass_on_consent: bool = False         # D-47: after a substantive answer, ask whether it may be passed on; a no keeps it out of the record
+    instrument: str | None = None         # validated instrument this item belongs to (administered verbatim, never scored: F-21, D-41)
+    route_to: dict[str, str] = Field(default_factory=dict)   # review of systems: option id -> presentation module to activate (F-10, D-37)
+    read_back: bool = False               # closing-section slot included in the spoken read-back (D-55)
     packet_check: str | None = None       # F-17: the line that offers a look at the packet when the name is unknown
 
     model_config = {"populate_by_name": True}
@@ -118,6 +128,7 @@ class Module(BaseModel):
     kind: ModuleKind = "presentation"          # gating and closing sections share the slot machinery (F-16)
     gating: list[str] = Field(default_factory=list)   # gate.* slot ids this presentation needs asked once
     supersedes: list[str] = Field(default_factory=list)   # modules not to run alongside this one (the unwell child row owns fever, vomiting and rash in a child)
+    order: int = 100                      # closing sections run in this order after the presentation modules
     enabled: bool = True   # D-50: a module can be present but not live (e.g. mental health pending specialist input)
     reviewed: bool = False
     reviewed_by: str | None = None
@@ -179,6 +190,8 @@ class Parameters(BaseModel):
     closing_read_back: bool = True          # D-55: Framework read-back vs dialogue pack 13.4 "no closing summary"
     capability_check: bool = True           # dialogue pack 2: hearing, language, someone present
     confidentiality: dict[str, str] = Field(default_factory=dict)   # S-12: scripted per setting from governance; [TBC]
+    situational_recipients: dict[str, str | None] = Field(default_factory=dict)   # D-47: domain -> who receives a positive answer at the site; None = not asked
+    family_history_thresholds: dict[str, Any] = Field(default_factory=dict)      # D-39: guideline thresholds the handover names when a pattern crosses them
     helplines: dict[str, str] = Field(default_factory=dict)
     disclosure: dict[str, str]
 

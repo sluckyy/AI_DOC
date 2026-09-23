@@ -7,3 +7,6 @@ goodbye: "Thanks for your time. I've passed this on. The doctor will see everyth
 bail_out: "I don't think this is working well by voice right now. I'm going to hand over to a person. Please wait where you are."
 transfer_dropped: "The line dropped after I raised the alert. The alert stands and records that contact was lost."
 time_ask_prefix: "I need a clock time for this, even roughly."
+pass_on_ask: "Is it all right if I pass that on to the doctor? You can say no."
+bring_medicines: "One more thing: when you come in, please bring all your medicines with you, including anything you buy yourself, in their packets."
+family_followup_gp: "If you get a chance before the appointment, it would help to check with a relative about the family illnesses we talked about. You can tell the doctor what you find out."
