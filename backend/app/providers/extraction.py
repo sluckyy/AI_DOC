@@ -23,6 +23,7 @@ CLOCK_RE = re.compile(
     re.I,
 )
 NUMBER_RE = re.compile(r"\b(\d{1,3})\b")
+NEGATION_BEFORE = re.compile(r"\b(no|not|never|without|haven't|hasn't|didn't|don't|doesn't|isn't|wasn't|nor|any)\b(?:\s+\w+){0,3}\s*$", re.I)
 
 
 @dataclass
@@ -60,6 +61,12 @@ class RulesExtraction:
             yes_terms = [x for x in ex.yes_terms if x.lower() not in self.BARE]
             no_hit = any(_contains(t, term) for term in no_terms)
             yes_hit = any(_contains(t, term) for term in yes_terms)
+            if opportunistic and yes_hit and not no_hit:
+                # narrative mining: "I haven't had any fever at all" names the feature to deny it
+                for term in yes_terms:
+                    m_ = re.search(r"(?<![a-z])" + re.escape(term.lower()) + r"(?![a-z])", t)
+                    if m_ and NEGATION_BEFORE.search(t[max(0, m_.start() - 40):m_.start()]):
+                        return Proposal(slot.id, "no", text.strip(), 0.7)
             bare_yes = (not opportunistic) and (_contains(t, "yes") or _contains(t, "yeah") or _contains(t, "yep"))
             bare_no = (not opportunistic) and (_contains(t, "no") or _contains(t, "nope") or _contains(t, "nah"))
             if no_hit or (bare_no and not yes_hit):

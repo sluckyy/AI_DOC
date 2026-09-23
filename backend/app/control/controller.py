@@ -269,7 +269,7 @@ class Controller:
             if slot and slot.id not in state["slot_values"]:
                 ph = slot.phrasings[0] if slot.phrasings else None
                 text = (ph.text if ph else slot.intent).replace("{problem}", state.get("generic_problem", "problem"))
-                return [self._say(state, text, "ask", phrasing_variant_id=(ph.id if ph else None), slot_id=slot.id)]
+                return [self._say(state, text, "reask", phrasing_variant_id=(ph.id if ph else None), slot_id=slot.id)]
         return []
 
     def _dispatch(self, state: dict, text: str, turn_id: str) -> list[AgentTurn]:

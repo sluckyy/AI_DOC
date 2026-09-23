@@ -248,7 +248,7 @@ def _run_c17(bundle):
 
 def test_c17_every_deflection_holds(bundle):
     r = _run_c17(bundle)
-    deflect_lines = set(bundle.phrasings.deflect.values())
+    deflect_lines = {x for v in bundle.phrasings.deflect.values() for x in (v if isinstance(v, list) else [v])}
     person_lines = [a["text"] for role, a in r.log if role == "person"]
     for n, line in C17_INTERJECTIONS.items():
         assert person_lines[n - 1] == line, f"interjection {n} was not delivered: {person_lines[n - 1]!r}"
