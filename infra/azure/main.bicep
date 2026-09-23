@@ -176,13 +176,15 @@ resource api 'Microsoft.App/containerApps@2024-03-01' = {
     managedEnvironmentId: containerEnv.id
     configuration: {
       ingress: { external: true, targetPort: 8000 }
-      secrets: [
+      // a container app secret must carry a value; the demo number is only added when one was supplied
+      secrets: concat([
         { name: 'azure-openai-key', keyVaultUrl: secretOpenAi.properties.secretUri, identity: identity.id }
         { name: 'azure-speech-key', keyVaultUrl: secretSpeech.properties.secretUri, identity: identity.id }
         { name: 'content-safety-key', keyVaultUrl: secretSafety.properties.secretUri, identity: identity.id }
         { name: 'acs-connection-string', keyVaultUrl: secretAcs.properties.secretUri, identity: identity.id }
+      ], empty(demoTransferNumber) ? [] : [
         { name: 'demo-transfer-number', value: demoTransferNumber }
-      ]
+      ])
     }
     template: {
       containers: [
@@ -190,7 +192,7 @@ resource api 'Microsoft.App/containerApps@2024-03-01' = {
           name: 'api'
           image: backendImage
           resources: { cpu: json('0.5'), memory: '1Gi' }
-          env: [
+          env: concat([
             { name: 'MODEL_PROVIDER', value: 'azure_openai' }
             { name: 'AZURE_OPENAI_ENDPOINT', value: openAi.properties.endpoint }
             { name: 'AZURE_OPENAI_DEPLOYMENT_PERSONA', value: openAiPersona.name }
@@ -205,9 +207,10 @@ resource api 'Microsoft.App/containerApps@2024-03-01' = {
             { name: 'TELEPHONY_PROVIDER', value: telephonyProvider }
             { name: 'ACS_CONNECTION_STRING', secretRef: 'acs-connection-string' }
             { name: 'ACS_CALLER_ID_NUMBER', value: acsCallerIdNumber }
-            { name: 'DEMO_TRANSFER_NUMBER', secretRef: 'demo-transfer-number' }
             { name: 'REQUIRE_REVIEWED_CONTENT', value: 'false' }
-          ]
+          ], empty(demoTransferNumber) ? [] : [
+            { name: 'DEMO_TRANSFER_NUMBER', secretRef: 'demo-transfer-number' }
+          ])
         }
       ]
       scale: { minReplicas: 1, maxReplicas: 3 }
