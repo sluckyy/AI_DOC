@@ -14,14 +14,27 @@ export function Intake() {
   const [turns, setTurns] = useState<AgentTurn[]>([]);
   const [err, setErr] = useState<string | null>(null);
   const [ended, setEnded] = useState(false);
+  const [mic, setMic] = useState<MediaStream | null>(null);
+  const [micNote, setMicNote] = useState<string | null>(null);
 
   async function start() {
     setErr(null);
+    // the microphone is opened here, inside the tap, so the browser asks once and Dr Sam listens
+    // for the whole conversation without a tap-to-talk button; refusal leaves typing as the way in
+    let stream: MediaStream | null = null;
+    try {
+      stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true } });
+    } catch (e: any) {
+      const name = e?.name || "";
+      setMicNote(name === "NotAllowedError" ? "Microphone access was declined, so you can type your replies instead." : "No microphone was found, so you can type your replies instead.");
+    }
     try {
       const r = await api.start(setting, language, { ai_disclosure: ai, tone_adaptation: tone, summary_to_clinician: share }, register);
+      setMic(stream);
       setCid(r.conversation_id);
       setTurns(r.agent_turns);
     } catch (e: any) {
+      stream?.getTracks().forEach((t) => t.stop());
       setErr(String(e.message || e));
     }
   }
@@ -29,7 +42,7 @@ export function Intake() {
   if (cid) {
     return (
       <div>
-        <DrSamPanel cid={cid} setting={setting} language={language} register={register} initialTurns={turns} onEnded={() => setEnded(true)} />
+        <DrSamPanel cid={cid} setting={setting} language={language} register={register} initialTurns={turns} micStream={mic} micNote={micNote} onEnded={() => setEnded(true)} />
         {ended && (
           <p className="afterEnd">
             For the clinician: <a href={`#/clinician/${cid}`}>open the handover for {cid}</a>
@@ -72,6 +85,7 @@ export function Intake() {
         <label><input type="checkbox" checked={tone} onChange={(e) => setTone(e.target.checked)} /> Dr Sam may adjust its pace to how I seem. (Optional. Nothing about how I seem is used clinically.)</label>
       </div>
       {language !== "en" && <p className="hint">Questions are authored in English for this slice; with the Azure OpenAI provider configured they are spoken in {LANGUAGES[language].name}. The handover is always in English.</p>}
+      <p className="hint">When you tap start, your browser will ask to use the microphone. Dr Sam then listens as you talk, like a conversation. You can also type at any time.</p>
       <button className="primary" onClick={start} disabled={!ai || !share}>Start with Dr Sam</button>
       {err && <p className="error">{err}</p>}
       <p className="small"><a href="#/status">Content and provider status</a></p>
