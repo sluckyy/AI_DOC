@@ -64,6 +64,7 @@ fake if unconfigured, so the demo never breaks.
 | --- | --- |
 | `MODEL_PROVIDER=azure_openai` plus `AZURE_OPENAI_ENDPOINT`, `AZURE_OPENAI_KEY`, `AZURE_OPENAI_DEPLOYMENT_PERSONA` | JSON slot extraction and re-wording for register and language, guard-railed against P5, P7, stand-down and diagnosis language |
 | `TTS_PROVIDER=azure_rest` plus `AZURE_SPEECH_KEY`, `AZURE_SPEECH_REGION`, `AZURE_SPEECH_VOICE` or `AZURE_SPEECH_VOICES=en=...,vi=...` | Azure neural voices; viseme events are estimated until the Speech SDK is wired |
+| `STT_PROVIDER=auto` (default) with `AZURE_SPEECH_KEY` and `AZURE_SPEECH_REGION` | Patient speech recognised by Azure AI Speech in the browser, in the six languages, with per-utterance confidence in the transcript layer (N-9) and end-of-turn silence from the parameters register, longer for the older register (N-3). The browser fetches a ten-minute token from `GET /api/speech/config`; the key never leaves the server. `browser` forces the Web Speech API fallback |
 | `CONTENT_SAFETY_PROVIDER=azure` plus endpoint and key | Screens every spoken turn |
 | `TERMINOLOGY_PROVIDER=fhir` plus `TERMINOLOGY_FHIR_BASE` | SNOMED CT-AU binding through a FHIR terminology server |
 | `TELEPHONY_PROVIDER=acs` plus `ACS_CONNECTION_STRING`, `ACS_CALLER_ID_NUMBER` | Live transfer of the GP booking call on an immediate-tier alert (D-42) through Azure Communication Services; the fake shows the number and a `tel:` link instead |

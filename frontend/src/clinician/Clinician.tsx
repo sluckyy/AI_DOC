@@ -12,7 +12,7 @@ export function Clinician({ cid }: { cid: string }) {
   const [principal, setPrincipal] = useState("");
   const [additional, setAdditional] = useState("");
   const [attested, setAttested] = useState<any>(null);
-  const [tab, setTab] = useState<"handover" | "record" | "coding" | "export">("handover");
+  const [tab, setTab] = useState<"handover" | "record" | "coding" | "transcript" | "export">("handover");
   const [exp, setExp] = useState<any>(null);
 
   useEffect(() => {
@@ -28,8 +28,8 @@ export function Clinician({ cid }: { cid: string }) {
       <header>
         <h1>Handover · {cid}</h1>
         <div className="tabs">
-          {(["handover", "record", "coding", "export"] as const).map((t) => (
-            <button key={t} className={tab === t ? "on" : ""} onClick={async () => { setTab(t); if (t === "export" && !exp) setExp(await api.exportAll(cid)); }}>{t}</button>
+          {(["handover", "record", "coding", "transcript", "export"] as const).map((t) => (
+            <button key={t} className={tab === t ? "on" : ""} onClick={async () => { setTab(t); if ((t === "export" || t === "transcript") && !exp) setExp(await api.exportAll(cid)); }}>{t}</button>
           ))}
         </div>
       </header>
@@ -107,6 +107,35 @@ export function Clinician({ cid }: { cid: string }) {
               <button type="submit" className="primary" disabled={!clinician.trim()}>I have reviewed this document and sign it</button>
             </form>
           ) : <p className="ok">Attested by {attested.clinician} at {attested.signed_at}. {attested.status}</p>}
+        </section>
+      )}
+      {tab === "transcript" && (
+        <section>
+          <h3>Transcript with recognition confidence</h3>
+          <p className="small">
+            Confidence is the recogniser's, per utterance (N-9). A low value means the words may have been misheard: check the transcript, not the patient.
+            {h?.metadata?.asr ? ` ${h.metadata.asr.spoken_turns} spoken turns, ${h.metadata.asr.typed_turns} typed; lowest ${h.metadata.asr.min_confidence ?? "n/a"}; threshold ${h.metadata.asr.threshold}.` : ""}
+          </p>
+          {exp ? (
+            <table className="status-table">
+              <thead><tr><th>Turn</th><th>Who</th><th>Said</th><th>Heard via</th><th>Confidence</th></tr></thead>
+              <tbody>
+                {exp.turns.map((t: any) => {
+                  const conf = t.asr?.confidence;
+                  const low = typeof conf === "number" && conf < (h?.metadata?.asr?.threshold ?? 0.6);
+                  return (
+                    <tr key={t.id} className={low ? "low-confidence" : ""}>
+                      <td>{t.order}</td>
+                      <td>{t.role === "agent" ? "Dr Sam" : "Patient"}</td>
+                      <td>{t.text}{t.role === "person" && t.asr?.nbest?.length > 1 ? <span className="small"> (alternatives: {t.asr.nbest.slice(1).map((n: any) => `"${n.text}"`).join(", ")})</span> : null}</td>
+                      <td>{t.role === "person" ? (t.asr?.provider || "typed") : ""}</td>
+                      <td>{t.role === "person" ? (typeof conf === "number" ? conf.toFixed(2) + (low ? " low" : "") : "typed") : ""}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          ) : <p>Loading…</p>}
         </section>
       )}
       {tab === "export" && (

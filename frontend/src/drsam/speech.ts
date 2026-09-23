@@ -1,6 +1,7 @@
 /**
  * Browser speech: synthesis (fallback when the API returns no audio) and recognition
- * (Web Speech API) with barge-in. Azure real-time STT replaces recognition in phase 4.
+ * (Web Speech API) with barge-in. Azure recognition lives in recognition.ts and uses
+ * the same handler contract; this file is the fallback path.
  */
 export function speechAvailable() {
   return typeof window !== "undefined" && "speechSynthesis" in window;
@@ -63,7 +64,7 @@ export type Recognizer = {
   available: boolean;
 };
 
-export function makeRecognizer(bcp47: string, handlers: { onStart?: () => void; onInterim?: (t: string) => void; onFinal: (t: string, confidence: number, durationMs: number) => void; onError?: (e: string) => void }): Recognizer {
+export function makeRecognizer(bcp47: string, handlers: { onStart?: () => void; onInterim?: (t: string) => void; onFinal: (t: string, confidence: number, durationMs: number) => void; onError?: (e: string) => void }, endOfTurnMs = 1200): Recognizer {
   const Ctor = window.SpeechRecognition || window.webkitSpeechRecognition;
   if (!Ctor) return { start: () => {}, stop: () => {}, available: false };
   const rec = new Ctor();
@@ -93,8 +94,8 @@ export function makeRecognizer(bcp47: string, handlers: { onStart?: () => void; 
     }
     handlers.onInterim?.((finalText + " " + interim).trim());
     if (silenceTimer) window.clearTimeout(silenceTimer);
-    // end-of-utterance: 1.2 s of no new results
-    silenceTimer = window.setTimeout(flush, 1200);
+    // end-of-utterance: the configured silence with no new results (N-3)
+    silenceTimer = window.setTimeout(flush, endOfTurnMs);
   };
   rec.onerror = (e: any) => handlers.onError?.(e.error || "speech error");
   rec.onend = () => { flush(); };

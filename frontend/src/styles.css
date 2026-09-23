@@ -65,3 +65,5 @@ pre { overflow: auto; font-size: 0.8rem; background: var(--bg); padding: 10px; b
 
 .status-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; margin: 1rem 0; }
 .status-table th, .status-table td { text-align: left; vertical-align: top; padding: 0.35rem 0.5rem; border-bottom: 1px solid var(--line, #ddd); }
+
+.status-table tr.low-confidence td { background: rgba(214, 120, 0, 0.12); }

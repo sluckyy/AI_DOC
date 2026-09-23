@@ -48,6 +48,7 @@ class Turn(Base):
     expression = Column(String, nullable=True)
     tone = Column(JSON, nullable=True)
     prosody = Column(JSON, nullable=True)
+    asr = Column(JSON, nullable=True)            # N-9: provider, per-utterance confidence, n-best, language, timing
     alert_id = Column(String, nullable=True)
     audio = Column(LargeBinary, nullable=True)
     audio_content_type = Column(String, nullable=True)

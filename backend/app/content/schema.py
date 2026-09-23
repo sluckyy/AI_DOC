@@ -184,6 +184,9 @@ class Parameters(BaseModel):
     continue_after_immediate_alert: bool = False
     saturation_invitations: int = 3
     silence_end_of_turn_ms: int = 1200
+    silence_end_of_turn_ms_by_register: dict[str, int] = Field(default_factory=dict)   # N-3: longer for slow speakers
+    initial_silence_timeout_ms: int = 8000        # how long to wait for speech to start before the turn times out
+    asr_low_confidence_threshold: float = 0.6     # N-9: per-utterance confidence below this is flagged to the clinician
     alert_acknowledgement_timeout_s: int = 120
     escalation: dict[str, dict[str, EscalationRoute]]
     clinical_parameters: dict[str, dict[str, Any]] = Field(default_factory=dict)   # D-45: owner-set; pending until set

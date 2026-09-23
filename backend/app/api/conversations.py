@@ -43,11 +43,23 @@ class StartRequest(BaseModel):
     is_simulation: bool = True
 
 
+class AsrDetail(BaseModel):
+    provider: str = "browser"                  # azure | browser | typed
+    confidence: float | None = None            # per-utterance confidence (N-9)
+    language: str | None = None                # BCP-47 the recogniser ran in
+    duration_ms: int | None = None
+    offset_ms: int | None = None
+    nbest: list[dict[str, Any]] = Field(default_factory=list)
+    segments: int | None = None                # how many recogniser results made up this turn
+    endpoint_silence_ms: int | None = None     # the segmentation silence in force (N-3)
+
+
 class TurnRequest(BaseModel):
     transcript: str
     prosody: dict[str, Any] | None = None
     interrupted_at_ms: int | None = None
     asr_confidence: float | None = None
+    asr: AsrDetail | None = None
 
 
 class QuestionRequest(BaseModel):
@@ -113,13 +125,27 @@ def _sync_alerts_and_slots(db: Session, conv: Conversation) -> None:
                          state=v["state"], source=v.get("source"), turn_id=v.get("turn_id"), written_at=v.get("written_at")))
 
 
+def _asr_summary(db: Session, conv: Conversation) -> dict:
+    """N-9: per-utterance recognition confidence reaches the transcript layer; low-confidence turns are listed so a
+    clinician can see where recognition was weak. Typed turns carry no confidence and are counted separately."""
+    threshold = get_bundle().parameters.asr_low_confidence_threshold
+    rows = db.query(Turn).filter(Turn.conversation_id == conv.id, Turn.role == "person").order_by(Turn.order).all()
+    spoken = [r for r in rows if (r.asr or {}).get("confidence") is not None]
+    low = [{"turn_id": r.id.split("-", 1)[1], "confidence": round(float(r.asr["confidence"]), 2), "text": r.text[:120]} for r in spoken if float(r.asr["confidence"]) < threshold]
+    providers = sorted({(r.asr or {}).get("provider", "typed") for r in rows})
+    return {"provider": providers, "spoken_turns": len(spoken), "typed_turns": len(rows) - len(spoken), "threshold": threshold,
+            "min_confidence": (round(min(float(r.asr["confidence"]) for r in spoken), 2) if spoken else None),
+            "low_confidence_turns": low, "languages": sorted({(r.asr or {}).get("language") for r in spoken if (r.asr or {}).get("language")})}
+
+
 def _maybe_generate_handover(db: Session, conv: Conversation) -> None:
     if conv.state.get("phase") != "ended":
         return
     if db.query(Handover).filter(Handover.conversation_id == conv.id).count():
         return
     metadata = {"model_provider": get_extraction_provider().name, "tts_provider": get_speech_provider().name,
-                "model_deployment": os.getenv("AZURE_OPENAI_DEPLOYMENT_PERSONA", "") or None}
+                "model_deployment": os.getenv("AZURE_OPENAI_DEPLOYMENT_PERSONA", "") or None,
+                "asr": _asr_summary(db, conv)}
     doc = generate(conv.state, get_bundle(), terminology=get_terminology_provider(), versions=conv.versions, metadata=metadata)
     db.add(Handover(conversation_id=conv.id, version=1, document=doc))
     from app.db import utcnow
@@ -168,14 +194,20 @@ def person_turn(cid: str, req: TurnRequest, db: Session = Depends(get_db)):
     person_tid, turns = ctrl.person_turn(state, req.transcript, prosody)
     order = db.query(Turn).filter(Turn.conversation_id == conv.id).count()
     tone = state["tone_log"][-1] if state.get("tone_log") and state["tone_log"][-1]["turn_id"] == person_tid else None
+    asr = req.asr.model_dump() if req.asr else ({"provider": "browser", "confidence": req.asr_confidence} if req.asr_confidence is not None else {"provider": "typed", "confidence": None})
     db.add(Turn(id=f"{conv.id}-{person_tid}", conversation_id=conv.id, order=order + 1, role="person", text=req.transcript,
-                phase=conv.state.get("phase"), tone=tone, prosody={**prosody, "asr_confidence": req.asr_confidence, "interrupted_at_ms": req.interrupted_at_ms}))
+                phase=conv.state.get("phase"), tone=tone, asr=asr,
+                prosody={**prosody, "asr_confidence": asr.get("confidence"), "interrupted_at_ms": req.interrupted_at_ms}))
     conv.state = state
+    language_switched = state.get("language") != conv.language
+    if language_switched:
+        conv.language = state["language"]   # the capability check switched the interview language; synthesis and recognition follow
+        db.add(AuditEvent(conversation_id=conv.id, actor="controller", action="language_switched", detail={"to": conv.language, "turn_id": person_tid}))
     agent = _persist_agent_turns(db, conv, turns, conv.language)
     _sync_alerts_and_slots(db, conv)
     _maybe_generate_handover(db, conv)
     db.commit()
-    return {"person_turn_id": person_tid, "agent_turns": agent, "phase": state["phase"],
+    return {"person_turn_id": person_tid, "agent_turns": agent, "phase": state["phase"], "language": conv.language, "language_switched": language_switched,
             "detected_tone": ({"label": state.get("_last_tone"), "stored": bool(tone)}),
             "alerts": [{**a, "alert_id": f"{conv.id}-{a['id']}"} for a in state.get("alerts", []) if a.get("turn_id") == person_tid]}
 
@@ -234,7 +266,7 @@ def _turn_dicts(db: Session, cid: str) -> list[dict]:
     rows = db.query(Turn).filter(Turn.conversation_id == cid).order_by(Turn.order).all()
     return [{"id": r.id, "order": r.order, "role": r.role, "text": r.text, "phase": r.phase, "move": r.move,
              "phrasing_variant_id": r.phrasing_variant_id, "slot_id": r.slot_id, "expression": r.expression,
-             "tone": r.tone, "alert_id": r.alert_id, "created_at": r.created_at.isoformat() if r.created_at else None} for r in rows]
+             "tone": r.tone, "asr": r.asr, "alert_id": r.alert_id, "created_at": r.created_at.isoformat() if r.created_at else None} for r in rows]
 
 
 @router.get("/conversations/{cid}")
@@ -352,6 +384,32 @@ def contact_lost(cid: str, db: Session = Depends(get_db)):
     db.commit()
     return {"conversation_id": cid, "contact_lost": True, "contact_lost_at": state.get("contact_lost_at"), "phase": state["phase"],
             "alerts": [a for a in state.get("alerts", []) if a["tier"] == "immediate"]}
+
+
+@router.get("/speech/config")
+def speech_config(language: str = "en", register: str = "patient"):
+    """What the browser needs to recognise speech: provider, region, language, endpointing (N-3), the confidence
+    threshold (N-9) and, for Azure, a ten-minute token. The key never leaves the server."""
+    from app.providers.recognition import recognition_config
+    from app.providers.speech import LOCALES
+
+    bundle = get_bundle()
+    cfg = recognition_config(language, register, bundle.parameters, {l: LOCALES.get(l, "en-AU") for l in bundle.parameters.languages})
+    return cfg.as_dict()
+
+
+@router.get("/speech/token")
+def speech_token():
+    """A fresh Azure speech token for the browser to refresh a long recognition session."""
+    from app.providers.recognition import _cache, stt_provider_name
+
+    if stt_provider_name() != "azure" or not os.getenv("AZURE_SPEECH_KEY") or not os.getenv("AZURE_SPEECH_REGION"):
+        raise HTTPException(404, "Azure recognition is not configured")
+    try:
+        token, expires = _cache.get(os.environ["AZURE_SPEECH_KEY"], os.environ["AZURE_SPEECH_REGION"])
+    except Exception as exc:
+        raise HTTPException(503, f"speech token unavailable: {type(exc).__name__}")
+    return {"token": token, "expires_in_s": expires, "region": os.environ["AZURE_SPEECH_REGION"]}
 
 
 @router.post("/content/reload")
