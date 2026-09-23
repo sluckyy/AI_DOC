@@ -82,6 +82,32 @@ theirs. Nothing can be created without one.
   registry and a build step are added. Running the API and web app locally with
   the Azure keys in `backend/.env` is the intended path for the demo.
 
+## Putting Dr Sam on the deployed apps
+
+GitHub builds the two images on every push to `main` (workflow **Build images**)
+and publishes them to GitHub's container registry as
+`ghcr.io/sluckyy/aidoc-api` and `ghcr.io/sluckyy/aidoc-web`. The template points
+at those images, so after the first build a template redeploy replaces the
+placeholders.
+
+One-time step, because the repository is private: make the two packages public
+so the container apps can pull them without credentials. On GitHub, open your
+profile, **Packages**, click `aidoc-api`, **Package settings** (right-hand
+side), **Change visibility**, **Public**. Repeat for `aidoc-web`. The images hold
+code and content only; every key stays in Key Vault.
+
+Then deploy the template again (Deploy a custom template, load `main.json`,
+existing resource group). Only the two container apps change. Opening the web
+address then shows Dr Sam. Every later push to `main` rebuilds the images; to
+pick a new build up, redeploy the template or, on the container app, choose
+**Revisions and replicas**, **Create new revision**, **Create**.
+
+The API app reads its content from `/content` inside the image, so a content
+change is a push to `main` followed by the automatic rebuild, or a call to
+`POST /api/content/reload` against a running app. The API keeps its database in
+the container (SQLite) until a Postgres server is added, which is fine for the
+demo and not for the study.
+
 ## Running locally against the deployed services
 
 Open the Key Vault in the portal, read the secrets you need, and put them in
