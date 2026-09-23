@@ -18,8 +18,8 @@ param openAiModelVersion string = '2024-11-20'
 param openAiCapacity int = 30
 
 @description('Container image for the API; a placeholder until the deploy workflow pushes one.')
-param backendImage string = 'mcr.microsoft.com/k8se/quickstart:latest'
-param frontendImage string = 'mcr.microsoft.com/k8se/quickstart:latest'
+param backendImage string = 'ghcr.io/sluckyy/aidoc-api:latest'   // built by .github/workflows/images.yml; package must be public
+param frontendImage string = 'ghcr.io/sluckyy/aidoc-web:latest'
 
 // D-42 live transfer. The demo transfer number is a secure parameter passed at
 // deploy time (never in source); the ACS caller id is the number purchased in

@@ -84,26 +84,23 @@ theirs. Nothing can be created without one.
 
 ## Putting Dr Sam on the deployed apps
 
-The template leaves both container apps on a placeholder image. The portal's
-continuous-deployment wizard builds the real images from this repository and
-keeps them updated on every push to `main`. It creates the container registry,
-the service principal and the GitHub workflow itself. Do it once per app.
+GitHub builds the two images on every push to `main` (workflow **Build images**)
+and publishes them to GitHub's container registry as
+`ghcr.io/sluckyy/aidoc-api` and `ghcr.io/sluckyy/aidoc-web`. The template points
+at those images, so after the first build a template redeploy replaces the
+placeholders.
 
-1. Open the resource group, click the container app `aidocdev-api`.
-2. In the left menu under **Settings**, click **Deployment**, then the
-   **Continuous deployment** tab.
-3. **Sign in with GitHub** and authorise Azure for the `sluckyy` account.
-4. Organization `sluckyy`, Repository `AI_DOC`, Branch `main`.
-5. Registry source **Azure Container Registry**, then **Create new** (any name,
-   for example `aidocdevacr`). Image name `aidoc-api`.
-6. Dockerfile location `backend/Dockerfile`. Leave the build context as the
-   repository root; the Dockerfile expects it.
-7. Service principal **Create new**, then **Start continuous deployment**.
-8. Repeat for `aidocdev-web` with image name `aidoc-web` and Dockerfile
-   location `frontend/Dockerfile`, reusing the registry created in step 5.
+One-time step, because the repository is private: make the two packages public
+so the container apps can pull them without credentials. On GitHub, open your
+profile, **Packages**, click `aidoc-api`, **Package settings** (right-hand
+side), **Change visibility**, **Public**. Repeat for `aidoc-web`. The images hold
+code and content only; every key stays in Key Vault.
 
-Each run commits a workflow file under `.github/workflows/` and the first build
-takes about five minutes. After that, opening the web address shows Dr Sam.
+Then deploy the template again (Deploy a custom template, load `main.json`,
+existing resource group). Only the two container apps change. Opening the web
+address then shows Dr Sam. Every later push to `main` rebuilds the images; to
+pick a new build up, redeploy the template or, on the container app, choose
+**Revisions and replicas**, **Create new revision**, **Create**.
 
 The API app reads its content from `/content` inside the image, so a content
 change is a push to `main` followed by the automatic rebuild, or a call to

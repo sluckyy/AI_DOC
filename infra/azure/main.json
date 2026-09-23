@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.47.16.16243",
-      "templateHash": "4126213872862897894"
+      "templateHash": "13815187473152543731"
     }
   },
   "parameters": {
@@ -40,14 +40,14 @@
     },
     "backendImage": {
       "type": "string",
-      "defaultValue": "mcr.microsoft.com/k8se/quickstart:latest",
+      "defaultValue": "ghcr.io/sluckyy/aidoc-api:latest",
       "metadata": {
         "description": "Container image for the API; a placeholder until the deploy workflow pushes one."
       }
     },
     "frontendImage": {
       "type": "string",
-      "defaultValue": "mcr.microsoft.com/k8se/quickstart:latest"
+      "defaultValue": "ghcr.io/sluckyy/aidoc-web:latest"
     },
     "demoTransferNumber": {
       "type": "securestring",
