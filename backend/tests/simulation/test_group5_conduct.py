@@ -28,6 +28,6 @@ def test_c16_slow_second_language_speaker_scripted_parts(bundle):
     assert bundle.parameters.silence_end_of_turn_ms >= 1200
 
 
-@pytest.mark.xfail(reason="N-3/N-5/N-8/N-9 (no premature endpointing, no truncation, per-cohort ASR accuracy and confidence) need the live speech path and actors; not testable in a scripted run", strict=True)
+@pytest.mark.xfail(reason="N-3/N-5/N-8 (no premature endpointing, no truncation, per-cohort ASR accuracy) need the live speech path and actors; the plumbing for N-9 confidence is covered in tests/test_recognition.py", strict=True)
 def test_c16_speech_layer_criteria():
     raise AssertionError("run with actors on the speech path")

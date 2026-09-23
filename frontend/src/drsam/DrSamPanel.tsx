@@ -3,7 +3,8 @@ import { Avatar, Expression } from "./Avatar";
 import type { AgentTurn } from "../api";
 import { api } from "../api";
 import { LANGUAGES } from "../config";
-import { makeRecognizer, playAudio, speakBrowser, SpeakHandle } from "./speech";
+import { playAudio, speakBrowser, SpeakHandle, Recognizer } from "./speech";
+import { createRecognizer } from "./recognition";
 import { LiveTransfer } from "./LiveTransfer";
 
 type Props = {
@@ -30,14 +31,18 @@ export function DrSamPanel({ cid, setting, language, register, initialTurns, onE
   const [micAvailable, setMicAvailable] = useState(true);
   const [ended, setEnded] = useState(false);
   const [phase, setPhase] = useState("consent");
+  const [lang, setLang] = useState(language);
+  const [sttNote, setSttNote] = useState<string | null>(null);
+  const [sttProvider, setSttProvider] = useState<string>("browser");
   const [tone, setTone] = useState<string | null>(null);
   const [captionsLarge, setCaptionsLarge] = useState(register === "older");
   const reduced = typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
   const handle = useRef<SpeakHandle | null>(null);
   const queue = useRef<AgentTurn[]>([]);
   const speakingRef = useRef(false);
-  const bcp47 = LANGUAGES[language]?.bcp47 || "en-AU";
-  const recRef = useRef<ReturnType<typeof makeRecognizer> | null>(null);
+  const bcp47 = LANGUAGES[lang]?.bcp47 || "en-AU";
+  const recRef = useRef<Recognizer | null>(null);
+  const langRef = useRef(language);
   const alertMode = useRef(false);
 
   async function playTurns(turns: AgentTurn[]) {
@@ -75,14 +80,20 @@ export function DrSamPanel({ cid, setting, language, register, initialTurns, onE
 
   useEffect(() => { playTurns(initialTurns); /* eslint-disable-next-line */ }, []);
 
-  async function send(text: string, prosody: Record<string, number> = {}, conf?: number) {
+  async function send(text: string, prosody: Record<string, number> = {}, asr?: Record<string, unknown> | null) {
     if (!text.trim() || busy || ended) return;
     setBusy(true);
     setInterim("");
     setLines((l) => [...l, { role: "person", text }]);
     try {
-      const r = await api.turn(cid, text, prosody, conf);
+      const r = await api.turn(cid, text, prosody, asr || { provider: "typed", confidence: null });
       setPhase(r.phase);
+      if (r.language_switched && r.language !== langRef.current) {
+        // the capability check switched the interview language: the recogniser restarts in the new one
+        langRef.current = r.language;
+        setLang(r.language);
+        if (recRef.current) { recRef.current.stop(); recRef.current = null; setListening(false); }
+      }
       setTone(r.detected_tone?.label || null);
       if (setting === "gp_booking" && r.alerts?.some((a: any) => a.tier === "immediate" && a.route === "live_transfer")) setTransfer(true);
       await playTurns(r.agent_turns);
@@ -93,22 +104,29 @@ export function DrSamPanel({ cid, setting, language, register, initialTurns, onE
     }
   }
 
-  function startListening() {
+  async function startListening() {
     if (recRef.current?.available === false) return;
-    const rec = makeRecognizer(bcp47, {
+    let cfg;
+    try {
+      cfg = await api.speechConfig(langRef.current, register);
+    } catch {
+      cfg = { stt_provider: "browser" as const, region: null, bcp47, silence_end_of_turn_ms: 1200, initial_silence_timeout_ms: 8000, low_confidence_threshold: 0.6, token: null, expires_in_s: null, languages: {}, note: "speech config unavailable; using the browser recogniser" };
+    }
+    setSttProvider(cfg.stt_provider);
+    setSttNote(cfg.note || null);
+    const rec = await createRecognizer(cfg, {
       onStart: () => setListening(true),
       onInterim: (t) => {
         setInterim(t);
-        // barge-in: the person started talking while Dr Sam speaks; stop unless it is an alert turn
+        // barge-in (N-1): the person started talking while Dr Sam speaks; stop unless it is an alert turn
         if (speakingRef.current && !alertMode.current && handle.current) { handle.current.cancel(); queue.current = []; speakingRef.current = false; setSpeaking(false); setViseme(0); }
         setExpression("listening");
       },
-      onFinal: (t, conf, dur) => {
-        const words = t.split(/\s+/).filter(Boolean).length;
-        const wpm = dur > 0 ? Math.round((words / dur) * 60000) : 0;
-        send(t, { words_per_minute: wpm, duration_ms: dur, word_count: words }, conf);
+      onFinal: (t, asr, prosody) => send(t, prosody, asr),
+      onError: (e) => {
+        if (e === "not-allowed" || e === "service-not-allowed") { setMicAvailable(false); setListening(false); return; }
+        setSttNote(e);
       },
-      onError: (e) => { if (e === "not-allowed" || e === "service-not-allowed") { setMicAvailable(false); setListening(false); } },
     });
     if (!rec.available) { setMicAvailable(false); return; }
     recRef.current = rec;
@@ -123,7 +141,8 @@ export function DrSamPanel({ cid, setting, language, register, initialTurns, onE
       <div className="avatarCol">
         <Avatar expression={expression} viseme={viseme} speaking={speaking} reducedMotion={reduced} />
         <div className="badge">Dr Sam · AI, not a doctor</div>
-        <div className="meta">phase: {phase}{tone && tone !== "settled" ? ` · pace adapted (${tone})` : ""}</div>
+        <div className="meta">phase: {phase}{tone && tone !== "settled" ? ` · pace adapted (${tone})` : ""} · hearing via {sttProvider === "azure" ? "Azure Speech" : "browser"} · {LANGUAGES[lang]?.name || lang}</div>
+        {sttNote && <div className="meta small">{sttNote}</div>}
       </div>
       <div className="convoCol">
         <div className={`captions ${captionsLarge ? "large" : ""}`} aria-live="polite">

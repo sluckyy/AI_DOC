@@ -9,6 +9,9 @@ language_names: {en: English, vi: Vietnamese, it: Italian, fr: French, ms: Malay
 continue_after_immediate_alert: false      # D-49
 saturation_invitations: 3                  # D-48: Build Spec F-8 says 2, Framework P13 says 3
 silence_end_of_turn_ms: 1200               # N-3: adjustable per deployment
+silence_end_of_turn_ms_by_register: {older: 1800, patient: 1200, clinician: 900, student: 1000, aged_care: 1800}   # N-3: slow speech is not end of turn
+initial_silence_timeout_ms: 8000           # wait this long for speech to start before the recogniser gives up on a turn
+asr_low_confidence_threshold: 0.6          # N-9: recognition confidence below this is flagged per utterance in the transcript layer
 alert_acknowledgement_timeout_s: 120       # S-4: unacknowledged alerts escalate further after this
 closing_read_back: true                    # D-55: Framework P6/read-back kept; dialogue pack 13.4 says no closing summary; owner to rule
 capability_check: true                     # dialogue pack 2: hearing, language offer, someone present

@@ -245,6 +245,15 @@ def generate(state: dict, bundle: ContentBundle, terminology: TerminologyProvide
         narrative.append(tone)
     if state.get("closed_by_alert"):
         narrative.append("The interview was stopped by an immediate-tier alert; everything after that point is not asked.")
+    asr = (metadata or {}).get("asr") or {}
+    if asr.get("spoken_turns"):
+        low = asr.get("low_confidence_turns") or []
+        line = f"Speech recognition ({', '.join(asr.get('provider', []))}): {asr['spoken_turns']} spoken turns"
+        line += f", {asr.get('typed_turns', 0)} typed" if asr.get("typed_turns") else ""
+        line += f"; lowest confidence {asr.get('min_confidence')}"
+        if low:
+            line += f"; {len(low)} below the {asr.get('threshold')} threshold, where the words may be misheard: " + "; ".join(f'{t["turn_id"]} ({t["confidence"]}) "{t["text"][:60]}"' for t in low[:6])
+        narrative.append(line + ". Confidence is the recogniser's, per utterance (N-9); a low value means check the transcript, not the patient.")
     lang = state.get("language", "en")
     narrative.append(f"Interview language: {lang}. " + ("Quoted words are in the language spoken; no translation was applied." if lang == "en" else "Quoted words are as transcribed in the interview language; any translation is marked in the structured record and is not validated."))
     if state.get("is_simulation"):

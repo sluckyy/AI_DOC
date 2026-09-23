@@ -15,6 +15,19 @@ export type AgentTurn = {
   prosody: { rate: string; pitch: string; pause_after_ms: number };
 };
 
+export type SpeechConfigResponse = {
+  stt_provider: "azure" | "browser";
+  region: string | null;
+  bcp47: string;
+  silence_end_of_turn_ms: number;
+  initial_silence_timeout_ms: number;
+  low_confidence_threshold: number;
+  token: string | null;
+  expires_in_s: number | null;
+  languages: Record<string, string>;
+  note: string;
+};
+
 async function j<T>(path: string, init?: RequestInit): Promise<T> {
   const r = await fetch(`${API_BASE}${path}`, { headers: { "Content-Type": "application/json" }, ...init });
   if (!r.ok) throw new Error(`${r.status} ${await r.text()}`);
@@ -27,11 +40,13 @@ export const api = {
       method: "POST",
       body: JSON.stringify({ setting, language, consent, persona_register: register }),
     }),
-  turn: (cid: string, transcript: string, prosody: Record<string, number>, asr_confidence?: number, interrupted_at_ms?: number) =>
-    j<{ person_turn_id: string; agent_turns: AgentTurn[]; phase: string; detected_tone: { label: string; stored: boolean }; alerts: any[] }>(
+  turn: (cid: string, transcript: string, prosody: Record<string, number>, asr?: Record<string, unknown> | null, interrupted_at_ms?: number) =>
+    j<{ person_turn_id: string; agent_turns: AgentTurn[]; phase: string; language: string; language_switched: boolean; detected_tone: { label: string; stored: boolean }; alerts: any[] }>(
       `/conversations/${cid}/turns`,
-      { method: "POST", body: JSON.stringify({ transcript, prosody, asr_confidence, interrupted_at_ms }) },
+      { method: "POST", body: JSON.stringify({ transcript, prosody, asr: asr || undefined, asr_confidence: (asr as any)?.confidence ?? undefined, interrupted_at_ms }) },
     ),
+  speechConfig: (language: string, register: string) => j<SpeechConfigResponse>(`/speech/config?language=${encodeURIComponent(language)}&register=${encodeURIComponent(register)}`),
+  speechToken: () => j<{ token: string; expires_in_s: number; region: string }>(`/speech/token`),
   conversation: (cid: string) => j<any>(`/conversations/${cid}`),
   handover: (cid: string) => j<any>(`/conversations/${cid}/handover`),
   codingDocument: (cid: string) => j<any>(`/conversations/${cid}/coding-document`),

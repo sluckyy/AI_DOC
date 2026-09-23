@@ -198,6 +198,7 @@ resource api 'Microsoft.App/containerApps@2024-03-01' = {
             { name: 'AZURE_OPENAI_DEPLOYMENT_PERSONA', value: openAiPersona.name }
             { name: 'AZURE_OPENAI_KEY', secretRef: 'azure-openai-key' }
             { name: 'TTS_PROVIDER', value: 'azure_rest' }
+            { name: 'STT_PROVIDER', value: 'auto' }
             { name: 'AZURE_SPEECH_REGION', value: location }
             { name: 'AZURE_SPEECH_KEY', secretRef: 'azure-speech-key' }
             { name: 'CONTENT_SAFETY_PROVIDER', value: 'azure' }
