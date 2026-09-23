@@ -51,6 +51,10 @@ link to the clinician handover.
 
 Docker: `cp .env.docker.example .env.docker && docker compose up --build`.
 
+## Deploying to Azure
+
+One command in Azure Cloud Shell creates every resource: see `infra/azure/README.md`.
+
 ## Switching on Azure providers
 
 Set these in `backend/.env` or the container app. Each provider falls back to its
