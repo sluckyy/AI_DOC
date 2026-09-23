@@ -35,7 +35,7 @@ class ActorScript:
     confirm_time_reply: str = "Yes, that's about right."
     interject: dict[int, str] = field(default_factory=dict)      # after N person turns, say this instead
     hang_up_after_alert: bool = False
-    max_turns: int = 140
+    max_turns: int = 320
 
     def answer_for(self, agent_turn: dict) -> str:
         sid = agent_turn.get("slot_id")

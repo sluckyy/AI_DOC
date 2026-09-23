@@ -53,7 +53,7 @@ def test_api_end_to_end(client):
     assert r.json()["agent_turns"][0]["visemes"]
     last = r.json()["agent_turns"][-1]
     open_lines = list(SETTLED_OPEN)
-    for _ in range(60):
+    for _ in range(320):
         move = last["move"]
         if move == "disclose":
             line = "Yes."

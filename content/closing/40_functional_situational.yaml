@@ -1,0 +1,206 @@
+# Closing section: functional and situational history (D-47; design/reference/
+# functional_situational_history_2026-09-23.md). Asked of everyone after the
+# presentation modules. A short universal core, the delta from two weeks ago,
+# deeper questioning only on trigger, and situational items only where the
+# deployment names a recipient for a positive answer (parameters.situational_recipients).
+# The handover carries the inputs, never a frailty score or grade.
+module: functional_situational
+kind: closing
+order: 40
+display_name: how you manage day to day
+version: 0.1.0
+status: grounded
+reviewed: false
+review_notes: ["Katz ADL and Lawton IADL items are asked as questions and recorded per item; nothing is scored (D-41, F-21).", "Falls wording: the evidence base says falls in the last six to twelve months; the question says one year and asks the patient to include falls without injury. The P7 polarity check rejects the phrasing 'even one you didn't hurt yourself in', so the item says 'even one that left you unhurt'.", "Trigger for deeper questioning (asked_when) is reported dependency or a fall; the evidence base also names age and repeat presentation as triggers, neither of which is a slot this section can see.", "Situational recipients (transport, accommodation, carer availability) are named by the site owner (B6); none is named yet, so those three items are not asked until they are.", "Per-item pass-on consent (pass_on_consent) is built for carer strain and the situational items; the controller does not yet implement it.", "Proxy answers (a family member answering for the patient) are recorded as proxy report, not as the patient's own account; patient-proxy agreement is too wide for the two to be merged (Chen 2007)."]
+setting: both
+slots:
+  - id: fn.delta
+    class: coverage
+    required: true
+    always: true
+    intent: "the change in function from two weeks ago to now, the single most useful item because it separates new disability from old"
+    phrasings:
+      - {id: p1, form: open, text: "Compared with two weeks ago, is there anything you can't do now that you could then?"}
+    value: {type: text}
+    none_terms: ["no", nothing, nothing new, no change, same as before, same as usual, no different, not really, about the same]
+    verbatim: true
+    negative_reporting: explicit
+  - id: fn.adl
+    class: coverage
+    required: true
+    always: true
+    instrument: "Katz ADL (items as questions, never scored)"
+    intent: "basic activities of daily living the patient needs help with, recorded per item and never as a score"
+    phrasings:
+      - {id: p1, form: closed, text: "Do you manage these on your own: washing, dressing, getting to the toilet, moving from bed to a chair, and eating? Tell me any you need help with."}
+    value:
+      type: set
+      options:
+        - {id: washing, synonyms: [washing, shower, showering, bath, bathing, keeping clean]}
+        - {id: dressing, synonyms: [dressing, getting dressed, clothes, buttons, shoes, socks]}
+        - {id: toileting, synonyms: [toilet, toileting, getting to the toilet, the loo, bathroom]}
+        - {id: transferring, synonyms: [transferring, bed to a chair, getting out of bed, getting up from a chair, moving from bed, standing up from the chair]}
+        - {id: eating, synonyms: [eating, feeding, feeding myself, cutting food, meals]}
+        - {id: none, synonyms: [none, none of them, all of them, all on my own, manage all of those, no help, i'm fine with those, independent with all]}
+    verbatim: true
+    negative_reporting: explicit
+  - id: fn.iadl
+    class: coverage
+    required: true
+    always: true
+    instrument: "Lawton IADL (items as questions, never scored)"
+    intent: "instrumental activities of daily living the patient needs help with, recorded per item and never as a score"
+    phrasings:
+      - {id: p1, form: closed, text: "And these: shopping, cooking, housework, laundry, getting about by car or bus, managing your medicines, and managing money. Any you need help with?"}
+    value:
+      type: set
+      options:
+        - {id: shopping, synonyms: [shopping, the shops, groceries, supermarket]}
+        - {id: cooking, synonyms: [cooking, meals, making food, preparing meals]}
+        - {id: housework, synonyms: [housework, cleaning, vacuuming, the house, chores]}
+        - {id: laundry, synonyms: [laundry, washing clothes, the washing, ironing]}
+        - {id: transport, synonyms: [transport, getting about, driving, the car, the bus, getting around, can't drive]}
+        - {id: medicines, synonyms: [medicines, medications, tablets, pills, my webster pack, blister pack, remembering my tablets]}
+        - {id: money, synonyms: [money, finances, bills, banking, paying things]}
+        - {id: none, synonyms: [none, none of them, all of them, all on my own, manage all of those, no help, i'm fine with those, independent with all]}
+    verbatim: true
+    negative_reporting: explicit
+  - id: fn.mobility
+    class: coverage
+    required: true
+    always: true
+    intent: "mobility aids in use and comfortable walking distance, as the patient reports it; the agent never asks the patient to walk or stand as a test"
+    phrasings:
+      - {id: p1, form: open, text: "Do you use a stick, a frame or a wheelchair? How far can you walk comfortably?"}
+    value: {type: text}
+    none_terms: ["no", no aids, nothing, none, i don't use anything, walk fine, walk normally, as far as i like]
+    verbatim: true
+    negative_reporting: explicit
+  - id: fn.falls
+    class: coverage
+    required: true
+    always: true
+    intent: "any fall in the last year, including falls without injury, which patients otherwise leave out"
+    phrasings:
+      - {id: p1, form: closed, text: "Have you had a fall in the last year, even one that left you unhurt?"}
+    value: {type: yes_no}
+    extraction:
+      yes_terms: ["yes", fell, a fall, fallen, had a fall, tripped, slipped, went down, ended up on the floor, a couple of falls, a few falls]
+      no_terms: ["no", never, no falls, haven't fallen, not that i can think of, none]
+      unknown_terms: [not sure, can't remember, don't remember, i don't know, maybe, possibly]
+    verbatim: true
+    negative_reporting: explicit
+  - id: fn.cognition_senses
+    class: coverage
+    required: true
+    always: true
+    intent: "memory, vision or hearing trouble that interferes with daily life, as the patient reports it"
+    phrasings:
+      - {id: p1, form: open, text: "Any trouble with memory, eyesight or hearing that gets in the way day to day?"}
+    value: {type: text}
+    none_terms: ["no", none, nothing, no trouble, all fine, not really, nothing like that]
+    verbatim: true
+    negative_reporting: explicit
+  - id: fn.lives_with
+    class: coverage
+    required: true
+    always: true
+    intent: "who is at home and what the dwelling is like: stairs and bathroom access, as the patient describes it"
+    phrasings:
+      - {id: p1, form: open, text: "Who lives at home with you? What kind of place is it: stairs, a bathroom you can get to easily?"}
+    value: {type: text}
+    verbatim: true
+    negative_reporting: omit
+  - id: fn.help
+    class: coverage
+    required: true
+    always: true
+    intent: "who helps the patient and how often, in the patient's words"
+    phrasings:
+      - {id: p1, form: open, text: "Who helps you, and how often?"}
+    value: {type: text}
+    none_terms: [nobody, no one, no-one, none, nothing, i don't need help, no help, i manage myself, manage on my own]
+    verbatim: true
+    negative_reporting: explicit
+  - id: fn.services
+    class: coverage
+    required: true
+    always: true
+    intent: "formal services already in place, so the handover does not propose what already exists"
+    phrasings:
+      - {id: p1, form: open, text: "Are any services already in place: home care, meals, a community nurse, anything like that?"}
+    value: {type: text}
+    none_terms: ["no", none, nothing, no services, nothing in place, nothing like that, not yet]
+    verbatim: true
+    negative_reporting: explicit
+  - id: fn.carer_strain
+    class: coverage
+    required: false
+    asked_when: "fn.help != 'none' and ('none' not in fn.adl or 'none' not in fn.iadl or fn.falls == 'yes')"
+    intent: "whether the person who helps is coping, asked only when someone helps and dependency or a fall has been reported"
+    phrasings:
+      - {id: p1, form: open, text: "Is the person who helps you managing, or is it getting hard for them?"}
+    value: {type: text}
+    pass_on_consent: true
+    verbatim: true
+    negative_reporting: omit
+  - id: fn.going_home_needs
+    class: coverage
+    required: false
+    asked_when: "'none' not in fn.adl or 'none' not in fn.iadl or fn.falls == 'yes'"
+    intent: "what would need to be in place for the patient to be at home tonight, the line the discharge planner reads first"
+    phrasings:
+      - {id: p1, form: open, text: "If you had to be at home tonight, what would need to be in place for that to work?"}
+    value: {type: text}
+    verbatim: true
+    negative_reporting: omit
+  - id: fn.transport
+    class: coverage
+    required: false
+    recipient_key: transport
+    intent: "difficulty getting to appointments or returning for follow-up, from distance, transport or cost; asked only where the site names a recipient (D-47)"
+    stigmatised: true
+    preamble: "I ask this so the right person can help, and you can tell me not to pass it on."
+    phrasings:
+      - {id: p1, form: open, text: "Would getting to appointments, or coming back for follow-up, be a problem: distance, transport, or the cost?"}
+    value: {type: text}
+    none_terms: ["no", no problem, not a problem, fine, that's fine, i can get there, no trouble]
+    pass_on_consent: true
+    verbatim: true
+    negative_reporting: omit
+  - id: fn.accommodation
+    class: coverage
+    required: false
+    recipient_key: accommodation
+    intent: "whether staying in for treatment would be a problem for family accommodation, work or caring commitments; asked only where the site names a recipient (D-47)"
+    stigmatised: true
+    preamble: "I ask this so the right person can help, and you can tell me not to pass it on."
+    phrasings:
+      - {id: p1, form: open, text: "If you needed to stay in for treatment, would somewhere to stay for family, or work or caring commitments, be a problem?"}
+    value: {type: text}
+    none_terms: ["no", no problem, not a problem, fine, that's fine, no trouble, that would be ok]
+    pass_on_consent: true
+    verbatim: true
+    negative_reporting: omit
+  - id: fn.carer_availability
+    class: coverage
+    required: false
+    recipient_key: carer_availability
+    intent: "whether someone could be with the patient for a few days if needed; asked only where the site names a recipient (D-47)"
+    stigmatised: true
+    preamble: "I ask this so the right person can help, and you can tell me not to pass it on."
+    phrasings:
+      - {id: p1, form: open, text: "If you needed someone with you for a few days, is there someone who could do that?"}
+    value: {type: text}
+    pass_on_consent: true
+    verbatim: true
+    negative_reporting: omit
+red_flags:
+  - id: rf.fn_new_dependency
+    fires_when: "'none' not in fn.adl"
+    tier: flag
+    alert: {include_verbatim: true, template: "Needs help with one or more basic daily activities ({fn.adl}). Change from two weeks ago: {fn.delta}. At home: {fn.lives_with}; helped by: {fn.help}; services: {fn.services}. Patient said: {verbatim}."}
+    suppressible: false
+    source: "Schiltz et al. 2020, JGIM: ADL limitations ranked the single most important predictor of 30-day readmission (IADL adjusted RR 1.17); hospital-associated disability pooled incidence 37% (PeerJ 2023 rapid review), so baseline dependency has to be on the record before it changes; functional and situational evidence base, D-47"
+prohibited: [any frailty score or grade (the Clinical Frailty Scale is a clinician judgement and carries a licence condition), '"independent" as a summary word in the handover', asking the patient to walk or stand as a test, treating a proxy's answer as the patient's own, writing a situational answer into the record after the patient has asked for it not to be passed on]
+gaps: ["PRISMA-7 and ISAR items are not administered; the section records the constituent facts and no vulnerability screen.", "Proxy report is recorded as proxy, not merged with the patient's account; the controller does not yet mark the speaker.", "Per-item pass-on consent is built; a clinician-visible-but-not-filed layer for social items (the third option in the evidence base) is not.", "Deeper questioning is triggered by reported dependency or a fall; age and repeat presentation, the other triggers named in the evidence base, are not available to this section.", "Continence, advance care planning and substitute decision-maker are in the evidence base's functional definition and are not asked here.", "No situational recipient is yet named in parameters, so the transport, accommodation and carer availability items are not asked until the owner names one (B6)."]

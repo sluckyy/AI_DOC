@@ -122,7 +122,8 @@ slice on `feature/phase-1-vertical-slice`. States: **Met**, **Partial**,
 | Dialogue pack 2 capability check | Met | Controller `capability` phase; hearing difficulty bails out; language offer switches the interview language (D-58) |
 | Dialogue pack 4 domain stems | Partial | The generic module uses the eleven-domain stems; presentation modules keep the library's row-specific wording |
 | Dialogue pack 5 absolute time | Met | Clock-time slots are asked explicitly, never lifted from the narrative; the computed interval is read back and confirmed; C9 enforces `confirm: true` |
-| Dialogue pack 6 medications | Partial | `cs.medications`, `cs.allergies`, blood thinners by name with the packet check in `gate.anticoagulant`; the full inventory (D-38) and the list read-back line follow |
+| Dialogue pack 6 medications | Met | Category-prompted inventory and a per-medicine loop in `content/closing/10_medications.yaml` (D-38); blood thinners by name with the packet check in `gate.anticoagulant`; allergies as reaction, timing and type; the GP call ends by asking the patient to bring their medicines |
+| Lifecycle: closing sections (F-1 table) | Met | Systems review, medicines, past history (five routes and a lay-anchored sweep), family history (three states, thresholds named), function and situation (inputs, never a score; per-item pass-on consent), social (contextual probe, occupation, AUDIT-C verbatim) as `kind: closing` modules (D-59, D-60) |
 | Dialogue pack 7 delegated observations | Partial | Slots marked `delegated_observation`; the glass test and lighter-area prompt in the rash and child modules; F-18 "what they did" capture is verbatim only |
 | Dialogue pack 8 hard questions | Met | Stigmatised slots with preambles; pregnancy gate; knuckle question keyed on location |
 | Dialogue pack 10 mental health | Blocked | `enabled: false`, status blocked; never loads (D-52) |

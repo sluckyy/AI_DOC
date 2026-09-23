@@ -92,6 +92,19 @@ clinical_parameters:
     value: {min: null, max: null}
     recommended: {min: 12, max: 55}
 
+# D-47: a situational item is asked only where a named recipient for a positive answer exists at the site.
+# Set each to null to stop asking it. Owner decision B6 in design/09_owner_decisions_brief.md.
+situational_recipients:
+  transport: "ED discharge planner / practice nurse (interim, to be confirmed by the site)"
+  accommodation: "ED discharge planner / social work (interim, to be confirmed by the site)"
+  carer_availability: "ED discharge planner / practice nurse (interim, to be confirmed by the site)"
+# D-39: guideline thresholds the handover names when a reported pattern crosses them. Australian guidance, cited.
+family_history_thresholds:
+  colorectal_category_2: {first_degree_count: 2, or_one_first_degree_under_age: 55, label: "Category 2 (revised national colorectal screening guidelines, MJA 2018): iFOBT 2-yearly from 40, colonoscopy 5-yearly from 50"}
+  colorectal_category_3: {first_degree_count: 3, label: "Category 3 (MJA 2018): iFOBT 2-yearly from 35, colonoscopy 5-yearly from 45"}
+  breast_moderate_risk: {first_degree_under_age: 50, label: "Moderately increased risk (Cancer Australia / BreastScreen categories): annual mammography from 40"}
+  premature_cvd: {male_under_age: 55, female_under_age: 65, label: "Premature CVD in a first-degree relative (2023 Australian CVD guideline): reclassification factor"}
+
 helplines:
   emergency: "000"
   lifeline: "13 11 14"
