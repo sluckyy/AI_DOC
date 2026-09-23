@@ -1,0 +1,108 @@
+# TiTrATE: timing and triggers, NOT symptom quality. The first draft of this row encoded the discredited approach.
+module: dizziness
+display_name: dizziness
+version: 0.1.0
+status: grounded
+reviewed: false
+review_notes: ["Whether timing and triggers can be elicited reliably by voice without examination", "Closing block is a first draft"]
+setting: both
+activates_on:
+  terms: [dizzy, dizziness, light-headed, lightheaded, room spinning, spinning, off balance, woozy, giddy, unsteady, vertigo]
+slots:
+  - id: dz.timing
+    class: coverage
+    required: true
+    intent: timing pattern, continuous or episodic, and duration of episodes
+    phrasings:
+      - {id: p1, form: open, text: "Is the dizziness there all the time, or does it come in episodes? If episodes, how long does each one last: seconds, minutes, or hours?"}
+    value:
+      type: enum
+      options:
+        - {id: continuous, synonyms: [all the time, constant, continuous, hasn't stopped, non-stop]}
+        - {id: episodic_seconds, synonyms: [seconds, few seconds, brief, moments]}
+        - {id: episodic_minutes, synonyms: [minutes, twenty minutes, half an hour]}
+        - {id: episodic_hours, synonyms: [hours, an hour, all afternoon]}
+    verbatim: true
+    negative_reporting: omit
+  - id: dz.triggers
+    class: coverage
+    required: true
+    intent: what provokes it, especially head movement or standing
+    phrasings:
+      - {id: p1, form: open, text: "Does anything bring it on: turning over in bed, moving your head, standing up, or nothing in particular?"}
+    value:
+      type: enum
+      options:
+        - {id: head_position, synonyms: [turning over, in bed, moving my head, looking up, rolling over, head movement]}
+        - {id: standing, synonyms: [standing up, getting up, when i stand]}
+        - {id: spontaneous, synonyms: [nothing, no trigger, out of the blue, just happens, nothing in particular]}
+    verbatim: true
+    negative_reporting: omit
+  - id: dz.onset_when
+    class: coverage
+    required: true
+    intent: when it started and whether sudden
+    phrasings:
+      - {id: p1, form: open, text: "When did it start, and was that sudden?"}
+    value: {type: text}
+    verbatim: true
+    negative_reporting: omit
+  - id: dz.neuro
+    class: red_flag
+    required: true
+    intent: associated focal deficit, double vision, slurred speech, clumsiness or inability to walk, including resolved
+    phrasings:
+      - {id: p1, form: closed, text: "With it, has there been double vision, slurred speech, weakness or numbness, or trouble walking, even if it's passed?"}
+    value: {type: yes_no}
+    extraction: {yes_terms: ["yes", double vision, slurred, weak, numb, can't walk, clumsy, couldn't stand], no_terms: ["no", nothing like that, walking fine, none of those]}
+    verbatim: true
+    negative_reporting: explicit
+  - id: dz.headache
+    class: red_flag
+    required: true
+    intent: sudden onset with a new headache or neck pain
+    phrasings:
+      - {id: p1, form: closed, text: "Did it come with a new headache or neck pain?"}
+    value: {type: yes_no}
+    extraction: {yes_terms: ["yes", headache, neck pain, head hurts], no_terms: ["no", no headache, head is fine]}
+    verbatim: true
+    negative_reporting: explicit
+  - id: dz.hearing
+    class: coverage
+    required: true
+    intent: hearing change or ear symptoms
+    phrasings:
+      - {id: p1, form: closed, text: "Any change in your hearing, ringing in the ears, or ear pain?"}
+    value: {type: text}
+    verbatim: true
+    negative_reporting: explicit
+  - id: dz.pregnancy_possible
+    class: context
+    required: false
+    intent: possible pregnancy, since dizziness was reported in 23% of one ectopic series
+    phrasings:
+      - {id: p1, form: closed, text: "Because of what you've described, I need to ask: is there any chance you could be pregnant?"}
+    value: {type: yes_no}
+    extraction: {yes_terms: ["yes", could be, maybe, possibly, late period, missed period], no_terms: ["no", not possible, no chance, can't be]}
+    verbatim: true
+    negative_reporting: explicit
+red_flags:
+  - id: rf.dizziness_neuro
+    fires_when: "dz.neuro == 'yes'"
+    tier: immediate
+    alert: {include_verbatim: true, template: "Dizziness with a focal neurological symptom, current or resolved. Patient said: {verbatim}."}
+    suppressible: false
+    source: "Neurological table and stroke cluster"
+  - id: rf.dizziness_sudden_headache
+    fires_when: "dz.headache == 'yes'"
+    tier: immediate
+    alert: {include_verbatim: true, template: "Dizziness with new headache or neck pain. Patient said: {verbatim}."}
+    suppressible: false
+    source: "Neurological table: sudden onset with headache; neck pain without trauma row"
+closing:
+  uncertainty: "I can't tell from talking with you what is causing the dizziness."
+  watch_for: [double vision or slurred speech, weakness or numbness, being unable to walk, a new severe headache]
+  time_course: "Someone will speak with you today."
+  where: "If any of those happen before then, call an ambulance rather than waiting."
+prohibited: [sorting the dizziness into vertigo or presyncope or disequilibrium and reasoning from it, naming a cause]
+gaps: ["The targeted examination half of TiTrATE (eye movements, gait) was not performed."]

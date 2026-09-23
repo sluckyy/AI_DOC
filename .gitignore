@@ -1,4 +1,9 @@
 audition/
 .env
 *.mp3
+*.sqlite
 __pycache__/
+.pytest_cache/
+node_modules/
+dist/
+frontend/dist/

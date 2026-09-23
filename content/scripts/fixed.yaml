@@ -1,0 +1,9 @@
+# Fixed scripts spoken verbatim. Anything here is reviewable like a leaflet.
+alert_prefix: "I need to stop for a moment."
+after_alert_continue: "While that's being looked at, I'll keep going so the doctor has as much as possible."
+closing_intro: "Before I pass this on, a few things to watch for."
+not_asked_note: "There are things I didn't get to ask, and I've listed them for the doctor rather than guessing."
+goodbye: "Thanks for your time. I've passed this on. The doctor will see everything you've told me, in your own words."
+bail_out: "I don't think this is working well by voice right now. I'm going to hand over to a person. Please wait where you are."
+transfer_dropped: "The line dropped after I raised the alert. The alert stands and records that contact was lost."
+time_ask_prefix: "I need a clock time for this, even roughly."

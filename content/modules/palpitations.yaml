@@ -1,0 +1,168 @@
+module: palpitations
+display_name: palpitations
+version: 0.1.0
+status: grounded
+reviewed: false
+review_notes: ["Whether symptoms occurring during the call should change GP-version appointment urgency (design proposal, not literature)", "Closing block is a first draft"]
+setting: both
+activates_on:
+  terms: [palpitations, heart racing, racing heart, heart's racing, heart's been racing, heart is racing, heart has been racing, heart keeps racing, heart's going fast, heart's been going, heart's pounding, heart's thumping, heart's fluttering, heart's skipping, heart rate, heartbeat, beating fast, beating really fast, fluttering, pounding, skipping, thumping, heart going fast, irregular heartbeat, heart pounding]
+slots:
+  - id: pa.now
+    class: red_flag
+    required: true
+    intent: whether the palpitations are happening right now, which is a live opportunity for an ECG
+    phrasings:
+      - {id: p1, form: closed, text: "Is your heart doing it right now, while we're talking?"}
+    value: {type: yes_no}
+    extraction: {yes_terms: ["yes", right now, at the moment, it's doing it now, still going, now], no_terms: ["no", not now, stopped, settled, gone, earlier]}
+    verbatim: true
+    negative_reporting: explicit
+  - id: pa.rhythm
+    class: coverage
+    required: true
+    intent: regular or irregular, elicited by asking the patient to tap it out; a delegated observation recorded in the patient's words, never named as a rhythm
+    phrasings:
+      - {id: p1, form: open, text: "Can you tap out the rhythm on the table for me, the way your heart was going? Was it steady, or all over the place?"}
+    value:
+      type: enum
+      options:
+        - {id: regular, synonyms: [regular, steady, even, same beat, constant]}
+        - {id: irregular, synonyms: [irregular, all over the place, uneven, random, skips, missed beats, chaotic, fast and irregular, jumping about, no pattern]}
+        - {id: unsure, synonyms: [not sure, couldn't say, hard to say]}
+    delegated_observation: true
+    verbatim: true
+    negative_reporting: omit
+  - id: pa.onset_offset
+    class: coverage
+    required: true
+    intent: whether it starts and stops suddenly or gradually
+    phrasings:
+      - {id: p1, form: closed, text: "Does it start and stop suddenly, like a switch, or build up and fade away?"}
+    value:
+      type: enum
+      options:
+        - {id: abrupt, synonyms: [switch, suddenly, sudden, instantly, straight away, out of nowhere]}
+        - {id: gradual, synonyms: [gradually, builds up, fades, slowly, creeps]}
+        - {id: unsure, synonyms: [not sure, don't know]}
+    verbatim: true
+    negative_reporting: omit
+  - id: pa.duration
+    class: discriminating
+    required: true
+    intent: how long episodes last
+    phrasings:
+      - {id: p1, form: open, text: "How long does an episode last: seconds, a few minutes, longer than five minutes, or hours?"}
+    value:
+      type: enum
+      options:
+        - {id: under_5_min, synonyms: [seconds, a minute, couple of minutes, few minutes, under five, less than five, brief, moment]}
+        - {id: over_5_min, synonyms: [longer, more than five, ten minutes, twenty minutes, half an hour, hours, all day, ages]}
+        - {id: unsure, synonyms: [varies, not sure]}
+    evidence: {lr: "episodes lasting under 5 minutes LR 0.38 for an arrhythmic cause", discriminates: arrhythmia, citation: "outpatient palpitations likelihood ratio table, as tabulated in the Symptom Questioning Library", grade: A, population: pooled}
+    verbatim: true
+    negative_reporting: explicit
+  - id: pa.neck_pulsations
+    class: discriminating
+    required: true
+    intent: visible neck pulsations, a delegated observation the patient reports
+    phrasings:
+      - {id: p1, form: closed, text: "During an episode, has anyone noticed, or have you seen in a mirror, a pulsing in your neck?"}
+    value: {type: yes_no}
+    extraction: {yes_terms: ["yes", pulsing in my neck, neck pulsing, throbbing in my neck, noticed my neck], no_terms: ["no", never noticed, haven't looked, not that i've seen]}
+    evidence: {lr: "visible neck pulsations LR+ 2.7 for an arrhythmic cause", discriminates: arrhythmia, citation: "outpatient palpitations likelihood ratio table, as tabulated in the Symptom Questioning Library", grade: A, population: pooled}
+    delegated_observation: true
+    verbatim: true
+    negative_reporting: omit
+  - id: pa.sleep_work
+    class: discriminating
+    required: true
+    intent: whether episodes affect sleep or occur at work
+    phrasings:
+      - {id: p1, form: closed, text: "Does it wake you or stop you sleeping? Does it happen while you're at work?"}
+    value: {type: text}
+    evidence: {lr: "affects sleep LR+ 2.3; occurs at work LR+ 2.2", discriminates: arrhythmia, citation: "outpatient palpitations likelihood ratio table, as tabulated in the Symptom Questioning Library", grade: A, population: pooled}
+    verbatim: true
+    negative_reporting: omit
+  - id: pa.exertional
+    class: red_flag
+    required: true
+    intent: palpitations during exertion
+    phrasings:
+      - {id: p1, form: closed, text: "Has it ever started while you were exercising or exerting yourself?"}
+    value: {type: yes_no}
+    extraction: {yes_terms: ["yes", exercising, running, exertion, at the gym, walking up, climbing], no_terms: ["no", never during, at rest, sitting down, not exercising]}
+    verbatim: true
+    negative_reporting: explicit
+  - id: pa.syncope
+    class: red_flag
+    required: true
+    intent: associated blackout or near-blackout
+    phrasings:
+      - {id: p1, form: closed, text: "Have you ever blacked out, or nearly blacked out, with it?"}
+    value: {type: yes_no}
+    extraction: {yes_terms: ["yes", blacked out, passed out, fainted, nearly fainted, collapsed, went down], no_terms: ["no", never fainted, never blacked out, stayed conscious]}
+    verbatim: true
+    negative_reporting: explicit
+  - id: pa.chest_pain_breathless
+    class: red_flag
+    required: true
+    intent: associated chest pain or breathlessness
+    phrasings:
+      - {id: p1, form: closed, text: "Is there chest pain or breathlessness with it?"}
+    value: {type: yes_no}
+    extraction: {yes_terms: ["yes", chest pain, tight chest, breathless, short of breath, can't breathe], no_terms: ["no", no pain, breathing fine, just the heart]}
+    verbatim: true
+    negative_reporting: explicit
+  - id: pa.known_heart_disease
+    class: discriminating
+    required: true
+    intent: known heart disease
+    phrasings:
+      - {id: p1, form: closed, text: "Have you been told you have any heart problem, or had any heart tests before?"}
+    value: {type: yes_no}
+    extraction: {yes_terms: ["yes", heart problem, heart disease, atrial fibrillation, af, valve, pacemaker, heart attack, angina, echo, heart tests], no_terms: ["no", never been told, no heart problems, nothing wrong with my heart, not that i know]}
+    evidence: {lr: "known heart disease LR+ 2.0 for an arrhythmic cause", discriminates: arrhythmia, citation: "outpatient palpitations likelihood ratio table, as tabulated in the Symptom Questioning Library", grade: A, population: pooled}
+    verbatim: true
+    negative_reporting: explicit
+  - id: pa.anxiety_context
+    class: coverage
+    required: false
+    intent: any anxiety or panic the patient links to it, recorded separately from the finding and never used to close the question
+    phrasings:
+      - {id: p1, form: open, text: "Some people notice it more when they feel anxious. Is that something you've noticed?"}
+    value: {type: text}
+    verbatim: true
+    negative_reporting: omit
+red_flags:
+  - id: rf.palpitations_with_syncope
+    fires_when: "pa.syncope == 'yes'"
+    tier: immediate
+    alert: {include_verbatim: true, template: "Palpitations with syncope or near-syncope. Patient said: \"{verbatim}\"."}
+    suppressible: false
+    source: "Master list: syncope with palpitations"
+  - id: rf.palpitations_with_chest_pain
+    fires_when: "pa.chest_pain_breathless == 'yes'"
+    tier: immediate
+    alert: {include_verbatim: true, template: "Palpitations with chest pain or breathlessness. Patient said: \"{verbatim}\"."}
+    suppressible: false
+    source: "Cardiovascular table red flags"
+  - id: rf.palpitations_now_gp
+    fires_when: "pa.now == 'yes'"
+    tier: same_day
+    alert: {include_verbatim: true, template: "Palpitations occurring during the call: a live opportunity for an ECG. Patient said: \"{verbatim}\"."}
+    suppressible: false
+    source: "Master list: palpitations occurring during the GP booking call (design proposal, not literature)"
+  - id: rf.exertional_palpitations
+    fires_when: "pa.exertional == 'yes'"
+    tier: flag
+    alert: {include_verbatim: true, template: "Exertional palpitations. Patient said: \"{verbatim}\"."}
+    suppressible: false
+    source: "Master list: exertional palpitations named as a red flag but given no tier; flagged pending cardiology review"
+closing:
+  uncertainty: "I can't tell from talking with you what is causing your heart to do this."
+  watch_for: [blacking out or nearly blacking out, chest pain, breathlessness, an episode that will not stop]
+  time_course: "Someone will speak with you today."
+  where: "If it comes with any of those, call an ambulance rather than waiting."
+prohibited: [summarising the episodes as likely anxiety, naming a rhythm]
+gaps: ["No ECG. A prior mental-health attribution does not exclude an organic cause; the two coexist in up to 13% of cases."]

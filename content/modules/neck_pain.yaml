@@ -1,0 +1,135 @@
+# Two branches: after trauma (Canadian C-spine history items) and without trauma (dissection questions).
+module: neck_pain
+display_name: neck pain
+version: 0.1.0
+status: grounded
+reviewed: false
+review_notes: ["Emergency medicine review of the GP-version instruction for high-risk callers", "Neurology review of the proposed same-day threshold for non-traumatic neck pain", "Cord compression, infection and malignancy red flags not grounded", "Closing block is a first draft"]
+setting: both
+activates_on:
+  terms: [neck pain, stiff neck, crick in my neck, neck's locked up, my neck, neck is sore, whiplash]
+slots:
+  - id: np.trauma
+    class: coverage
+    required: true
+    intent: whether there was a significant injury
+    phrasings:
+      - {id: p1, form: closed, text: "Did this start with an accident, fall or blow to the head or neck?"}
+    value: {type: yes_no}
+    extraction: {yes_terms: ["yes", accident, fell, fall, crash, hit, tackle, blow, collision, whiplash], no_terms: ["no", no injury, just woke up with it, nothing happened]}
+    verbatim: true
+    negative_reporting: explicit
+  - id: np.mechanism
+    class: red_flag
+    required: false
+    intent: dangerous mechanism, asked operationally
+    phrasings:
+      - {id: p1, form: open, text: "How far did you fall, in metres or stairs? Was it a car crash, and how fast, did the car roll or were you thrown out? A bike, or a motorbike or quad?"}
+    value:
+      type: enum
+      options:
+        - {id: dangerous, synonyms: [more than a metre, five stairs, rollover, rolled, thrown out, ejected, high speed, motorbike, quad, bicycle, dived, head first, axial]}
+        - {id: minor, synonyms: [tripped, low speed, minor, small bump, slow, standing height, not far]}
+    verbatim: true
+    negative_reporting: explicit
+  - id: np.paraesthesia
+    class: red_flag
+    required: false
+    intent: tingling in any limb at any time since the injury, including resolved
+    phrasings:
+      - {id: p1, form: closed, text: "Since the injury, has there been tingling, numbness or weakness in either arm or either leg, even if it has gone now?"}
+    value: {type: yes_no}
+    extraction: {yes_terms: ["yes", tingling, numb, pins and needles, weak, weakness, my arm, my leg], no_terms: ["no", nothing, none, arms and legs are fine]}
+    verbatim: true
+    negative_reporting: explicit
+  - id: np.age_over_65
+    class: context
+    required: false
+    intent: age 65 or over, a high-risk criterion
+    phrasings:
+      - {id: p1, form: closed, text: "Because of the injury I need to ask your age. Are you 65 or over?"}
+    value: {type: yes_no}
+    extraction: {yes_terms: ["yes", "i'm 65", "65", "66", "67", "68", "69", "70", "71", "72", "73", "74", "75", "76", "77", "78", "79", "80", "81", "82", "83", "84", "85", "86", "87", "88", "89", "90", "over 65", "older"], no_terms: ["no", "under 65", "younger"]}
+    verbatim: true
+    negative_reporting: explicit
+  - id: np.neuro_no_trauma
+    class: red_flag
+    required: true
+    intent: any neurological symptom with new neck pain, including resolved
+    phrasings:
+      - {id: p1, form: closed, text: "With the neck pain, has there been any dizziness, change in vision, trouble speaking, numbness, weakness or unsteadiness, even if it has passed?"}
+    value: {type: yes_no}
+    extraction: {yes_terms: ["yes", dizzy, vision, speech, slurred, numb, weak, unsteady], no_terms: ["no", none of those, nothing like that]}
+    verbatim: true
+    negative_reporting: explicit
+  - id: np.minor_trauma_activities
+    class: coverage
+    required: true
+    intent: neck manipulation, heavy lifting, contact sport, fairground rides, sudden neck movement in recent weeks, with dates
+    phrasings:
+      - {id: p1, form: open, text: "In the last few weeks, have you had your neck manipulated by a chiropractor or physio, done heavy lifting, played contact sport, been on a fairground ride, or moved your neck suddenly? When?"}
+    value: {type: text}
+    verbatim: true
+    negative_reporting: explicit
+  - id: np.new_headache
+    class: red_flag
+    required: true
+    intent: new headache with the neck pain
+    phrasings:
+      - {id: p1, form: closed, text: "Is there a new headache with it?"}
+    value: {type: yes_no}
+    extraction: {yes_terms: ["yes", headache, head pain], no_terms: ["no", no headache]}
+    verbatim: true
+    negative_reporting: explicit
+  - id: np.different_from_usual
+    class: coverage
+    required: true
+    intent: whether this pain differs from usual neck pain
+    phrasings:
+      - {id: p1, form: closed, text: "Is this different from any neck pain you've had before?"}
+    value: {type: yes_no}
+    extraction: {yes_terms: ["yes", different, worse, never like this, new], no_terms: ["no", same as usual, typical, like before]}
+    verbatim: true
+    negative_reporting: omit
+  - id: np.fever_stiffness
+    class: red_flag
+    required: true
+    intent: fever with neck stiffness or photophobia
+    phrasings:
+      - {id: p1, form: closed, text: "Any fever, or is the neck so stiff you can't put your chin on your chest? Does light hurt your eyes?"}
+    value: {type: yes_no}
+    extraction: {yes_terms: ["yes", fever, stiff, chin, light hurts, photophobia], no_terms: ["no", no fever, can move it, light is fine]}
+    verbatim: true
+    negative_reporting: explicit
+red_flags:
+  - id: rf.cspine_high_risk
+    fires_when: "np.trauma == 'yes' and (np.mechanism == 'dangerous' or np.paraesthesia == 'yes' or np.age_over_65 == 'yes')"
+    tier: immediate
+    alert: {include_verbatim: true, template: "Neck pain after trauma with a Canadian C-spine high-risk criterion (age 65 or over, dangerous mechanism, or limb paraesthesia). Patient said: {verbatim}."}
+    suppressible: false
+    source: "Master list: after trauma with neck pain, age 65 or over, dangerous mechanism, or tingling in any limb"
+  - id: rf.neck_pain_neuro
+    fires_when: "np.neuro_no_trauma == 'yes'"
+    tier: immediate
+    alert: {include_verbatim: true, template: "New neck pain with a neurological symptom, including resolved; routes to the stroke cluster. Patient said: {verbatim}."}
+    suppressible: false
+    source: "Master list: new neck pain with any neurological symptom, including one that has resolved"
+  - id: rf.neck_pain_headache_after_activity
+    fires_when: "np.new_headache == 'yes' and np.trauma == 'no'"
+    tier: same_day
+    alert: {include_verbatim: true, template: "New neck pain with new headache; recent activities: {np.minor_trauma_activities}. Dissection not excluded. Patient said: {verbatim}."}
+    suppressible: false
+    source: "Master list: new neck pain with new headache after neck manipulation, heavy lifting, contact sport or a fairground ride (proposed)"
+  - id: rf.neck_fever_stiffness
+    fires_when: "np.fever_stiffness == 'yes'"
+    tier: immediate
+    alert: {include_verbatim: true, template: "Fever with neck stiffness or photophobia; routes to fever and sepsis. Patient said: {verbatim}."}
+    suppressible: false
+    source: "MSK table: fever with photophobia"
+closing:
+  uncertainty: "I can't tell from talking with you what is causing the neck pain."
+  watch_for: [tingling or weakness in an arm or leg, dizziness or trouble speaking or seeing, a new severe headache, fever with a stiff neck]
+  time_course: "Someone will speak with you today."
+  where: "If any of those start, call an ambulance rather than waiting, and please avoid having your neck manipulated until a doctor has seen you."
+prohibited: [asking the patient to turn their head to test it, clearing the neck, telling a high-risk caller to come in by their own means]
+gaps: ["The agent can complete the rule-in half of the Canadian C-spine rule and none of the rule-out half; only examination clears a neck. Patients with known cervical disease are outside the rule."]

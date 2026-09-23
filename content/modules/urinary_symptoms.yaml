@@ -1,0 +1,122 @@
+module: urinary_symptoms
+display_name: urinary symptoms
+version: 0.1.0
+status: grounded
+reviewed: false
+review_notes: ["Whether the agent should ever flag the history-only rule-in combination", "Downstream pathway governance", "Closing block is a first draft"]
+setting: both
+activates_on:
+  terms: [burning when i pee, burning when i go, going all the time, urgency, can't pee, can't go, stinging when i wee, urine infection, uti, cystitis, need to go all the time]
+slots:
+  - id: ur.dysuria
+    class: discriminating
+    required: true
+    intent: dysuria
+    phrasings:
+      - {id: p1, form: closed, text: "Does it burn or sting when you pass urine?"}
+    value: {type: yes_no}
+    extraction: {yes_terms: ["yes", burns, burning, stings, stinging, painful], no_terms: ["no", doesn't burn, no pain]}
+    evidence: {lr: "dysuria LR+ 1.5; dysuria plus frequency without vaginal discharge or irritation LR+ 24.6", discriminates: uncomplicated urinary tract infection in women, citation: "Rational Clinical Examination UTI review, as tabulated in the Symptom Questioning Library", grade: A, population: women}
+    verbatim: false
+    negative_reporting: explicit
+  - id: ur.frequency
+    class: discriminating
+    required: true
+    intent: frequency
+    phrasings:
+      - {id: p1, form: closed, text: "Are you going much more often than usual?"}
+    value: {type: yes_no}
+    extraction: {yes_terms: ["yes", all the time, more often, constantly, every few minutes], no_terms: ["no", normal amount, not more often]}
+    evidence: {lr: "frequency LR+ 1.8", discriminates: uncomplicated urinary tract infection in women, citation: "as above", grade: A, population: women}
+    verbatim: false
+    negative_reporting: explicit
+  - id: ur.vaginal_symptoms
+    class: discriminating
+    required: true
+    intent: vaginal discharge or irritation, the strongest items and the ones most often skipped
+    phrasings:
+      - {id: p1, form: closed, text: "Doctors ask everyone this: is there any vaginal discharge or irritation?"}
+    value: {type: yes_no}
+    extraction: {yes_terms: ["yes", discharge, irritation, itchy, itching, sore down there], no_terms: ["no", none, nothing like that, not applicable, i'm a man]}
+    evidence: {lr: "history of vaginal discharge LR 0.3; vaginal irritation LR 0.2", discriminates: uncomplicated urinary tract infection in women (points away), citation: "as above", grade: A, population: women}
+    stigmatised: true
+    preamble: "Some questions are personal; doctors ask everyone the same ones. Only the clinician looking after you will see the answers."
+    disclosure_group: sexual
+    verbatim: false
+    negative_reporting: explicit
+  - id: ur.self_diagnosis
+    class: discriminating
+    required: false
+    intent: self-diagnosis in a woman with recurrent infections, a measured predictor
+    phrasings:
+      - {id: p1, form: closed, text: "Have you had urine infections before? Does this feel like another one?"}
+    value: {type: yes_no}
+    extraction: {yes_terms: ["yes", feels like another, same as before, another one, definitely], no_terms: ["no", different, never had one, first time]}
+    evidence: {lr: "self-diagnosis in women with recurrent UTI LR+ 4.0", discriminates: uncomplicated urinary tract infection, citation: "as above", grade: A, population: women with recurrent UTI}
+    verbatim: true
+    negative_reporting: omit
+  - id: ur.fever_loin
+    class: red_flag
+    required: true
+    intent: fever, rigors, loin or back pain
+    phrasings:
+      - {id: p1, form: closed, text: "Any fever or shivering? Any pain in your back or side, around the kidneys?"}
+    value: {type: yes_no}
+    extraction: {yes_terms: ["yes", fever, shivers, shivering, back pain, side, loin, kidney], no_terms: ["no", no fever, no back pain, none]}
+    verbatim: true
+    negative_reporting: explicit
+  - id: ur.retention
+    class: red_flag
+    required: true
+    intent: inability to pass urine
+    phrasings:
+      - {id: p1, form: closed, text: "Are you able to pass urine, or is it not coming at all?"}
+    value: {type: yes_no}
+    extraction: {yes_terms: [can pass, able to, "yes", passing], no_terms: [not coming, can't go, can't pass, blocked, "no", retention]}
+    verbatim: true
+    negative_reporting: explicit
+  - id: ur.haematuria
+    class: coverage
+    required: true
+    intent: visible blood in the urine
+    phrasings:
+      - {id: p1, form: closed, text: "Have you seen any blood in your urine?"}
+    value: {type: yes_no}
+    extraction: {yes_terms: ["yes", blood, red, pink], no_terms: ["no", no blood, clear]}
+    verbatim: true
+    negative_reporting: explicit
+  - id: ur.exclusions
+    class: coverage
+    required: true
+    intent: exclusion criteria for the uncomplicated population; pregnancy, catheter, urological abnormality, immunocompromise
+    phrasings:
+      - {id: p1, form: closed, text: "Could you be pregnant? Do you have a catheter, a known kidney or bladder problem, or anything that weakens your immune system?"}
+    value: {type: text}
+    verbatim: true
+    negative_reporting: explicit
+red_flags:
+  - id: rf.urinary_retention_acute
+    fires_when: "ur.retention == 'no'"
+    tier: immediate
+    alert: {include_verbatim: true, template: "Unable to pass urine. Patient said: {verbatim}."}
+    suppressible: false
+    source: "Master list first-draft trigger: acute urinary retention; immediate proposed pending urology review"
+  - id: rf.fever_with_loin_pain
+    fires_when: "ur.fever_loin == 'yes'"
+    tier: same_day
+    alert: {include_verbatim: true, template: "Urinary symptoms with fever or loin pain. Patient said: {verbatim}."}
+    suppressible: false
+    source: "GU table: fever with loin pain; tier proposed for review"
+  - id: rf.urinary_haematuria
+    fires_when: "ur.haematuria == 'yes'"
+    tier: flag
+    alert: {include_verbatim: true, template: "Visible haematuria with urinary symptoms; routes to haematuria. Patient said: {verbatim}."}
+    suppressible: false
+    source: "GU table: haematuria"
+closing:
+  uncertainty: "I can't tell from talking with you whether this is an infection."
+  watch_for: [fever or shivering, pain in your back or side, being unable to pass urine, blood]
+  time_course: "Someone will speak with you today."
+  where: "If you develop fever with back pain, or cannot pass urine, seek care the same day rather than waiting."
+prohibited: [reporting "likely UTI", applying the rule-in combination to men, older adults or children]
+gaps: ["The rule-in combination is reported as present or absent with its components and exclusions; establishing that the patient is inside the uncomplicated population is the clinician's judgement."]

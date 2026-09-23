@@ -1,0 +1,110 @@
+module: dysphagia
+display_name: difficulty swallowing
+version: 0.1.0
+status: grounded
+reviewed: false
+review_notes: ["Confirmation of the uncited saliva-obstruction immediate-tier item", "Closing block is a first draft"]
+setting: both
+activates_on:
+  terms: [trouble swallowing, food sticking, catches on the way down, difficulty swallowing, can't swallow, food gets stuck, swallowing problem]
+slots:
+  - id: dy.saliva
+    class: red_flag
+    required: true
+    intent: inability to swallow saliva, complete obstruction
+    phrasings:
+      - {id: p1, form: closed, text: "Right now, can you swallow your own saliva?"}
+    value: {type: yes_no}
+    extraction: {yes_terms: ["yes", can, fine, saliva is ok], no_terms: ["no", can't, drooling, spitting, nothing goes down]}
+    verbatim: true
+    negative_reporting: explicit
+  - id: dy.solids_liquids
+    class: coverage
+    required: true
+    intent: solids and liquids asked separately
+    phrasings:
+      - {id: p1, form: closed, text: "Is it solid food that sticks, liquids, or both?"}
+    value:
+      type: enum
+      options:
+        - {id: solids, synonyms: [solids, solid, food, bread, meat, only food]}
+        - {id: liquids, synonyms: [liquids, drinks, water, only liquids]}
+        - {id: both, synonyms: [both, everything, solids and liquids]}
+    verbatim: true
+    negative_reporting: omit
+  - id: dy.duration_weeks
+    class: discriminating
+    required: true
+    intent: duration as a number; short duration is the danger sign
+    phrasings:
+      - {id: p1, form: open, text: "How many weeks has this been going on? A number, even roughly."}
+    value: {type: text}
+    evidence: {lr: "malignancy in 16.6% with dysphagia of eight weeks or less, 14.5% at eight to twenty-six weeks, 2.5% beyond twenty-six weeks", discriminates: oesophageal malignancy, citation: "dysphagia cohort of 1,400 patients, as tabulated in the Symptom Questioning Library", grade: A, population: referred}
+    verbatim: true
+    negative_reporting: omit
+  - id: dy.timing_seconds
+    class: discriminating
+    required: true
+    intent: whether food sticks within five seconds of swallowing
+    phrasings:
+      - {id: p1, form: closed, text: "When it sticks, is that within a few seconds of swallowing, or later?"}
+    value:
+      type: enum
+      options:
+        - {id: within_5s, synonyms: [straight away, immediately, seconds, as soon as, few seconds]}
+        - {id: later, synonyms: [later, a while, minutes, after]}
+    evidence: {lr: "food or drink sticking within five seconds of swallowing: malignancy 15.1% against 5.2%", discriminates: oesophageal malignancy, citation: "as above", grade: A, population: referred}
+    verbatim: true
+    negative_reporting: omit
+  - id: dy.progressive
+    class: coverage
+    required: true
+    intent: progression
+    phrasings:
+      - {id: p1, form: closed, text: "Is it getting worse, staying the same, or better?"}
+    value:
+      type: enum
+      options:
+        - {id: worse, synonyms: [worse, getting worse, progressing, harder]}
+        - {id: same, synonyms: [same, stable, no change]}
+        - {id: better, synonyms: [better, improving, easing]}
+    verbatim: true
+    negative_reporting: omit
+  - id: dy.weight_loss
+    class: coverage
+    required: true
+    intent: unexpected weight loss
+    phrasings:
+      - {id: p1, form: closed, text: "Have you lost weight without trying? Roughly how much, over how long?"}
+    value: {type: text}
+    verbatim: true
+    negative_reporting: explicit
+  - id: dy.starting_swallow
+    class: coverage
+    required: true
+    intent: difficulty starting the swallow, coughing or choking, suggesting oropharyngeal dysphagia
+    phrasings:
+      - {id: p1, form: closed, text: "Is the trouble starting the swallow, with coughing or choking, or does food go down and then stick?"}
+    value: {type: text}
+    verbatim: true
+    negative_reporting: omit
+red_flags:
+  - id: rf.unable_to_swallow_saliva
+    fires_when: "dy.saliva == 'no'"
+    tier: immediate
+    alert: {include_verbatim: true, template: "Unable to swallow saliva. Patient said: {verbatim}."}
+    suppressible: false
+    source: "Master list: unable to swallow saliva (uncited; for reviewer confirmation)"
+  - id: rf.dysphagia_flag
+    fires_when: "dy.solids_liquids in ['solids', 'both', 'liquids']"
+    tier: flag
+    alert: {include_verbatim: true, template: "Dysphagia: duration {dy.duration_weeks}; {dy.solids_liquids}; weight loss {dy.weight_loss}. Patient said: {verbatim}."}
+    suppressible: false
+    source: "Master list: dysphagia, especially short duration, solids only, or with weight loss"
+closing:
+  uncertainty: "I can't tell from talking with you what is causing the swallowing problem."
+  watch_for: [being unable to swallow saliva, choking, losing weight]
+  time_course: "Someone will speak with you today."
+  where: "If you cannot swallow at all, seek care the same day rather than waiting."
+prohibited: [reasoning from where the patient points, treating a short history as less concerning]
+gaps: ["Endoscopy decides; history decides the pathway and its speed, not whether to refer."]

@@ -1,0 +1,211 @@
+# SNNOOP10 on the symptom field set, not SOCRATES. Twelve of fifteen items are pure history.
+module: headache
+display_name: headache
+version: 0.1.0
+status: grounded
+reviewed: false
+review_notes: ["Whether all fourteen history items of SNNOOP10 are askable without the interview becoming unwieldy", "Closing block is a first draft"]
+setting: both
+activates_on:
+  terms: [headache, headaches, migraine, head pain, pressure in my head, my head hurts, head is pounding, worst headache]
+slots:
+  - id: hd.thunderclap
+    class: red_flag
+    required: true
+    intent: sudden or abrupt onset, time from nothing to worst in seconds or minutes
+    phrasings:
+      - {id: p1, form: open, text: "How quickly did it reach its worst: seconds, a minute or two, or over hours?"}
+    value:
+      type: enum
+      options:
+        - {id: seconds, synonyms: [seconds, instantly, like a bang, hit me, out of nowhere, explosion, thunderclap, straight away]}
+        - {id: minutes, synonyms: [a minute, minutes, couple of minutes, quickly]}
+        - {id: hours, synonyms: [hours, gradually, built up, over the day, slowly]}
+    verbatim: true
+    negative_reporting: explicit
+  - id: hd.worst_ever
+    class: red_flag
+    required: true
+    intent: pattern change or a new headache unlike any before
+    phrasings:
+      - {id: p1, form: closed, text: "Is this like headaches you've had before, or different from any headache you've ever had?"}
+    value:
+      type: enum
+      options:
+        - {id: different, synonyms: [different, worst ever, never had one like it, unlike, new, first time, nothing like]}
+        - {id: usual, synonyms: [same as usual, like my usual, my normal, like before, typical]}
+    verbatim: true
+    negative_reporting: explicit
+  - id: hd.systemic
+    class: red_flag
+    required: true
+    intent: fever, weight loss, night sweats, systemic illness
+    phrasings:
+      - {id: p1, form: closed, text: "Have you had a fever, night sweats, or lost weight without trying?"}
+    value: {type: yes_no}
+    extraction: {yes_terms: ["yes", fever, temperature, sweats, lost weight, shivers, hot], no_terms: ["no", no fever, none of those, nothing like that]}
+    verbatim: true
+    negative_reporting: explicit
+  - id: hd.neck_stiffness
+    class: red_flag
+    required: true
+    intent: neck stiffness with the headache
+    phrasings:
+      - {id: p1, form: closed, text: "Is your neck stiff, so that it's hard to put your chin on your chest?"}
+    value: {type: yes_no}
+    extraction: {yes_terms: ["yes", stiff, can't bend, stiff neck, chin on my chest], no_terms: ["no", neck is fine, not stiff, moves fine]}
+    verbatim: true
+    negative_reporting: explicit
+  - id: hd.jaw_claudication
+    class: discriminating
+    required: true
+    intent: jaw claudication and scalp tenderness, asked concretely of everyone with a new headache; age is a parameter and is never embedded here
+    phrasings:
+      - {id: p1, form: closed, text: "Does your jaw ache when you chew, and ease when you stop? Is your scalp sore, for example when brushing your hair?"}
+    value: {type: yes_no}
+    extraction: {yes_terms: ["yes", jaw aches, when i chew, chewing, scalp sore, brushing my hair], no_terms: ["no", jaw is fine, scalp is fine, nothing like that]}
+    evidence: {lr: "jaw claudication LR+ 4.9 for giant cell arteritis; temporal location LR 0.97 (no information)", discriminates: giant cell arteritis, citation: "GCA meta-analysis of 68 studies, as tabulated in the Symptom Questioning Library", grade: A, population: pooled}
+    verbatim: true
+    negative_reporting: explicit
+  - id: hd.visual_symptom
+    class: red_flag
+    required: true
+    intent: any change in vision with this headache, including one that has since come back to normal
+    phrasings:
+      - {id: p1, form: closed, text: "With this headache, has your vision changed at all: gone blurry, dim or dark, or double, in one eye or both, even if it has come back to normal since?"}
+    value: {type: yes_no}
+    extraction: {yes_terms: ["yes", blurry, blurred, fuzzy, misty, dim, went dark, dark, lost, couldn't see, double, curtain, came back, one eye, left eye, right eye], no_terms: ["no", vision is fine, eyes are fine, no change, seeing fine, nothing with my vision]}
+    verbatim: true
+    negative_reporting: explicit
+  - id: hd.neuro_deficit
+    class: red_flag
+    required: true
+    intent: weakness, numbness, speech or vision change, drowsiness, including symptoms that have resolved
+    phrasings:
+      - {id: p1, form: closed, text: "With this headache, has there been any weakness or numbness, trouble speaking, a change in your vision, or unusual drowsiness, even if it's gone now?"}
+    value: {type: yes_no}
+    extraction: {yes_terms: ["yes", weak, numb, speech, slurred, vision, blurred, double vision, drowsy, confused, couldn't see], no_terms: ["no", nothing like that, none of those, vision is fine]}
+    verbatim: true
+    negative_reporting: explicit
+  - id: hd.positional_valsalva
+    class: coverage
+    required: true
+    intent: positional headache, or precipitated by coughing, sneezing or exercise
+    phrasings:
+      - {id: p1, form: closed, text: "Is it worse lying flat or standing up? Does coughing, sneezing or exercise bring it on?"}
+    value: {type: text}
+    verbatim: true
+    negative_reporting: explicit
+  - id: hd.progressive
+    class: coverage
+    required: true
+    intent: worsening over days or weeks
+    phrasings:
+      - {id: p1, form: closed, text: "Has it been getting worse over days or weeks?"}
+    value: {type: yes_no}
+    extraction: {yes_terms: ["yes", worse, worsening, getting worse, building], no_terms: ["no", same, stable, better, not worse]}
+    verbatim: true
+    negative_reporting: explicit
+  - id: hd.woken_from_sleep
+    class: coverage
+    required: true
+    intent: woken from sleep by the headache
+    phrasings:
+      - {id: p1, form: closed, text: "Does it wake you from sleep?"}
+    value: {type: yes_no}
+    extraction: {yes_terms: ["yes", wakes me, woke me, in the night], no_terms: ["no", sleep fine, never woken]}
+    verbatim: false
+    negative_reporting: explicit
+  - id: hd.eye_autonomic
+    class: coverage
+    required: true
+    intent: painful eye with autonomic features
+    phrasings:
+      - {id: p1, form: closed, text: "Is one eye painful, red or watering, or is the eyelid drooping?"}
+    value: {type: yes_no}
+    extraction: {yes_terms: ["yes", eye pain, red eye, watering, drooping, eyelid], no_terms: ["no", eyes are fine, nothing with my eyes]}
+    verbatim: true
+    negative_reporting: explicit
+  - id: hd.trauma
+    class: coverage
+    required: true
+    intent: head injury before onset
+    phrasings:
+      - {id: p1, form: closed, text: "Did you hit your head, or have any injury, before this started?"}
+    value: {type: yes_no}
+    extraction: {yes_terms: ["yes", hit my head, fell, bumped, injury, knocked], no_terms: ["no", no injury, didn't hit]}
+    verbatim: true
+    negative_reporting: explicit
+  - id: hd.neoplasm_immune
+    class: coverage
+    required: true
+    intent: known cancer, HIV or immune suppression
+    phrasings:
+      - {id: p1, form: closed, text: "Do you have, or have you had, cancer? Anything affecting your immune system, such as HIV or medicines that suppress it?"}
+    value: {type: yes_no}
+    extraction: {yes_terms: ["yes", cancer, hiv, immune, chemo, transplant, steroids, methotrexate], no_terms: ["no", none, nothing like that]}
+    verbatim: true
+    negative_reporting: explicit
+  - id: hd.pregnancy
+    class: context
+    required: false
+    intent: pregnancy or recent delivery
+    phrasings:
+      - {id: p1, form: closed, text: "Because of the headache I need to ask: are you pregnant, or have you had a baby in the last few weeks?"}
+    value: {type: yes_no}
+    extraction: {yes_terms: ["yes", pregnant, had a baby, gave birth, weeks ago, postnatal], no_terms: ["no", not pregnant, no chance]}
+    verbatim: true
+    negative_reporting: explicit
+  - id: hd.analgesic_use
+    class: coverage
+    required: true
+    intent: painkiller frequency and any new medicine at onset
+    phrasings:
+      - {id: p1, form: open, text: "How many days a week are you taking painkillers for it? Did you start any new medicine around when it began?"}
+    value: {type: text}
+    verbatim: true
+    negative_reporting: omit
+red_flags:
+  - id: rf.thunderclap
+    fires_when: "hd.thunderclap == 'seconds'"
+    tier: immediate
+    alert: {include_verbatim: true, template: "Thunderclap headache. Patient said: {verbatim}."}
+    suppressible: false
+    source: "Master list: sudden severe (thunderclap) headache"
+  - id: rf.headache_neuro_deficit
+    fires_when: "hd.neuro_deficit == 'yes'"
+    tier: immediate
+    alert: {include_verbatim: true, template: "Headache with a neurological symptom, current or resolved. Patient said: {verbatim}."}
+    suppressible: false
+    source: "Stroke cluster: new focal symptoms including resolved"
+  - id: rf.headache_visual_symptom
+    fires_when: "hd.visual_symptom == 'yes'"
+    tier: immediate
+    alert: {include_verbatim: true, template: "Headache with a visual symptom, current or resolved. Patient said: {verbatim}."}
+    suppressible: false
+    source: "Stroke cluster: new focal symptoms including resolved; master list: sudden loss of vision in one eye, current or resolved"
+  - id: rf.jaw_claudication_with_visual_symptom
+    fires_when: "hd.jaw_claudication == 'yes' and hd.visual_symptom == 'yes'"
+    tier: immediate
+    alert: {include_verbatim: true, template: "Jaw claudication with a visual symptom, current or resolved, in a new headache: the second eye is at risk. Patient said: {verbatim}."}
+    suppressible: false
+    source: "Symptom Questioning Library headache row, GCA features: jaw claudication LR+ 4.9 with any visual symptom (GCA meta-analysis of 68 studies); temporal location LR 0.97 carries no information and is never a trigger; age is a parameter (ctx.age), not embedded"
+  - id: rf.headache_fever_neck_stiffness
+    fires_when: "hd.systemic == 'yes' and hd.neck_stiffness == 'yes'"
+    tier: immediate
+    alert: {include_verbatim: true, template: "Headache with fever and neck stiffness. Patient said: {verbatim}."}
+    suppressible: false
+    source: "Neurological table: fever and neck stiffness"
+  - id: rf.headache_snnoop_positive
+    fires_when: "hd.worst_ever == 'different' or hd.progressive == 'yes' or hd.woken_from_sleep == 'yes' or hd.trauma == 'yes' or hd.neoplasm_immune == 'yes' or hd.eye_autonomic == 'yes'"
+    tier: flag
+    alert: {include_verbatim: true, template: "SNNOOP10 item positive. Patient said: {verbatim}."}
+    suppressible: false
+    source: "SNNOOP10: every dangerous case carried at least one flag; sensitivity instrument"
+closing:
+  uncertainty: "I can't tell from talking with you what is causing the headache."
+  watch_for: [a sudden headache that reaches its worst within seconds, weakness or numbness or trouble speaking, a stiff neck with fever, a change in your vision]
+  time_course: "Someone will speak with you today."
+  where: "If any of those happen before then, call an ambulance rather than waiting."
+prohibited: [naming migraine or any cause]
+gaps: ["Papilloedema is an examination finding and was not assessed. A complete negative SNNOOP10 screen may be reported as reassuring only because every item was genuinely asked."]

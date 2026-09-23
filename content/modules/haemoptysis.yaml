@@ -1,0 +1,113 @@
+module: haemoptysis
+display_name: coughing up blood
+version: 0.1.0
+status: grounded
+reviewed: false
+review_notes: ["Which household volume comparators to offer", "Closing block is a first draft"]
+setting: both
+activates_on:
+  terms: [coughing up blood, coughed up blood, blood in my phlegm, streaks of blood, blood when i cough, blood in my spit, bloody sputum]
+slots:
+  - id: hp.source_fork
+    class: coverage
+    required: true
+    intent: whether the blood was coughed from the chest rather than vomited, from the nose or from the mouth
+    phrasings:
+      - {id: p1, form: open, text: "Did the blood come up with a cough from your chest, or did you vomit it, or had you had a nosebleed or bleeding gums first? What did it look like?"}
+    value:
+      type: enum
+      options:
+        - {id: coughed, synonyms: [coughed, from my chest, with phlegm, in my sputum, when i cough]}
+        - {id: vomited, synonyms: [vomited, threw up, from my stomach, sick]}
+        - {id: nose_or_mouth, synonyms: [nosebleed, nose, gums, mouth, teeth]}
+        - {id: unsure, synonyms: [not sure, hard to say]}
+    verbatim: true
+    negative_reporting: omit
+  - id: hp.volume_comparator
+    class: coverage
+    required: true
+    intent: volume in the patient's own comparator, never converted to millilitres
+    phrasings:
+      - {id: p1, form: open, text: "How much was there: streaks in the phlegm, about a teaspoon, a tablespoon, or more like half a cup?"}
+    value: {type: text}
+    verbatim: true
+    negative_reporting: omit
+  - id: hp.frequency_duration
+    class: coverage
+    required: true
+    intent: first episode or recurrent, and for how long
+    phrasings:
+      - {id: p1, form: open, text: "Is this the first time, or has it happened before? How long has it been going on?"}
+    value: {type: text}
+    verbatim: true
+    negative_reporting: omit
+  - id: hp.smoking_pack_years
+    class: discriminating
+    required: true
+    intent: smoking as cigarettes per day and years, for pack-years arithmetic with components shown
+    phrasings:
+      - {id: p1, form: open, text: "Do you smoke, or did you? Roughly how many a day, and for how many years?"}
+    value: {type: text}
+    evidence: {lr: "smoking of at least 30 pack-years OR 6.0 for malignancy; at least 10 pack-years OR 3.2; age 50 or over OR 9.9; former airways malignancy OR 22.1", discriminates: lung malignancy, citation: "published predictors of malignancy in haemoptysis, as tabulated in the Symptom Questioning Library", grade: A, population: pooled}
+    verbatim: true
+    negative_reporting: explicit
+  - id: hp.prior_lung_cancer
+    class: discriminating
+    required: true
+    intent: previous cancer of the airways or lung
+    phrasings:
+      - {id: p1, form: closed, text: "Have you ever had cancer in your lungs or airways?"}
+    value: {type: yes_no}
+    extraction: {yes_terms: ["yes", lung cancer, cancer, tumour, in my lung], no_terms: ["no", never, no cancer]}
+    evidence: {lr: "former airways malignancy OR 22.1", discriminates: lung malignancy, citation: "as above", grade: A, population: pooled}
+    verbatim: true
+    negative_reporting: explicit
+  - id: hp.breathless_chest_pain
+    class: red_flag
+    required: true
+    intent: associated breathlessness or chest pain
+    phrasings:
+      - {id: p1, form: closed, text: "Are you short of breath, or is there any chest pain with it?"}
+    value: {type: yes_no}
+    extraction: {yes_terms: ["yes", short of breath, breathless, chest pain, tight chest], no_terms: ["no", breathing fine, no pain]}
+    verbatim: true
+    negative_reporting: explicit
+  - id: hp.constitutional
+    class: coverage
+    required: true
+    intent: weight loss, night sweats, fever, populating the constitutional rows
+    phrasings:
+      - {id: p1, form: closed, text: "Have you lost weight without trying, had night sweats, or had a fever?"}
+    value: {type: text}
+    verbatim: true
+    negative_reporting: explicit
+  - id: hp.anticoagulants
+    class: coverage
+    required: true
+    intent: anticoagulant use, asked by name
+    phrasings:
+      - {id: p1, form: closed, text: "Do you take a blood thinner: warfarin, apixaban, rivaroxaban, dabigatran, or a heparin injection?"}
+    value: {type: yes_no}
+    extraction: {yes_terms: ["yes", warfarin, apixaban, eliquis, rivaroxaban, xarelto, dabigatran, pradaxa, clexane, heparin, blood thinner], no_terms: ["no", none, nothing like that]}
+    verbatim: true
+    negative_reporting: explicit
+red_flags:
+  - id: rf.haemoptysis_any
+    fires_when: "hp.source_fork == 'coughed'"
+    tier: flag
+    alert: {include_verbatim: true, template: "Haemoptysis of any volume. Patient's comparator: {hp.volume_comparator}. Patient said: {verbatim}."}
+    suppressible: false
+    source: "Master list: haemoptysis of any volume; small volume never reassures"
+  - id: rf.haemoptysis_with_breathlessness
+    fires_when: "hp.breathless_chest_pain == 'yes'"
+    tier: immediate
+    alert: {include_verbatim: true, template: "Haemoptysis with breathlessness or chest pain. Patient said: {verbatim}."}
+    suppressible: false
+    source: "Cardiovascular table red flags"
+closing:
+  uncertainty: "I can't tell from talking with you where the blood is coming from."
+  watch_for: [more blood or larger amounts, breathlessness, chest pain, feeling faint]
+  time_course: "Someone will speak with you today."
+  where: "If the amount increases or you become breathless before then, call an ambulance rather than waiting."
+prohibited: [reporting a small volume as reassuring, converting the patient's comparator to a number]
+gaps: ["No chest imaging. A light or non-smoking history does not lower the risk of neoplasm when other risk factors are present."]

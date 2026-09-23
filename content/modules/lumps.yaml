@@ -1,0 +1,236 @@
+module: lumps
+display_name: a lump or swelling
+version: 0.1.0
+status: grounded
+reviewed: false
+review_notes: ["Initial imaging for soft tissue lumps is a configurable parameter (UK ultrasound-first, European MRI-first)", "Breast symptoms in men are not grounded in the sources and the breast questions are asked of everyone with a lump in the breast area", "Which size comparators to offer", "Closing block is a first draft"]
+setting: both
+activates_on:
+  terms: [lump, swelling, bump, found something, found a lump, lump in my breast, lump in my neck, swollen gland, swollen glands, lump under my arm, lump in my groin, lump on my testicle, growth, cyst, nodule, lump that's getting bigger]
+slots:
+  - id: lm.location
+    class: coverage
+    required: true
+    intent: where the lump is, in the patient's own words; a delegated observation, recorded verbatim
+    phrasings:
+      - {id: p1, form: open, text: "Where is the lump? Tell me in your own words where it is and what is around it."}
+    value: {type: text}
+    delegated_observation: true
+    verbatim: true
+    negative_reporting: omit
+  - id: lm.first_noticed
+    class: coverage
+    required: true
+    intent: when the lump was first noticed, as a date, so growth can be recorded against a date
+    phrasings:
+      - {id: p1, form: open, text: "When did you first notice it? A date, even roughly."}
+    value: {type: text}
+    absolute_time: false   # a date, not a clock time; F-14 read-back applies to clock times
+    verbatim: true
+    negative_reporting: omit
+  - id: lm.size_comparator
+    class: coverage
+    required: true
+    intent: size in the patient's own comparator, never converted to a measurement; a golf ball is often used for about 5 cm but the patient's words are what is recorded
+    phrasings:
+      - {id: p1, form: open, text: "How big is it, compared with something you know: a pea, a grape, a golf ball, or bigger than that?"}
+    value: {type: text}
+    verbatim: true
+    negative_reporting: omit
+  - id: lm.size_over_golf_ball
+    class: red_flag
+    required: true
+    intent: whether the patient's own estimate is larger than a golf ball, the lay comparator for about 5 cm; a patient estimate only, since 5 cm is an examination finding
+    phrasings:
+      - {id: p1, form: closed, text: "Would you say it is bigger than a golf ball?"}
+    value: {type: yes_no}
+    extraction: {yes_terms: ["yes", bigger, bigger than a golf ball, tennis ball, egg, fist, orange], no_terms: ["no", smaller, pea, grape, marble, about that size]}
+    verbatim: true
+    negative_reporting: explicit
+  - id: lm.recurrence
+    class: red_flag
+    required: true
+    intent: recurrence after a previous removal; patients rarely mention a procedure from years earlier unless asked
+    phrasings:
+      - {id: p1, form: closed, text: "Have you ever had a lump removed from that spot, or anywhere near it, even years ago?"}
+    value: {type: yes_no}
+    extraction: {yes_terms: ["yes", removed, cut out, taken out, had it out, excised, surgery there, came back], no_terms: ["no", never, first time, nothing removed]}
+    verbatim: true
+    negative_reporting: explicit
+  - id: lm.change_over_time
+    class: red_flag
+    required: true
+    intent: change in size since first noticed; slow growth over weeks to months is more concerning than rapid painful growth over days
+    phrasings:
+      - {id: p1, form: open, text: "Has it changed size since you first noticed it? Has it been slowly getting bigger over weeks or months, did it come up quickly over a few days, has it stayed the same, or is it getting smaller?"}
+    value:
+      type: enum
+      options:
+        - {id: growing_slowly, synonyms: [slowly getting bigger, growing, bigger than it was, gradually, over months, over weeks, keeps growing]}
+        - {id: grew_fast_days, synonyms: [came up quickly, overnight, in a few days, suddenly, fast]}
+        - {id: same, synonyms: [same, stayed the same, hasn't changed, no change, always been there]}
+        - {id: smaller, synonyms: [smaller, going down, shrinking, getting smaller]}
+    verbatim: true
+    negative_reporting: omit
+  - id: lm.pain
+    class: coverage
+    required: true
+    intent: whether the lump is painful; recorded as a documented answer only, and painlessness never lowers the tier or the handover's emphasis
+    phrasings:
+      - {id: p1, form: closed, text: "Is it painful, or does it hurt when you press on it?"}
+    value: {type: yes_no}
+    extraction: {yes_terms: ["yes", painful, hurts, sore, tender, aches], no_terms: ["no", painless, doesn't hurt, no pain]}
+    verbatim: true
+    negative_reporting: explicit
+  - id: lm.deep_superficial
+    class: coverage
+    required: true
+    intent: deep versus superficial in the patient's words; depth to the fascia is an examination finding and this records only what the patient feels
+    phrasings:
+      - {id: p1, form: open, text: "Does it feel like it sits just under the skin and moves with it, or deeper down in the muscle? Describe it in your own words."}
+    value: {type: text}
+    delegated_observation: true
+    verbatim: true
+    negative_reporting: omit
+  - id: lm.breast_lump
+    class: discriminating
+    required: true
+    intent: whether the lump is in the breast or the area around it, asked of everyone with a lump in the chest or breast area regardless of recorded sex or gender
+    phrasings:
+      - {id: p1, form: closed, text: "Is the lump in the breast, or in the area around it, including towards the armpit?"}
+    value: {type: yes_no}
+    extraction: {yes_terms: ["yes", breast, in my breast, boob, chest, near my armpit, under my arm], no_terms: ["no", not the breast, nowhere near, elsewhere]}
+    evidence: {lr: "breast lump OR 110 for breast cancer; PPV 4.8% at age 40-49 rising to 48% over 70; risk 8.96% when consulting for a lump in a recent cohort", discriminates: breast cancer, citation: "primary care breast symptom studies as tabulated in the Symptom Questioning Library", grade: A, population: "women in UK primary care; breast symptoms in men not grounded"}
+    verbatim: true
+    negative_reporting: explicit
+  - id: lm.nipple_change
+    class: red_flag
+    required: true
+    intent: nipple change or discharge, asked separately from the lump and recorded as its own answer
+    phrasings:
+      - {id: p1, form: closed, text: "Has there been any change to the nipple, such as pulling in or turning, or any discharge from it?", use_when: "the lump is in the breast or chest area, or the patient mentions the breast"}
+    value: {type: yes_no}
+    extraction: {yes_terms: ["yes", nipple, pulled in, inverted, turned in, discharge, leaking, bleeding from the nipple], no_terms: ["no", nipple is normal, no discharge, no change]}
+    delegated_observation: true
+    verbatim: true
+    negative_reporting: explicit
+  - id: lm.skin_change
+    class: red_flag
+    required: true
+    intent: skin change over the lump, asked separately and recorded as its own answer
+    phrasings:
+      - {id: p1, form: closed, text: "Has the skin over the lump changed: dimpling, puckering, redness, thickening, or looking like orange peel?", use_when: "the lump is in the breast or chest area, or the patient mentions the breast"}
+    value: {type: yes_no}
+    extraction: {yes_terms: ["yes", dimple, dimpling, puckered, orange peel, red, thickened, skin has changed], no_terms: ["no", skin looks normal, no change to the skin]}
+    delegated_observation: true
+    verbatim: true
+    negative_reporting: explicit
+  - id: lm.testicular
+    class: red_flag
+    required: true
+    intent: a new lump or swelling in a testicle or the scrotum, flagged even if painful; sudden severe testicular pain remains the torsion row's immediate trigger
+    phrasings:
+      - {id: p1, form: closed, text: "Is the lump or swelling in a testicle or the scrotum? I ask whether or not it is painful."}
+    value: {type: yes_no}
+    extraction: {yes_terms: ["yes", testicle, testicles, balls, scrotum, down there, in my sack], no_terms: ["no", not there, nowhere near]}
+    verbatim: true
+    negative_reporting: explicit
+  - id: lm.epididymitis_dx
+    class: red_flag
+    required: true
+    intent: a previous diagnosis of epididymitis or orchitis for a testicular swelling, and whether it settled after treatment; nearly a third of testicular cancers are first called infection
+    phrasings:
+      - {id: p1, form: closed, text: "Have you been told before that a swelling there was an infection, epididymitis or orchitis? If so, did it settle completely after treatment?", use_when: "lm.testicular is yes"}
+    value: {type: yes_no}
+    extraction: {yes_terms: ["yes", told it was an infection, epididymitis, orchitis, antibiotics, hydrocele, didn't settle, still there, came back], no_terms: ["no", never been told, first time, nothing before]}
+    verbatim: true
+    negative_reporting: explicit
+  - id: lm.node_location
+    class: coverage
+    required: true
+    intent: for a lump in the neck, armpit or groin, exactly where it is in the patient's words and whether there are lumps in more than one place; a delegated observation
+    phrasings:
+      - {id: p1, form: open, text: "If the lump is in your neck, armpit or groin, exactly where is it? And are there lumps in more than one place?", use_when: "the lump is in the neck, armpit or groin"}
+    value: {type: text}
+    delegated_observation: true
+    verbatim: true
+    negative_reporting: omit
+  - id: lm.above_collarbone
+    class: red_flag
+    required: true
+    intent: whether the lump sits above the collarbone, the high-risk nodal site; a delegated observation where a positive is highly informative
+    phrasings:
+      - {id: p1, form: closed, text: "Feel where the lump sits in relation to your collarbone. Is it above the collarbone, in the hollow at the base of the neck?", use_when: "the lump is in the neck or shoulder area"}
+    value: {type: yes_no}
+    extraction: {yes_terms: ["yes", above my collarbone, above the collarbone, base of my neck, in the hollow, just above], no_terms: ["no", below, under my jaw, side of my neck, armpit, groin, nowhere near the collarbone]}
+    delegated_observation: true
+    verbatim: true
+    negative_reporting: explicit
+  - id: lm.neck_over40_risk
+    class: coverage
+    required: true
+    intent: for a neck lump in a person aged 40 or over, the head-and-neck questions; alcohol, smoking, sore throat, swallowing, hearing and voice, recorded verbatim
+    phrasings:
+      - {id: p1, form: open, text: "For a lump in the neck, doctors also ask these: do you drink alcohol or smoke? Have you had a sore throat, trouble swallowing, recent hearing loss, or a change in your voice?", use_when: "the lump is in the neck and ctx.age is 40 or over"}
+    value: {type: text}
+    verbatim: true
+    negative_reporting: explicit
+  - id: lm.constitutional
+    class: red_flag
+    required: true
+    intent: weight loss, night sweats and fever with the lump, populating the constitutional rows
+    phrasings:
+      - {id: p1, form: closed, text: "Have you lost weight without trying, had night sweats that soak the bedding, or had a fever?"}
+    value:
+      type: set
+      options:
+        - {id: weight_loss, synonyms: [lost weight, weight loss, clothes are loose, losing weight]}
+        - {id: night_sweats, synonyms: [night sweats, sweating at night, soaked the sheets, drenched]}
+        - {id: fever, synonyms: [fever, temperature, hot and cold, shivers]}
+        - {id: none, synonyms: ["no", none of those, nothing like that, otherwise well]}
+    verbatim: true
+    negative_reporting: explicit
+red_flags:
+  - id: rf.breast_lump
+    fires_when: "lm.breast_lump == 'yes'"
+    tier: same_day
+    alert: {include_verbatim: true, template: "Breast lump; routes to referral regardless of pain. Nipple change: {lm.nipple_change}. Skin change: {lm.skin_change}. First noticed {lm.first_noticed}; change since: {lm.change_over_time}. Patient said: \"{verbatim}\"."}
+    suppressible: false
+    source: "Breast row: a lump in any woman routes to referral regardless of the presence of pain; breast lump OR 110 for breast cancer"
+  - id: rf.testicular_lump
+    fires_when: "lm.testicular == 'yes'"
+    tier: same_day
+    alert: {include_verbatim: true, template: "New testicular lump or swelling, flagged even if painful. Previous infection diagnosis: {lm.epididymitis_dx}. Nearly one third are first misdiagnosed as epididymitis, orchitis or hydrocele. Patient said: \"{verbatim}\"."}
+    suppressible: false
+    source: "Master list: new testicular lump or swelling in a young man; testicular row: painful swelling does not exclude malignancy"
+  - id: rf.lump_above_collarbone
+    fires_when: "lm.above_collarbone == 'yes'"
+    tier: same_day
+    alert: {include_verbatim: true, template: "Lump above the collarbone, the high-risk nodal site (34 to 86% risk of malignancy, especially over 40). Location in the patient's words: {lm.node_location}. Patient said: \"{verbatim}\"."}
+    suppressible: false
+    source: "Nodes row: treat above my collarbone as the high-risk site; supraclavicular nodes carry a 34-86% risk of malignancy"
+  - id: rf.growing_large_or_recurrent
+    fires_when: "lm.change_over_time == 'growing_slowly' or lm.size_over_golf_ball == 'yes' or lm.recurrence == 'yes'"
+    tier: same_day
+    alert: {include_verbatim: true, template: "Soft tissue lump with a red-flag history: change over time {lm.change_over_time}, patient's size comparator {lm.size_comparator}, bigger than a golf ball {lm.size_over_golf_ball}, previous removal {lm.recurrence}. Increasing size is the best single indicator of malignancy; painlessness does not lower suspicion. Patient said: \"{verbatim}\"."}
+    suppressible: false
+    source: "Lumps row: growing over weeks to months, larger than about 5 cm by the patient's own comparator, or recurrence after removal; 86% of masses meeting the criteria are malignant"
+  - id: rf.constitutional_with_lump
+    fires_when: "'weight_loss' in lm.constitutional or 'night_sweats' in lm.constitutional or 'fever' in lm.constitutional"
+    tier: same_day
+    alert: {include_verbatim: true, template: "Lump with constitutional symptoms: {lm.constitutional}. Location in the patient's words: {lm.location}. Patient said: \"{verbatim}\"."}
+    suppressible: false
+    source: "Routing row: associated weight loss or night sweats; nodes row routes fever, night sweats and weight loss to the constitutional rows"
+  - id: rf.lump_any
+    fires_when: "lm.change_over_time in ['grew_fast_days', 'same', 'smaller']"
+    tier: flag
+    alert: {include_verbatim: true, template: "Lump reported. Location: {lm.location}. First noticed {lm.first_noticed}; change since: {lm.change_over_time}; size in the patient's comparator: {lm.size_comparator}; painful: {lm.pain}. Neither painlessness nor long duration lowers suspicion. Patient said: \"{verbatim}\"."}
+    suppressible: false
+    source: "Lumps row: report all the features together; painless is not reassuring; size alone should not drive the handover's emphasis"
+closing:
+  uncertainty: "I can't tell from talking with you what the lump is."
+  watch_for: [the lump getting bigger, a new lump somewhere else, weight loss or night sweats, new pain in it, a change to the skin over it or to the nipple]
+  time_course: "What you have told me goes to the doctor before you are seen."
+  where: "If it grows quickly, becomes hot and red, or you get a fever or feel unwell, this needs to be seen sooner rather than waiting for the appointment."
+prohibited: [converting the patient's size estimate to a measurement, treating painless as reassuring, treating a long duration or an unchanged lump as reassuring, reporting breast pain only rather than three separate answers for lump, nipple change and skin change]
+gaps: ["Initial imaging for soft tissue lumps is a configurable parameter: UK guidance is ultrasound-first, 2021 European guidance is MRI-first.", "Isolated breast pain with no lump, no nipple change and no skin change is the one negative the sources support as uninformative for cancer (no cancers in 588 episodes), but only when all three are established as separate answers; it is still recorded, never summarised as breast pain only.", "Depth, firmness and fixation are examination findings and are not recoverable by voice; the patient's description is recorded as such.", "Breast symptoms in men are not grounded in these sources."]

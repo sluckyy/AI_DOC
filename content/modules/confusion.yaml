@@ -1,0 +1,100 @@
+# Not a bail-out: the agent takes a structured collateral history and never records "confused" as a finding.
+module: confusion
+display_name: confusion
+version: 0.1.0
+status: grounded
+reviewed: false
+review_notes: ["The structured collateral interview", "Confirmation the agent never records 'confused' as a finding", "Closing block is a first draft"]
+setting: both
+activates_on:
+  terms: [muddled, not making sense, confused, forgetful, not themselves, not herself, not himself, rambling, doesn't know where, disoriented]
+slots:
+  - id: cf.informant
+    class: coverage
+    required: true
+    intent: who is giving this account, and their relationship
+    phrasings:
+      - {id: p1, form: open, text: "Are you describing yourself, or someone with you? If someone else, who are they to you, and could they speak to me directly?"}
+    value: {type: text}
+    verbatim: true
+    negative_reporting: omit
+  - id: cf.baseline
+    class: coverage
+    required: true
+    intent: usual mental state before this, from the informant
+    phrasings:
+      - {id: p1, form: open, text: "Before this started, what were they like normally: memory, conversation, managing at home?"}
+    value: {type: text}
+    verbatim: true
+    negative_reporting: omit
+  - id: cf.current
+    class: coverage
+    required: true
+    intent: what is different now, in concrete terms
+    phrasings:
+      - {id: p1, form: open, text: "What exactly is different now? Give me examples of what they said or did."}
+    value: {type: text}
+    verbatim: true
+    negative_reporting: omit
+  - id: cf.onset
+    class: red_flag
+    required: true
+    intent: acute or gradual onset, as a time
+    phrasings:
+      - {id: p1, form: open, text: "When did the change start: within hours or a day or two, or over weeks and months?"}
+    value:
+      type: enum
+      options:
+        - {id: acute, synonyms: [hours, today, yesterday, a day or two, suddenly, this week, overnight]}
+        - {id: gradual, synonyms: [weeks, months, gradually, slowly, over a year, years]}
+    verbatim: true
+    negative_reporting: omit
+  - id: cf.fluctuation
+    class: red_flag
+    required: true
+    intent: fluctuation through the day
+    phrasings:
+      - {id: p1, form: closed, text: "Does it come and go through the day, with clearer spells and worse spells?"}
+    value: {type: yes_no}
+    extraction: {yes_terms: ["yes", comes and goes, worse at night, clearer in the morning, up and down, fluctuates], no_terms: ["no", constant, all the time, steady, same all day]}
+    verbatim: true
+    negative_reporting: explicit
+  - id: cf.fever_injury
+    class: red_flag
+    required: true
+    intent: fever, head injury or new focal symptoms
+    phrasings:
+      - {id: p1, form: closed, text: "Have they had a fever, a fall or head knock, or any new weakness or trouble speaking?"}
+    value: {type: yes_no}
+    extraction: {yes_terms: ["yes", fever, temperature, fell, head, knock, weakness, speech, slurred], no_terms: ["no", none of those, nothing like that]}
+    verbatim: true
+    negative_reporting: explicit
+  - id: cf.medicines_changes
+    class: coverage
+    required: true
+    intent: recent medicine changes, alcohol, and urine or bowel symptoms
+    phrasings:
+      - {id: p1, form: open, text: "Any new or changed medicines recently? Alcohol? Any trouble passing urine, or with the bowels?"}
+    value: {type: text}
+    verbatim: true
+    negative_reporting: omit
+red_flags:
+  - id: rf.confusion_acute_or_fluctuating
+    fires_when: "cf.onset == 'acute' or cf.fluctuation == 'yes'"
+    tier: same_day
+    alert: {include_verbatim: true, template: "Acute onset or fluctuating change in mental state reported by {cf.informant}. Informant said: {verbatim}."}
+    suppressible: false
+    source: "Neurological table: acute onset or fluctuation; fever and sepsis row: new altered behaviour reported by a relative"
+  - id: rf.confusion_fever_or_injury
+    fires_when: "cf.fever_injury == 'yes'"
+    tier: immediate
+    alert: {include_verbatim: true, template: "Confusion with fever, head injury or new focal symptoms. Informant said: {verbatim}."}
+    suppressible: false
+    source: "Neurological table: fever, head injury, new focal deficit"
+closing:
+  uncertainty: "I can't tell from talking with you what is causing this change."
+  watch_for: [getting drowsier or harder to wake, a fever, a fall, new weakness or trouble speaking]
+  time_course: "Someone will speak with you today."
+  where: "If they become hard to wake or develop weakness, call an ambulance rather than waiting."
+prohibited: [recording "confused" as a finding, administering the 4AT]
+gaps: ["The 4AT requires observed attention and alertness and was not administered. This account is a collateral history, attributed to the informant named."]

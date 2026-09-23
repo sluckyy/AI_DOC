@@ -1,0 +1,157 @@
+# History alone is not a safe endpoint. The history is half of a two-part assessment; the other half is
+# a Doppler check the agent cannot perform or defer. This presentation cannot end with the agent.
+module: reduced_fetal_movements
+display_name: your baby moving less
+version: 0.1.0
+status: grounded
+reviewed: false
+review_notes: ["Obstetric review of the GP-version escalation route (gate): not a warm handback, same-day in-person assessment", "Pregnancy gating question wording", "Tier for reduced movements under 24 weeks, drafted as flag so the presentation never ends with the agent", "Closing block is a first draft"]
+setting: both
+activates_on:
+  terms: [baby not moving, baby moving less, reduced movements, fewer kicks, haven't felt the baby, not felt the baby move, baby is quiet, baby hasn't moved, less movement, movements have slowed, baby's stopped moving]
+slots:
+  - id: fm.gestation_weeks
+    class: coverage
+    required: true
+    intent: gestation in weeks, in the patient's own words
+    phrasings:
+      - {id: p1, form: open, text: "How many weeks pregnant are you?"}
+    value: {type: text}
+    verbatim: true
+    negative_reporting: omit
+  - id: fm.gestation_band
+    class: coverage
+    required: true
+    intent: gestation banded against the Green-top 57 thresholds at 24 and 28 weeks, confirmed with the patient
+    phrasings:
+      - {id: p1, form: closed, text: "So that I route this correctly: is that under 24 weeks, between 24 and 27 weeks, or 28 weeks or more?"}
+    value:
+      type: enum
+      options:
+        - {id: under_24, synonyms: [under twenty four, less than twenty four, twenty three, twenty two, twenty one, twenty weeks, nineteen, eighteen, seventeen, sixteen, fifteen, fourteen, thirteen, twelve, early]}
+        - {id: "24_to_27", synonyms: [twenty four, twenty five, twenty six, twenty seven, between twenty four and twenty seven]}
+        - {id: "28_plus", synonyms: [twenty eight, twenty nine, thirty, thirty one, thirty two, thirty three, thirty four, thirty five, thirty six, thirty seven, thirty eight, thirty nine, forty, forty one, forty two, full term, term, due, overdue, third trimester]}
+    verbatim: true
+    negative_reporting: omit
+  - id: fm.last_normal_movements
+    class: coverage
+    required: true
+    intent: clock time and day when movements were last felt as normal
+    phrasings:
+      - {id: p1, form: open, text: "When did you last feel the baby moving normally? Give me a clock time and the day, even roughly, not just how long ago."}
+    value: {type: clock_time}
+    absolute_time: true
+    confirm: true
+    verbatim: true
+    negative_reporting: omit
+  - id: fm.movement_since
+    class: red_flag
+    required: true
+    intent: whether any movement at all has been felt since movements were last normal; a report of some movement never lowers the tier
+    phrasings:
+      - {id: p1, form: closed, text: "Since then, have you felt the baby move at all, even a little?"}
+    value: {type: yes_no}
+    extraction: {yes_terms: ["yes", a little, a few, some, less than usual, a couple, once or twice, weaker], no_terms: ["no", nothing, none, not at all, nothing at all, no movement]}
+    verbatim: true
+    negative_reporting: explicit
+  - id: fm.episode
+    class: discriminating
+    required: true
+    intent: whether this is the first episode of reduced movements in this pregnancy or a recurrence; recurrent reduced movements are a documented risk marker
+    phrasings:
+      - {id: p1, form: open, text: "Is this the first time you've noticed the baby moving less, or has it happened before in this pregnancy? If so, when, and what happened?"}
+    value:
+      type: enum
+      options:
+        - {id: first, synonyms: [first time, never before, first episode, not before]}
+        - {id: recurrent, synonyms: [happened before, again, last week, last time, second time, third time, a few times, keeps happening]}
+    evidence: {discriminates: late stillbirth and fetal compromise, citation: "Green-top Guideline No. 57 (recurrent reduced fetal movements as a risk marker), as cited in the Symptom Questioning Library", grade: B, population: pregnant women presenting with reduced fetal movements, gap: true, gap_reason: "The library records recurrent reduced fetal movements as a risk marker but tabulates no likelihood ratio; the direction is known, the magnitude is not"}
+    verbatim: true
+    negative_reporting: explicit
+  - id: fm.bleeding_pain_fluid
+    class: red_flag
+    required: true
+    intent: any bleeding, abdominal pain or fluid loss with the reduced movements
+    phrasings:
+      - {id: p1, form: closed, text: "Have you had any bleeding, any pain in your tummy, or any fluid leaking from the vagina?"}
+    value: {type: yes_no}
+    extraction: {yes_terms: ["yes", bleeding, blood, spotting, pain, cramps, tightenings, contractions, waters, leaking, fluid, gush, wet], no_terms: ["no", no bleeding, no pain, nothing like that, dry]}
+    verbatim: true
+    negative_reporting: explicit
+  - id: fm.headache_visual
+    class: red_flag
+    required: true
+    intent: severe headache or visual change, as symptoms of pre-eclampsia
+    phrasings:
+      - {id: p1, form: closed, text: "Do you have a severe headache, or any change in your vision such as flashing lights, spots or blurring?"}
+    value: {type: yes_no}
+    extraction: {yes_terms: ["yes", headache, head is pounding, flashing, spots, blurred, blurry, vision, can't see properly], no_terms: ["no", no headache, vision is fine, seeing fine]}
+    verbatim: true
+    negative_reporting: explicit
+  - id: fm.antenatal_care
+    class: coverage
+    required: true
+    intent: who provides antenatal care and at which site, in the patient's words, so the handover reaches the right unit
+    phrasings:
+      - {id: p1, form: open, text: "Who is looking after you in this pregnancy, and where: a GP, a midwife, an obstetrician, and which hospital or clinic?"}
+    value: {type: text}
+    verbatim: true
+    negative_reporting: omit
+  - id: fm.growth_concerns_stillbirth
+    class: coverage
+    required: true
+    intent: known concerns about the baby's growth in this pregnancy, and any previous stillbirth; both change how the report is read
+    phrasings:
+      - {id: p1, form: closed, text: "Have you been told there are any concerns about the baby's growth or size in this pregnancy? And have you had a pregnancy before that ended in a stillbirth?"}
+    value: {type: text}
+    stigmatised: true
+    preamble: "I need to ask about some things that can be hard to talk about. They are asked of everyone who calls about their baby moving less, and only the clinician looking after you sees the answers."
+    verbatim: true
+    negative_reporting: explicit
+  - id: fm.perception_factors
+    class: coverage
+    required: false
+    intent: factors that alter maternal perception of movements, which change how the report is read; first pregnancy and placental position asked, maternal age from context
+    phrasings:
+      - {id: p1, form: open, text: "Is this your first baby? And have you been told where the placenta is lying, for example at the front?"}
+    value: {type: text}
+    verbatim: true
+    negative_reporting: omit
+red_flags:
+  - id: rf.rfm_28_weeks_no_movements
+    fires_when: "fm.gestation_band == '28_plus' and fm.movement_since == 'no'"
+    tier: immediate
+    alert: {include_verbatim: true, template: "Reduced fetal movements at 28 weeks or more with no movements felt since {fm.last_normal_movements}. Gestation {fm.gestation_weeks}. History alone is not a safe endpoint; fetal heartbeat has not been assessed. Patient said: {verbatim}."}
+    suppressible: false
+    source: "Reduced fetal movements section, Green-top Guideline No. 57; ED handling is an immediate interrupt to triage"
+  - id: rf.rfm_bleeding_or_pain
+    fires_when: "fm.bleeding_pain_fluid == 'yes'"
+    tier: immediate
+    alert: {include_verbatim: true, template: "Reduced fetal movements with bleeding, abdominal pain or fluid loss. Gestation {fm.gestation_weeks}. Patient said: {verbatim}."}
+    suppressible: false
+    source: "Pregnancy-related row: reduced fetal movements; bleeding; abdominal pain"
+  - id: rf.rfm_24_weeks_plus
+    fires_when: "fm.gestation_band in ['24_to_27', '28_plus']"
+    tier: same_day
+    alert: {include_verbatim: true, template: "Reduced fetal movements at 24 weeks or more. History alone is not a safe endpoint; needs same-day assessment per Green-top 57, including confirmation of the fetal heartbeat, which the agent could not assess. Gestation {fm.gestation_weeks}; episode {fm.episode}; antenatal care {fm.antenatal_care}. Patient said: {verbatim}."}
+    suppressible: false
+    source: "Reduced fetal movements section, Green-top Guideline No. 57: history is half of a two-part assessment; GP booking call is not a warm handback and must route to same-day in-person assessment"
+  - id: rf.rfm_headache_or_visual
+    fires_when: "fm.headache_visual == 'yes'"
+    tier: same_day
+    alert: {include_verbatim: true, template: "Reduced fetal movements with severe headache or visual change. Gestation {fm.gestation_weeks}. Patient said: {verbatim}."}
+    suppressible: false
+    source: "Pregnancy-related row: severe headache or visual change"
+  - id: rf.rfm_under_24_weeks
+    fires_when: "fm.gestation_band == 'under_24'"
+    tier: flag
+    alert: {include_verbatim: true, template: "Reduced fetal movements reported under 24 weeks. Gestation {fm.gestation_weeks}. Outside the Green-top 57 threshold; the presentation cannot end with the agent. Patient said: {verbatim}."}
+    suppressible: false
+    source: "Reduced fetal movements section: a reduced fetal movements presentation cannot end with the agent; tier under 24 weeks is a first draft pending obstetric review"
+closing:
+  uncertainty: "I can't tell from talking with you how your baby is; that needs a check of the baby's heartbeat that I cannot do."
+  watch_for: [no movements at all, bleeding, pain or tightenings, fluid leaking, a severe headache or changes in your vision]
+  time_course: "This needs to be checked in person today, not at a later appointment."
+  where: "Go to your maternity unit or emergency department today; if you feel no movements at all, or have bleeding or pain, call an ambulance rather than waiting."
+prohibited: [telling the patient to wait and count kicks, reassuring on any basis, ending the interview without an escalation, booking a later appointment in place of same-day in-person assessment]
+gaps: ["No Doppler, no CTG, no ultrasound. The history is half of a two-part assessment; the other half is a physical check the agent cannot perform or defer, and the handover states explicitly that the fetal heartbeat was not assessed.", "Maternal perception captures around 30.8% of movements; a report of some movement does not lower the tier. Perception is altered by maternal age, high BMI, primiparity, anterior placenta and fetal growth restriction."]

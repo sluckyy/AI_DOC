@@ -1,0 +1,146 @@
+module: alcohol_withdrawal
+display_name: stopping drinking
+version: 0.1.0
+status: grounded
+reviewed: false
+review_notes: ["Addiction medicine review: whether a community-validated alternative to the PAWSS interview items exists, or whether PAWSS items are the best available anchor despite validation in hospitalised medically ill patients.", "The PAWSS items are collected and listed, never scored; whether that changes is an owner decision (D-41).", "Whether clock-time capture and confirmation of the last drink works by voice.", "New confusion after stopping should also route to the confusion module's collateral interview; the cross-module handoff is not yet wired.", "Closing block is a first draft and deliberately does not reassure."]
+setting: both
+activates_on:
+  terms: [stopping drinking, stopped drinking, want to stop drinking, quit drinking, giving up drinking, cutting down, withdrawal, withdrawals, the shakes, shakes, shaking since i stopped, sweats since i stopped, dts, the horrors, detox, drying out, going cold turkey]
+slots:
+  - id: aw.last_drink_clock_time
+    class: coverage
+    required: true
+    intent: "clock time of the last drink, confirmed as an interval; withdrawal usually begins within the first 24 hours after stopping, so a vague interval must be converted and confirmed"
+    phrasings:
+      - {id: p1, form: open, text: "What time was your last drink? I need a clock time, even roughly, not just how long ago."}
+    value: {type: clock_time}
+    absolute_time: true
+    confirm: true
+    stigmatised: true
+    preamble: "I'm going to ask some questions about drinking that are asked of everyone who is stopping or thinking about it. There is no judgement in them, and only the clinician looking after you sees the answers."
+    disclosure_group: substance
+    verbatim: true
+    negative_reporting: omit
+  - id: aw.usual_daily_amount
+    class: coverage
+    required: true
+    intent: "usual daily amount in the patient's own words and own units, never converted or commented on"
+    phrasings:
+      - {id: p1, form: open, text: "On a usual day, how much do you drink, and what is it? Your own words are fine, like cans, bottles, or glasses."}
+    value: {type: text}
+    stigmatised: true
+    preamble: "The amount matters for planning, not for anyone's opinion of it."
+    disclosure_group: substance
+    verbatim: true
+    negative_reporting: omit
+  - id: aw.stop_status
+    class: coverage
+    required: true
+    intent: "whether the patient has already stopped, is planning to stop, or is not stopping"
+    phrasings:
+      - {id: p1, form: closed, text: "Have you already stopped, are you planning to stop, or are you still drinking as usual?"}
+    value:
+      type: enum
+      options:
+        - {id: stopped, synonyms: [stopped, i've stopped, already stopped, haven't had one since, quit, gave up, cold turkey]}
+        - {id: planning, synonyms: [planning to, want to stop, going to stop, thinking about stopping, trying to stop, want to cut down]}
+        - {id: not_stopping, synonyms: [still drinking, as usual, not stopping, no plans to stop, keep drinking]}
+    stigmatised: true
+    preamble: "Either answer is fine; it just tells the clinician what to plan for."
+    disclosure_group: substance
+    verbatim: true
+    negative_reporting: explicit
+  - id: aw.past_withdrawal
+    class: coverage
+    required: true
+    intent: "any previous withdrawal symptoms on stopping or cutting down, recorded separately from seizures and delirium tremens"
+    phrasings:
+      - {id: p1, form: closed, text: "When you have stopped or cut down before, did you get withdrawal symptoms such as shaking, sweating, or feeling very anxious?"}
+    value: {type: yes_no}
+    extraction: {yes_terms: ["yes", shakes, shaking, sweats, sweating, anxious, withdrawals, felt terrible, couldn't sleep, sick when i stop], no_terms: ["no", never, nothing, fine when i stop, never stopped before, first time]}
+    stigmatised: true
+    preamble: "Your own past is the most useful guide here, which is why I ask."
+    disclosure_group: substance
+    verbatim: true
+    negative_reporting: explicit
+  - id: aw.past_withdrawal_seizures
+    class: red_flag
+    required: true
+    intent: "previous seizure during withdrawal, recorded separately"
+    phrasings:
+      - {id: p1, form: closed, text: "Have you ever had a fit or seizure after stopping or cutting down drinking?"}
+    value: {type: yes_no}
+    extraction: {yes_terms: ["yes", fit, seizure, convulsion, blacked out and shook, had a fit], no_terms: ["no", never, no fits, no seizures]}
+    stigmatised: true
+    preamble: "This one is asked of everyone who is stopping, because it changes what the clinician plans."
+    disclosure_group: substance
+    verbatim: true
+    negative_reporting: explicit
+  - id: aw.past_delirium_tremens
+    class: red_flag
+    required: true
+    intent: "previous delirium tremens, asked as the library's direct question about seeing or hearing things after stopping, recorded separately"
+    phrasings:
+      - {id: p1, form: closed, text: "Have you ever seen or heard things that weren't there after stopping drinking, or been told you were very confused or had the DTs?"}
+    value: {type: yes_no}
+    extraction: {yes_terms: ["yes", saw things, heard things, hallucinated, dts, the horrors, confused, delirious, in hospital for it], no_terms: ["no", never, nothing like that]}
+    stigmatised: true
+    preamble: "It happens to a lot of people who stop suddenly, and knowing about it helps keep you safe."
+    disclosure_group: substance
+    verbatim: true
+    negative_reporting: explicit
+  - id: aw.current_symptoms
+    class: red_flag
+    required: true
+    intent: "withdrawal symptoms present right now: shakes, sweats, seeing or hearing things, confusion, seizure; seizures may develop early, before autonomic signs"
+    phrasings:
+      - {id: p1, form: closed, text: "Right now, do you have any of these: shaking, sweating, seeing or hearing things that are not there, feeling confused, or have you had a fit today?"}
+    value:
+      type: set
+      options:
+        - {id: shakes, synonyms: [shaking, shakes, shaky, trembling, tremor, hands shaking]}
+        - {id: sweats, synonyms: [sweating, sweats, sweaty, drenched, clammy]}
+        - {id: hallucinations, synonyms: [seeing things, hearing things, hallucinating, voices, things that aren't there, bugs on me, shadows moving]}
+        - {id: confusion, synonyms: [confused, muddled, can't think straight, don't know where i am, disoriented]}
+        - {id: seizure, synonyms: [fit, seizure, convulsion, had a fit, fitted, shook and blacked out]}
+        - {id: none, synonyms: [none, none of those, nothing, "no", feel ok, feel fine]}
+    stigmatised: true
+    preamble: "These are the things that matter most right now, so I ask them directly."
+    disclosure_group: substance
+    verbatim: true
+    negative_reporting: explicit
+  - id: aw.complicated_withdrawal_history
+    class: discriminating
+    required: true
+    intent: "personal or family history of complicated withdrawal, meaning withdrawal seizures or delirium tremens, in the patient or a blood relative"
+    phrasings:
+      - {id: p1, form: closed, text: "Has anyone in your family, or you yourself, ever had a fit, or seen or heard things, or been very confused, when they stopped drinking?"}
+    value: {type: yes_no}
+    extraction: {yes_terms: ["yes", my dad, my mum, my father, my mother, my brother, my sister, my uncle, family, me, i have, fit, dts, seizure], no_terms: ["no", not that i know of, nobody, no one, never]}
+    evidence: {lr: "personal or family history of alcohol withdrawal or delirium tremens is the strongest predictor of withdrawal syndromes; in a Hungarian validation a history of complicated withdrawal made current complicated withdrawal almost seven times more likely; PAWSS at a cut-off of 4 reported sensitivity 93.1% and specificity 99.5% prospectively, with a smaller later evaluation reporting sensitivity 46% and specificity 97%", discriminates: complicated alcohol withdrawal (seizures or delirium tremens), citation: "Prediction of Alcohol Withdrawal Severity Scale literature as tabulated in the Symptom Questioning Library", grade: B, population: inpatient/ED (hospitalised medically ill patients), not community callers}
+    stigmatised: true
+    preamble: "Family history matters here as much as your own, which is why I ask about both."
+    disclosure_group: substance
+    verbatim: true
+    negative_reporting: explicit
+red_flags:
+  - id: rf.withdrawal_now_complicated
+    fires_when: "'seizure' in aw.current_symptoms or 'hallucinations' in aw.current_symptoms or 'confusion' in aw.current_symptoms"
+    tier: immediate
+    alert: {include_verbatim: true, template: "Current seizure, hallucinations or new confusion after stopping drinking. Last drink {aw.last_drink_clock_time}. Patient said: {verbatim}."}
+    suppressible: false
+    source: "Master list and alcohol withdrawal row: seizure, hallucinations or new confusion after stopping is immediate; new confusion also routes to the confusion row's collateral interview"
+  - id: rf.complicated_withdrawal_history
+    fires_when: "(aw.past_withdrawal_seizures == 'yes' or aw.past_delirium_tremens == 'yes' or aw.complicated_withdrawal_history == 'yes') and aw.stop_status in ['stopped', 'planning']"
+    tier: same_day
+    alert: {include_verbatim: true, template: "History of complicated alcohol withdrawal (seizures, delirium tremens, or in a relative) in a patient who has stopped or plans to stop; same-day in person. Last drink {aw.last_drink_clock_time}, usual amount {aw.usual_daily_amount}. Patient said: {verbatim}."}
+    suppressible: false
+    source: "Alcohol withdrawal row: any history of complicated withdrawal, in a patient who has stopped or plans to stop, is same-day in person"
+closing:
+  uncertainty: "I can't tell from talking with you how your body will react to stopping, or when."
+  watch_for: [shaking or sweating getting worse, seeing or hearing things that are not there, becoming confused, a fit]
+  time_course: "Someone will speak with you today."
+  where: "If you have a fit, become confused, or start seeing or hearing things, call an ambulance rather than waiting."
+prohibited: [advising the patient to stop drinking, advising the patient to keep drinking or to taper, recommending or naming any medication, scoring PAWSS, reassuring the patient that withdrawal will be uncomplicated, using a label such as alcohol dependence]
+gaps: ["Intoxication severe enough to prevent a history is a cross-cutting bail-out criterion handled outside this module; this module is for patients who can take part.", "PAWSS interview items are collected and listed, not scored; the scale includes blood alcohol and autonomic sign items the agent cannot assemble, and it was validated in hospitalised medically ill patients rather than community callers.", "Withdrawal usually begins within the first 24 hours after stopping and seizures may develop before autonomic signs, so absence of symptoms at the time of the call does not lower the tier.", "New confusion should route to the confusion module's collateral interview; not yet wired across modules.", "No examination, breath alcohol or blood tests."]

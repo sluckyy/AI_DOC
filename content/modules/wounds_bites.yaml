@@ -1,0 +1,238 @@
+module: wounds_bites
+display_name: a cut, wound or bite
+version: 0.1.0
+status: grounded
+reviewed: false
+review_notes: ["SA public health notification pathway for bat exposure is a configurable parameter; the source guidance is Queensland", "Whether the agent may give first-aid instruction (washing for 15 minutes with soap and water) or advise keeping the bat for testing is an owner decision", "What the agent says if a patient asks whether the call is recorded or reported: it must answer truthfully under deployment governance and must not promise confidentiality", "Wound infection risk stratification is not grounded in this pass", "Closing block is a first draft"]
+setting: both
+activates_on:
+  terms: [cut, gash, wound, bite, bitten, animal bite, dog bite, cat bite, scratched me, scratch from, bat, burn, burnt, puncture, stabbed, knife, cut my hand, cut myself, cut my finger, hurt my hand, split my knuckle, wound won't heal, infected cut, hand is swollen, swollen hand, hand swollen, hand is sore, hand is painful, sore hand, hurt my finger, knuckle, knuckles, swollen finger, finger is swollen, door frame, caught it on, banged my hand, hit my hand, punched, hit a wall, graze, grazed]
+slots:
+  - id: wb.bat_contact
+    class: red_flag
+    required: true
+    intent: any contact with a bat, in Australia or overseas, at any time; contact and handling count, not only bites, because bat teeth and claws are small and elapsed time never de-escalates
+    phrasings:
+      - {id: p1, form: closed, text: "Doctors ask everyone with a wound this: have you ever touched, handled or had any contact with a bat, in Australia or overseas, at any time, even years ago? That includes a bat being in a room where you or a child were sleeping. Bats have very small teeth, so I am asking about any contact, not only a bite."}
+    value: {type: yes_no}
+    extraction: {yes_terms: ["yes", bat, flying fox, fruit bat, microbat, touched a bat, picked up a bat, bat in the room, bat in the house, years ago, a while back], no_terms: ["no", never, no bats, nothing like that, not that i know of]}
+    verbatim: true
+    negative_reporting: explicit
+  - id: wb.overseas_mammal
+    class: red_flag
+    required: true
+    intent: any bite or scratch from any mammal overseas, at any time; a dog bite abroad is a different finding from a dog bite in Adelaide
+    phrasings:
+      - {id: p1, form: closed, text: "Have you ever been bitten or scratched by any animal while overseas: a dog, cat, monkey or any other mammal, at any time?"}
+    value: {type: yes_no}
+    extraction: {yes_terms: ["yes", overseas, abroad, bali, thailand, india, monkey, dog bit me, cat scratched me, on holiday, travelling], no_terms: ["no", never, only in australia, nothing overseas, haven't been overseas]}
+    verbatim: true
+    negative_reporting: explicit
+  - id: wb.exposure_nature
+    asked_when: "wb.bat_contact == 'yes' or wb.overseas_mammal == 'yes'"
+    class: coverage
+    required: true
+    intent: the nature of the animal exposure as history; bite, scratch, saliva to eye, nose or mouth, or handling without a visible wound
+    phrasings:
+      - {id: p1, form: open, text: "If there was contact with an animal: were you bitten, scratched, did its saliva get into your eyes, nose or mouth, or did you handle or touch it without any wound you could see?", use_when: "wb.bat_contact or wb.overseas_mammal is yes"}
+    value:
+      type: enum
+      options:
+        - {id: bite, synonyms: [bit me, bitten, bite, teeth, nipped]}
+        - {id: scratch, synonyms: [scratched, scratch, claws, clawed]}
+        - {id: mucous_membrane, synonyms: [saliva, spit, licked, in my eye, in my mouth, in my nose]}
+        - {id: handling, synonyms: [touched, handled, picked it up, held it, carried it, untangled it, in the room, no wound]}
+        - {id: none, synonyms: [nothing, no contact, none, "no", no animal, wasn't an animal, not an animal]}
+    verbatim: true
+    negative_reporting: explicit
+  - id: wb.exposure_location
+    asked_when: "wb.bat_contact == 'yes' or wb.overseas_mammal == 'yes'"
+    class: coverage
+    required: true
+    intent: where on the body the contact or wound was, in the patient's words; head, neck, face and fingers are recorded specifically because innervation matters for post-exposure prophylaxis
+    phrasings:
+      - {id: p1, form: open, text: "Where on your body was the contact or the wound? Say it in your own words, and tell me if it was on the head, face, neck or fingers.", use_when: "wb.bat_contact or wb.overseas_mammal is yes"}
+    value: {type: text}
+    verbatim: true
+    negative_reporting: omit
+  - id: wb.exposure_date
+    asked_when: "wb.bat_contact == 'yes' or wb.overseas_mammal == 'yes'"
+    class: coverage
+    required: true
+    intent: date of the exposure as an absolute date, however long ago; elapsed time never de-escalates in either direction
+    phrasings:
+      - {id: p1, form: open, text: "When did that happen? I need a date, even roughly, however long ago it was.", use_when: "wb.bat_contact or wb.overseas_mammal is yes"}
+    value: {type: text}
+    absolute_time: false   # a date, not a clock time; F-14 read-back applies to clock times
+    verbatim: true
+    negative_reporting: omit
+  - id: wb.exposure_animal_country
+    asked_when: "wb.bat_contact == 'yes' or wb.overseas_mammal == 'yes'"
+    class: coverage
+    required: true
+    intent: the animal and the country of exposure; country is a required field because overseas exposures widen the question to any mammal
+    phrasings:
+      - {id: p1, form: open, text: "What animal was it, and in which country did it happen?", use_when: "wb.bat_contact or wb.overseas_mammal is yes"}
+    value: {type: text}
+    verbatim: true
+    negative_reporting: omit
+  - id: wb.mechanism
+    class: coverage
+    required: true
+    intent: what the skin was injured by, in the patient's words, recorded as given; the circumstances, who was involved and why are never asked
+    phrasings:
+      - {id: p1, form: open, text: "What was it that cut or injured the skin: something sharp, a surface, an animal, or something else? Just the object is fine, in your own words."}
+    value: {type: text}
+    verbatim: true
+    negative_reporting: omit
+  - id: wb.injury_clock_time
+    class: coverage
+    required: true
+    intent: clock time of the injury; the 12- and 18-hour points for fight bites make the absolute-time rule apply
+    phrasings:
+      - {id: p1, form: open, text: "What time did the injury happen, on the clock? A rough time is fine, and the day if it was earlier than today."}
+    value: {type: clock_time}
+    absolute_time: true
+    confirm: true
+    verbatim: true
+    negative_reporting: omit
+  - id: wb.wound_location
+    class: coverage
+    required: true
+    intent: where the wound is, in the patient's words; location keys the knuckle question because the mechanism is often concealed
+    phrasings:
+      - {id: p1, form: open, text: "Where exactly is the wound? Describe the spot in your own words."}
+    value: {type: text}
+    verbatim: true
+    negative_reporting: omit
+  - id: wb.over_knuckle
+    class: red_flag
+    required: true
+    intent: a cut or puncture over a knuckle, treated as a possible fight bite regardless of the story
+    phrasings:
+      - {id: p1, form: closed, text: "Is the cut or puncture over a knuckle, on the back of the hand where a finger joins it?"}
+    value: {type: yes_no}
+    extraction: {yes_terms: ["yes", knuckle, over my knuckle, back of my hand, where the finger joins, on the joint], no_terms: ["no", palm, wrist, forearm, fingertip, nowhere near the knuckle]}
+    verbatim: true
+    negative_reporting: explicit
+  - id: wb.fight_bite
+    class: red_flag
+    required: true
+    intent: whether the hand made contact with anyone's mouth or teeth, asked neutrally and without asking who, why or what happened
+    phrasings:
+      - {id: p1, form: closed, text: "Doctors ask this of everyone with a cut over a knuckle, whatever the story: did the hand make contact with someone else's mouth or teeth, for example during a fight or a scuffle? A yes or no is all I need, nothing more about it.", use_when: "wb.over_knuckle is yes, or the wound is on the hand after a punch or a fall on a closed fist"}
+    value: {type: yes_no}
+    extraction: {yes_terms: ["yes", teeth, mouth, punched, fight, hit someone, scuffle, his teeth, her teeth, maybe, possibly], no_terms: ["no", fell, glass, knife, tool, no one else involved, nothing like that]}
+    stigmatised: true
+    preamble: "The next question is one doctors ask everyone with a cut in this spot, because a small cut over a knuckle can be more serious than it looks. The answer goes to the doctor with the rest of what you tell me."
+    disclosure_group: risk
+    verbatim: true
+    negative_reporting: explicit
+  - id: wb.spreading_infection
+    class: red_flag
+    required: true
+    intent: signs around the wound as reported by the patient; redness spreading out, discharge, fever, pain rising, reduced movement
+    phrasings:
+      - {id: p1, form: closed, text: "Around the wound now, is any of this happening: redness spreading outwards, pus or discharge, a fever, pain that is getting worse, or difficulty moving the fingers or the limb?"}
+    value:
+      type: set
+      options:
+        - {id: redness_spreading, synonyms: [redness spreading, red streaks, red line, getting redder, red and hot, spreading]}
+        - {id: discharge, synonyms: [pus, discharge, oozing, weeping, leaking]}
+        - {id: fever, synonyms: [fever, temperature, hot and cold, shivers, sweats]}
+        - {id: pain_rising, synonyms: [pain getting worse, more painful, throbbing, worse pain, woke me up]}
+        - {id: reduced_movement, synonyms: [can't move, stiff, can't bend, hard to move, swollen up]}
+        - {id: none, synonyms: ["no", none of those, nothing like that, looks fine]}
+    delegated_observation: true
+    verbatim: true
+    negative_reporting: explicit
+  - id: wb.deep_contaminated
+    class: red_flag
+    required: true
+    intent: a deep, gaping or contaminated wound, or one with something left in it
+    phrasings:
+      - {id: p1, form: closed, text: "Is the wound deep or gaping open, or is it dirty: soil, rust, glass, or something still inside it?"}
+    value: {type: yes_no}
+    extraction: {yes_terms: ["yes", deep, gaping, can see fat, can see bone, dirty, soil, rust, rusty, glass in it, something in it, still in there], no_terms: ["no", shallow, clean, just a graze, nothing in it]}
+    delegated_observation: true
+    verbatim: true
+    negative_reporting: explicit
+  - id: wb.tetanus_immune_status
+    class: coverage
+    required: true
+    intent: tetanus vaccination status and immune status, in the patient's words; both feed public health assessment and wound management
+    phrasings:
+      - {id: p1, form: open, text: "When was your last tetanus injection, as best you can remember? And do you have any condition or take any medicine that weakens your immune system?"}
+    value: {type: text}
+    verbatim: true
+    negative_reporting: explicit
+  - id: wb.diabetes
+    class: coverage
+    required: true
+    intent: diabetes, associated with a worse course in hand bite injuries
+    phrasings:
+      - {id: p1, form: closed, text: "Do you have diabetes?"}
+    value: {type: yes_no}
+    extraction: {yes_terms: ["yes", diabetes, diabetic, type 1, type 2, insulin, metformin, sugar], no_terms: ["no", no diabetes, not diabetic]}
+    verbatim: true
+    negative_reporting: explicit
+  - id: wb.circumferential_high_pressure
+    class: red_flag
+    required: true
+    intent: an injury going all the way round a limb, digit, neck or chest, or a high-pressure injection injury, either of which is limb-threatening whatever the wound looks like
+    phrasings:
+      - {id: p1, form: closed, text: "Does the injury or burn go all the way around a finger, a limb, the neck or the chest? And was it from a high-pressure tool such as a paint gun, grease gun or pressure washer?"}
+    value: {type: yes_no}
+    extraction: {yes_terms: ["yes", all the way around, right around, around my arm, around my leg, around my finger, paint gun, grease gun, pressure washer, high pressure, injected], no_terms: ["no", just one side, one spot, nothing like that]}
+    verbatim: true
+    negative_reporting: explicit
+red_flags:
+  - id: rf.bat_contact_any_time
+    fires_when: "wb.bat_contact == 'yes'"
+    tier: same_day
+    alert: {include_verbatim: true, template: "Bat contact reported, at any time and however long ago; elapsed time never de-escalates. Exposure: {wb.exposure_nature}, location {wb.exposure_location}, on {wb.exposure_date}, animal and country {wb.exposure_animal_country}. Needs a clinician who can start the public health notification pathway (deployment parameter; SA pathway to be confirmed). Not to be booked as a routine appointment. Patient said: {verbatim}."}
+    suppressible: false
+    source: "Master list: any bat contact, or animal bite abroad, at any time; wounds row: any bat contact is same-day and should reach a clinician who can notify public health"
+  - id: rf.overseas_mammal_bite
+    fires_when: "wb.overseas_mammal == 'yes'"
+    tier: same_day
+    alert: {include_verbatim: true, template: "Bite or scratch from a mammal overseas, at any time. Exposure: {wb.exposure_nature}, location {wb.exposure_location}, on {wb.exposure_date}, animal and country {wb.exposure_animal_country}. Country of exposure determines rabies risk; elapsed time never de-escalates. Patient said: {verbatim}."}
+    suppressible: false
+    source: "Wounds row: any wild or domestic mammal in a rabies-enzootic country; country of exposure is a required field"
+  - id: rf.knuckle_wound_or_fight_bite
+    fires_when: "wb.over_knuckle == 'yes' or wb.fight_bite == 'yes'"
+    tier: same_day
+    alert: {include_verbatim: true, template: "Cut or puncture over a knuckle, treated as a possible fight bite regardless of the story. Injury time {wb.injury_clock_time}; contact with mouth or teeth: {wb.fight_bite}. Infection follows in 10 to 50% of fight bites and joint destruction can begin within 12 hours. Patient said: {verbatim}."}
+    suppressible: false
+    source: "Clenched-fist injury row: a cut or puncture over a knuckle is treated as a possible fight bite regardless of the story; any suspected fight bite is same-day in person"
+  - id: rf.fight_bite_contact
+    fires_when: "wb.fight_bite == 'yes'"
+    tier: same_day
+    alert: {include_verbatim: true, template: "Hand made contact with someone else's mouth or teeth, answered to the neutral question asked of everyone with a cut over a knuckle; a clenched-fist injury until a clinician says otherwise. Injury time {wb.injury_clock_time}; wound location {wb.wound_location}. Same-day in person; joint destruction can begin within 12 hours. The circumstances were not asked and are not recorded. Patient said: {verbatim}."}
+    suppressible: false
+    source: "Clenched-fist injury row: any suspected fight bite is same-day in person; dialogue pack 8.5, the question is keyed on wound location and never on who, why or what happened"
+  - id: rf.spreading_infection
+    fires_when: "'redness_spreading' in wb.spreading_infection or 'discharge' in wb.spreading_infection or 'fever' in wb.spreading_infection or 'pain_rising' in wb.spreading_infection or 'reduced_movement' in wb.spreading_infection"
+    tier: same_day
+    alert: {include_verbatim: true, template: "Signs of spreading wound infection reported: {wb.spreading_infection}. Fever with a wound also routes to the sepsis row. Patient said: {verbatim}."}
+    suppressible: false
+    source: "Routing row: signs of spreading infection; fight bite row: pain, swelling, redness, discharge or fever route to the joint row and fever to the sepsis row"
+  - id: rf.deep_or_contaminated
+    fires_when: "wb.deep_contaminated == 'yes'"
+    tier: flag
+    alert: {include_verbatim: true, template: "Deep or contaminated wound. Tetanus and immune status as given: {wb.tetanus_immune_status}. Patient said: {verbatim}."}
+    suppressible: false
+    source: "Routing row: deep or contaminated; tetanus status asked in every wound interview"
+  - id: rf.circumferential_or_high_pressure
+    fires_when: "wb.circumferential_high_pressure == 'yes'"
+    tier: immediate
+    alert: {include_verbatim: true, template: "Circumferential injury or burn, or high-pressure injection injury. Patient said: {verbatim}."}
+    suppressible: false
+    source: "Routing row: circumferential burn; high-pressure injection injury proposed at immediate pending emergency medicine review"
+closing:
+  uncertainty: "I can't tell from talking with you how deep the wound is or what it was exposed to."
+  watch_for: [redness spreading out from the wound, pus or discharge, a fever or feeling unwell, pain getting worse, difficulty moving the fingers or the limb]
+  time_course: "Someone will speak with you today."
+  where: "If the redness spreads quickly, you get a fever, or the pain rises sharply before then, this needs to be seen in person straight away rather than waiting."
+prohibited: [advising wound care beyond a first-aid instruction, which is itself an owner decision, reassuring on elapsed time since a bat or animal exposure, treating no visible wound as excluding bat exposure, promising confidentiality about how the injury happened]
+gaps: ["Wound infection risk stratification is not grounded in this pass; the spreading-infection slot records reported signs only.", "Whether the agent may give first-aid instruction (washing the wound for 15 minutes or more with soap and water) or advise keeping the bat for testing is pending an owner decision by public health and emergency medicine reviewers.", "The SA public health notification pathway for bat exposure is a configurable parameter; the source guidance is from a Queensland public health unit.", "No examination: fight bites look innocuous and are missed without a high index of suspicion."]

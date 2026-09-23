@@ -1,0 +1,103 @@
+# Monocular branch. Painless sudden loss in one eye is a stroke equivalent.
+module: visual_disturbance
+display_name: visual disturbance
+version: 0.1.0
+status: grounded
+reviewed: false
+review_notes: ["Ophthalmology and rheumatology review of the GCA thresholds", "The cover-each-eye observation is proposed, not grounded", "Painful red eye is not covered", "Closing block is a first draft"]
+setting: both
+activates_on:
+  terms: [blurred vision, double vision, lost vision, curtain across my eye, flashes and floaters, floaters, can't see properly, vision went, sight went, blind in one eye, eye went dark]
+slots:
+  - id: vd.which_eye
+    class: coverage
+    required: true
+    intent: one eye or both, or one side of the vision in both eyes
+    phrasings:
+      - {id: p1, form: closed, text: "Is it in one eye, or both? If you cover each eye in turn, is it still there?"}
+    value:
+      type: enum
+      options:
+        - {id: monocular, synonyms: [one eye, left eye, right eye, just one, only one eye]}
+        - {id: binocular, synonyms: [both eyes, both, each eye, one side of everything, half of everything]}
+        - {id: unsure, synonyms: [not sure, hard to tell, haven't tried]}
+    delegated_observation: true
+    verbatim: true
+    negative_reporting: omit
+  - id: vd.character
+    class: coverage
+    required: true
+    intent: painless loss, curtain, blur, double vision, flashes or floaters
+    phrasings:
+      - {id: p1, form: open, text: "Describe what happened to your vision: did it go dark or like a curtain, go blurry, go double, or were there flashes and floaters? Was there any pain?"}
+    value:
+      type: set
+      options:
+        - {id: loss, synonyms: [went dark, curtain, blind, lost, black, couldn't see, gone]}
+        - {id: blur, synonyms: [blurry, blurred, fuzzy, misty]}
+        - {id: double, synonyms: [double, two of everything]}
+        - {id: flashes_floaters, synonyms: [flashes, floaters, specks, cobwebs, lightning]}
+        - {id: painful, synonyms: [pain, painful, aching, sore eye]}
+    verbatim: true
+    negative_reporting: omit
+  - id: vd.onset_clock_time
+    class: coverage
+    required: true
+    intent: clock time of onset, and whether it has resolved
+    phrasings:
+      - {id: p1, form: open, text: "What time did it start? Has it come back to normal since, and if so when?"}
+    value: {type: clock_time}
+    absolute_time: true
+    confirm: true
+    verbatim: true
+    negative_reporting: omit
+  - id: vd.resolved
+    class: coverage
+    required: true
+    intent: current or resolved; resolved still counts
+    phrasings:
+      - {id: p1, form: closed, text: "Is it still there now, or has it gone?"}
+    value:
+      type: enum
+      options:
+        - {id: ongoing, synonyms: [still there, still, now, ongoing, hasn't gone]}
+        - {id: resolved, synonyms: [gone, back to normal, resolved, passed, better]}
+    verbatim: true
+    negative_reporting: omit
+  - id: vd.gca_features
+    class: discriminating
+    required: true
+    intent: jaw or limb claudication, scalp tenderness, new headache, previous polymyalgia, in a person over fifty
+    phrasings:
+      - {id: p1, form: closed, text: "Does your jaw ache when you chew and ease when you stop? Do your arms ache when you use them? Is your scalp sore, and is there a new headache? Have you had polymyalgia?"}
+    value: {type: yes_no}
+    extraction: {yes_terms: ["yes", jaw, chewing, arms ache, scalp, headache, polymyalgia], no_terms: ["no", none of those, nothing like that]}
+    evidence: {lr: "jaw claudication LR+ 4.9; limb claudication LR+ 6.0; temporal headache LR 0.97; age under 60 LR- 0.15", discriminates: giant cell arteritis, citation: "GCA meta-analysis of 68 studies and 14,037 patients, as tabulated in the Symptom Questioning Library", grade: A, population: pooled}
+    verbatim: true
+    negative_reporting: explicit
+red_flags:
+  - id: rf.sudden_monocular_loss
+    fires_when: "vd.which_eye == 'monocular' and 'loss' in vd.character"
+    tier: immediate
+    alert: {include_verbatim: true, template: "Sudden loss of vision in one eye, current or resolved: stroke equivalent. Onset {vd.onset_clock_time}. Patient said: {verbatim}."}
+    suppressible: false
+    source: "Master list: sudden painless loss of vision in one eye, current or resolved"
+  - id: rf.gca_with_visual_symptom
+    fires_when: "vd.gca_features == 'yes'"
+    tier: immediate
+    alert: {include_verbatim: true, template: "Jaw or limb claudication with a visual symptom: the second eye is at risk. Patient said: {verbatim}."}
+    suppressible: false
+    source: "Master list: over 50 with jaw or limb claudication and any visual symptom (proposed threshold; age gate to be applied from ctx.age when configured)"
+  - id: rf.new_flashes_floaters
+    fires_when: "'flashes_floaters' in vd.character"
+    tier: same_day
+    alert: {include_verbatim: true, template: "New flashes with floaters. Patient said: {verbatim}."}
+    suppressible: false
+    source: "Neurological table: new flashes with floaters; tier proposed for ophthalmology review"
+closing:
+  uncertainty: "I can't tell from talking with you what has affected your vision."
+  watch_for: [any further loss of vision in either eye, a curtain coming across, weakness or trouble speaking, jaw pain on chewing]
+  time_course: "Someone will speak with you today."
+  where: "If vision is lost again, or anything else starts, call an ambulance rather than waiting."
+prohibited: [routing sudden monocular loss to a routine eye appointment, naming a cause]
+gaps: ["No fundoscopy, visual fields or acuity. Monocular versus binocular is the patient's report, not an examination."]

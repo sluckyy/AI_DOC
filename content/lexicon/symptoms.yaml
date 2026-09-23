@@ -1,0 +1,87 @@
+# Terms that count as "a new symptom named" for the saturation count (P13).
+# Module trigger terms are added automatically. Kept deliberately broad.
+terms:
+  - headache
+  - migraine
+  - dizzy
+  - dizziness
+  - light-headed
+  - faint
+  - fainted
+  - passed out
+  - blacked out
+  - short of breath
+  - breathless
+  - breathlessness
+  - can't breathe
+  - cough
+  - coughing
+  - wheeze
+  - wheezy
+  - palpitations
+  - heart racing
+  - fluttering
+  - nausea
+  - nauseous
+  - vomiting
+  - vomited
+  - been sick
+  - throwing up
+  - fever
+  - temperature
+  - chills
+  - sweats
+  - tired
+  - fatigue
+  - exhausted
+  - no energy
+  - weight loss
+  - losing weight
+  - back pain
+  - bad back
+  - neck pain
+  - tummy pain
+  - stomach pain
+  - abdominal pain
+  - belly
+  - diarrhoea
+  - constipated
+  - constipation
+  - blood in my
+  - bleeding
+  - rash
+  - swelling
+  - swollen
+  - lump
+  - numb
+  - numbness
+  - tingling
+  - pins and needles
+  - weak
+  - weakness
+  - can't move
+  - slurred
+  - can't find words
+  - vision
+  - blurred
+  - double vision
+  - burning when i
+  - passing urine
+  - urine
+  - low mood
+  - can't cope
+  - not sleeping
+  - insomnia
+  - fall
+  - fell
+  - injury
+  - injured
+  - pain
+  - hiccups
+  - itch
+  - itching
+  - snoring
+  - nosebleed
+  - earache
+  - sore throat
+  - toothache

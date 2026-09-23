@@ -1,0 +1,87 @@
+module: gi_bleeding
+display_name: vomiting blood or black stools
+version: 0.1.0
+status: grounded
+reviewed: false
+review_notes: ["Melaena phrasing", "Confirmation that partial Glasgow-Blatchford fields should not be scored", "Closing block is a first draft"]
+setting: both
+activates_on:
+  terms: [vomiting blood, vomited blood, coffee grounds, red in my vomit, black stools, black poo, tarry, blood in my vomit, throwing up blood]
+slots:
+  - id: gb.haematemesis
+    class: red_flag
+    required: true
+    intent: blood in vomit and what it looked like
+    phrasings:
+      - {id: p1, form: open, text: "Have you vomited blood? What did it look like: bright red, or dark like coffee grounds? Was there retching before it?"}
+    value: {type: yes_no}
+    extraction: {yes_terms: ["yes", red, coffee grounds, dark, blood, brown bits], no_terms: ["no", no blood, just bile, clear]}
+    verbatim: true
+    negative_reporting: explicit
+  - id: gb.melaena
+    class: red_flag
+    required: true
+    intent: black tarry stool described rather than named, with iron or bismuth asked
+    phrasings:
+      - {id: p1, form: open, text: "What colour have your stools been, and were they sticky, tarry or unusually smelly? Are you taking iron tablets or anything for indigestion?"}
+    value: {type: yes_no}
+    extraction: {yes_terms: ["yes", black, tarry, sticky, tar, smelly, dark like tar], no_terms: ["no", normal, brown, not black, iron tablets only]}
+    verbatim: true
+    negative_reporting: explicit
+  - id: gb.syncope
+    class: coverage
+    required: true
+    intent: syncope, a Glasgow-Blatchford variable opened from the GI presentation
+    phrasings:
+      - {id: p1, form: closed, text: "Have you fainted or nearly fainted?"}
+    value: {type: yes_no}
+    extraction: {yes_terms: ["yes", fainted, nearly fainted, collapsed, passed out, dizzy standing], no_terms: ["no", not fainted, fine standing]}
+    verbatim: true
+    negative_reporting: explicit
+  - id: gb.liver_heart
+    class: coverage
+    required: true
+    intent: hepatic disease and heart failure, the Glasgow-Blatchford history items
+    phrasings:
+      - {id: p1, form: closed, text: "Have you been told you have liver disease, or heart failure?"}
+    value:
+      type: set
+      options:
+        - {id: liver, synonyms: [liver, cirrhosis, hepatitis, fatty liver]}
+        - {id: heart_failure, synonyms: [heart failure, weak heart, fluid on the lungs]}
+        - {id: none, synonyms: ["no", neither, none]}
+    verbatim: true
+    negative_reporting: explicit
+  - id: gb.anticoagulants
+    class: coverage
+    required: true
+    intent: anticoagulants and antiplatelets by name
+    phrasings:
+      - {id: p1, form: closed, text: "Do you take a blood thinner: warfarin, apixaban, rivaroxaban, dabigatran, clopidogrel, or aspirin?"}
+    value: {type: yes_no}
+    extraction: {yes_terms: ["yes", warfarin, apixaban, eliquis, rivaroxaban, xarelto, dabigatran, clopidogrel, aspirin, blood thinner], no_terms: ["no", none, nothing like that]}
+    verbatim: true
+    negative_reporting: explicit
+  - id: gb.alcohol_nsaids
+    class: coverage
+    required: true
+    intent: alcohol and anti-inflammatory use
+    phrasings:
+      - {id: p1, form: open, text: "How much alcohol do you drink in a week? Do you take anti-inflammatories like ibuprofen or naproxen?"}
+    value: {type: text}
+    verbatim: true
+    negative_reporting: omit
+red_flags:
+  - id: rf.haematemesis_or_melaena
+    fires_when: "gb.haematemesis == 'yes' or gb.melaena == 'yes'"
+    tier: immediate
+    alert: {include_verbatim: true, template: "Haematemesis or melaena. Patient said: {verbatim}. Glasgow-Blatchford history items collected, no score assembled."}
+    suppressible: false
+    source: "Master list: haematemesis or melaena"
+closing:
+  uncertainty: "I can't tell from talking with you where the bleeding is coming from."
+  watch_for: [more blood, feeling faint or collapsing, black stools continuing]
+  time_course: "Someone is coming to you now."
+  where: "If you are at home and you faint or vomit more blood, call triple zero immediately."
+prohibited: [computing or reporting a Glasgow-Blatchford score, naming a cause]
+gaps: ["Heart rate, blood pressure, haemoglobin and urea are not available; the score cannot be assembled from history."]

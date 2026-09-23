@@ -1,0 +1,51 @@
+# Context module: values several symptom modules gate on. Filled once per
+# conversation, prefilled from the record where it holds them, asked at the
+# point of need with the reason attached. Sex is three slots, not one; no gating
+# rule may reference ctx.gender or ctx.sex_recorded (authoring check 8).
+module: context
+version: 0.1.0
+status: grounded
+slots:
+  - id: ctx.age
+    class: context
+    intent: age in years
+    prefill_from: [record]
+    confirm: false
+    phrasings:
+      - {id: p1, form: open, text: "Because of what you've described, I need to ask how old you are."}
+    value: {type: number}
+    verbatim: false
+    negative_reporting: omit
+  - id: ctx.gender
+    class: context
+    intent: how the patient describes themselves and wishes to be addressed
+    prefill_from: [record]
+    confirm: false
+    phrasings: []
+    value: {type: text}
+    verbatim: true
+    negative_reporting: omit
+  - id: ctx.sex_recorded
+    class: context
+    intent: the sex held in the booking record or triage screen, for matching the handover to the record
+    prefill_from: [record]
+    confirm: false
+    phrasings: []
+    value: {type: text}
+    verbatim: false
+    negative_reporting: omit
+  - id: ctx.medications.anticoagulant
+    class: context
+    intent: whether the patient takes a blood thinner, asked by name because a wrong value is dangerous
+    prefill_from: [record]
+    confirm: true
+    stigmatised: false
+    phrasings:
+      - {id: p1, form: open, text: "I need to ask about blood thinners by name. Do you take warfarin, apixaban, rivaroxaban, dabigatran, or a heparin injection?"}
+    value: {type: yes_no}
+    extraction:
+      yes_terms: [warfarin, apixaban, eliquis, rivaroxaban, xarelto, dabigatran, pradaxa, clexane, heparin, blood thinner, thinners, "yes"]
+      no_terms: ["no", none, nothing like that, not on any, don't take]
+    verbatim: true
+    negative_reporting: explicit
+    gates: [stroke_cluster, trauma, falls, haemoptysis, gi_bleeding]
