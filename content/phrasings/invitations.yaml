@@ -5,8 +5,8 @@
 #
 # P5 (Framework Specification, Heritage 2007): invitations say "something else",
 # never "anything else". Four continuation prompts in the pack say "anything
-# else"; they are carried verbatim under their frozen ids with enabled: false
-# until the owner rules on the conflict (D-54). P7: no negative polarity.
+# else"; they are carried verbatim under their frozen ids with enabled: false.
+# D-54 agreed: the P5-compliant equivalents (OP-13 to OP-15) run. P7: no negative polarity.
 opening:
   - {id: OP-1, text: "What's been going on?"}
   - {id: OP-2, text: "Tell me what's been happening."}
