@@ -44,6 +44,13 @@ label { display: block; margin: 8px 0; }
 .controls { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-top: 10px; }
 .mic { min-width: 160px; }
 .mic.on { background: var(--accent); color: var(--accent-fg); }
+.ear { display: inline-flex; align-items: center; gap: 8px; padding: 6px 12px; border-radius: 999px; background: var(--panel, #f3f4f6); color: var(--muted); font-size: 0.95rem; }
+.ear .dot { width: 10px; height: 10px; border-radius: 50%; background: #9ca3af; }
+.ear.listening .dot { background: #16a34a; animation: earPulse 1.6s ease-in-out infinite; }
+.ear.paused .dot { background: #f59e0b; }
+.ear.unavailable .dot { background: #dc2626; }
+@keyframes earPulse { 0%, 100% { transform: scale(1); opacity: 1; } 50% { transform: scale(1.5); opacity: 0.5; } }
+@media (prefers-reduced-motion: reduce) { .ear.listening .dot { animation: none; } }
 .typeRow { display: flex; gap: 8px; flex: 1; min-width: 240px; }
 .endedNote { margin-top: 10px; color: var(--muted); }
 .afterEnd { margin-top: 12px; }
