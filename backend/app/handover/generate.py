@@ -114,7 +114,10 @@ def generate(state: dict, bundle: ContentBundle, terminology: TerminologyProvide
     # 1. Alerts first
     if alerts:
         for a in alerts:
-            narrative.append(f"ALERT ({a['tier'].replace('_', ' ')}, rule {a['rule_id']}, routed to {a['route']}): {a['text']}")
+            line = f"ALERT ({a['tier'].replace('_', ' ')}, rule {a['rule_id']}, routed to {a['route']}): {a['text']}"
+            if a.get("correction_flag"):
+                line += " [the patient later queried something read back that this alert's rule used — see Correction at read-back, below; the alert stands and still needs acknowledgement]"
+            narrative.append(line)
     # 2. Reason for encounter in the patient's words
     pv = state.get("presenting_verbatim")
     if pv:
@@ -144,7 +147,7 @@ def generate(state: dict, bundle: ContentBundle, terminology: TerminologyProvide
                         "slot_id": k, "module": m.module, "module_version": m.version, "class": s.slot_class, "intent": s.intent,
                         "item": iv.get("item"), "value": iv.get("value"), "verbatim": iv.get("verbatim"), "state": iv["state"],
                         "turn_id": iv.get("turn_id"), "source": iv.get("source"), "provenance": "patient_reported" if iv["state"] == "filled" else "structural",
-                        "evidence": None, "negative_reporting": s.negative_reporting,
+                        "evidence": None, "negative_reporting": s.negative_reporting, "epistemic_status": iv.get("epistemic_status"),
                     })
                     if iv["state"] == "filled":
                         repeats.setdefault(s.intent.split(":")[0], []).append(f'{iv.get("item") or "item"}: "{(iv.get("verbatim") or _fmt(iv.get("value")))[:160]}"')
@@ -159,6 +162,7 @@ def generate(state: dict, bundle: ContentBundle, terminology: TerminologyProvide
                 "provenance": "patient_reported" if v and v["state"] == "filled" else "structural",
                 "evidence": (s.evidence.lr if s.evidence and not s.evidence.gap else None),
                 "negative_reporting": s.negative_reporting, "instrument": s.instrument,
+                "epistemic_status": v.get("epistemic_status") if v else None,
             }
             if v is not None and v.get("pass_on") is False:
                 # D-47: the patient declined to have this passed on; the record carries the fact, not the content
@@ -192,6 +196,11 @@ def generate(state: dict, bundle: ContentBundle, terminology: TerminologyProvide
                 line += f' ("{v["verbatim"][:120]}")'
             if s.pass_on_consent and v.get("pass_on") is True:
                 line += " (patient agreed to pass this on)"
+            epi = v.get("epistemic_status")
+            if epi == "hypothesis":
+                line += " [mentioned in the interview; the conversation ended before this could be read back for confirmation]"
+            elif epi == "correction_pending":
+                line += " [read back to the patient, who then said something other than a plain yes; see Correction at read-back, below]"
             found.append(line)
         lines: list[str] = []
         title = (m.display_name or m.module.replace("_", " ")).capitalize()
@@ -239,7 +248,13 @@ def generate(state: dict, bundle: ContentBundle, terminology: TerminologyProvide
     if state.get("late_concerns"):
         narrative.append("Raised at the end, not explored: " + "; ".join(f'"{c["text"][:120]}"' for c in state["late_concerns"]) + ".")
     if state.get("patient_corrections"):
-        narrative.append("Patient corrections to the read-back, verbatim: " + "; ".join(f'"{c["text"][:160]}"' for c in state["patient_corrections"]) + ".")
+        narrative.append("Correction at read-back: the patient's reply below was not a plain confirmation. The system cannot reliably tell which item it concerns, so every item in that read-back is marked unconfirmed above rather than being kept or discarded automatically. Please confirm the affected item(s) with the patient or the record.")
+        for c in state["patient_corrections"]:
+            items = ", ".join(c.get("read_back_slot_ids") or []) or "none tracked (read back before this build tracked items)"
+            line = f'"{c["text"][:200]}" (items read back at that point: {items})'
+            if c.get("affected_alerts"):
+                line += f" — affects alert(s) {', '.join(c['affected_alerts'])}"
+            narrative.append(line)
     tone = _tone_sentence(state)
     if tone:
         narrative.append(tone)
