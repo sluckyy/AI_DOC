@@ -3,7 +3,10 @@
  * with a short-lived token from the API (the key never reaches the browser); the
  * Web Speech API is the fallback. Both expose the same handler contract.
  *
- * N-1 barge-in: the caller stops Dr Sam on the first partial result.
+ * Listening is ambient: the recogniser runs continuously from the start of the
+ * conversation, there is no tap-to-talk. The caller filters Dr Sam's own voice
+ * (echo) and buffers speech that arrives while a turn is in flight.
+ * N-1 barge-in: the caller stops Dr Sam on a partial result that is not echo.
  * N-3 endpointing: the segmentation silence comes from the deployment parameters
  *     (longer for the older register), never the vendor default.
  * N-9 confidence: every final result carries the recogniser's per-utterance
@@ -48,7 +51,7 @@ function browserRecognizer(cfg: SpeechConfigResponse, handlers: RecognitionHandl
 }
 
 /** Azure AI Speech in the browser. Continuous recognition; a turn ends on the configured silence. */
-async function azureRecognizer(cfg: SpeechConfigResponse, handlers: RecognitionHandlers): Promise<Recognizer> {
+async function azureRecognizer(cfg: SpeechConfigResponse, handlers: RecognitionHandlers, stream?: MediaStream | null): Promise<Recognizer> {
   const sdk = await import("microsoft-cognitiveservices-speech-sdk");
   const speechConfig = sdk.SpeechConfig.fromAuthorizationToken(cfg.token!, cfg.region!);
   speechConfig.speechRecognitionLanguage = cfg.bcp47;
@@ -58,7 +61,9 @@ async function azureRecognizer(cfg: SpeechConfigResponse, handlers: RecognitionH
   speechConfig.setProperty(sdk.PropertyId.SpeechServiceConnection_EndSilenceTimeoutMs, String(cfg.silence_end_of_turn_ms));
   speechConfig.setProperty(sdk.PropertyId.SpeechServiceConnection_InitialSilenceTimeoutMs, String(cfg.initial_silence_timeout_ms));
   speechConfig.enableDictation();
-  const audio = sdk.AudioConfig.fromDefaultMicrophoneInput();
+  // the microphone stream was opened on the Start tap (a user gesture), with echo cancellation, so
+  // listening is ambient from the first turn; without it the SDK opens the default microphone itself
+  const audio = stream ? sdk.AudioConfig.fromStreamInput(stream) : sdk.AudioConfig.fromDefaultMicrophoneInput();
   const rec = new sdk.SpeechRecognizer(speechConfig, audio);
 
   let finalText = "";
@@ -122,10 +127,10 @@ async function azureRecognizer(cfg: SpeechConfigResponse, handlers: RecognitionH
 }
 
 /** Pick the recogniser the deployment configured; Azure needs a token, otherwise the browser's own. */
-export async function createRecognizer(cfg: SpeechConfigResponse, handlers: RecognitionHandlers): Promise<Recognizer> {
+export async function createRecognizer(cfg: SpeechConfigResponse, handlers: RecognitionHandlers, stream?: MediaStream | null): Promise<Recognizer> {
   if (cfg.stt_provider === "azure" && cfg.token && cfg.region) {
     try {
-      return await azureRecognizer(cfg, handlers);
+      return await azureRecognizer(cfg, handlers, stream);
     } catch (e: any) {
       handlers.onError?.(`Azure recognition unavailable (${e?.message || e}); using the browser recogniser`);
     }

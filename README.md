@@ -45,8 +45,10 @@ npm install
 npm run dev            # http://127.0.0.1:5173, proxies /api to the backend
 ```
 
-Open http://127.0.0.1:5173, accept the consent switches, tap to talk (Chrome or
-Edge for microphone recognition) or type. When the conversation ends, follow the
+Open http://127.0.0.1:5173, accept the consent switches and tap Start. The browser
+asks for the microphone once and Dr Sam then listens for the whole conversation:
+just talk, or type in the box at any time (Azure Speech when the key is set, else
+Chrome or Edge for the browser recogniser). When the conversation ends, follow the
 link to the clinician handover.
 
 Docker: `cp .env.docker.example .env.docker && docker compose up --build`.
