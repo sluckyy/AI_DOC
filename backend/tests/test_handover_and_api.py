@@ -20,7 +20,8 @@ def test_handover_from_slots_only(bundle):
 
 
 def test_not_asked_never_reads_as_negative(bundle):
-    state, _ = run(bundle, ["I've got chest pain right now."], SETTLED_ANSWERS)
+    # gp_booking: needs an immediate-tier alert to actually stop the interview and produce not_asked slots (D-64)
+    state, _ = run(bundle, ["I've got chest pain right now."], SETTLED_ANSWERS, setting="gp_booking")
     doc = generate(state, bundle)
     text = " ".join(doc["narrative"])
     assert "Not asked:" in text
@@ -105,7 +106,8 @@ def test_partial_handover_is_marked(bundle):
     ctrl.person_turn(state, "No, I want a person.")
     doc = generate(state, bundle)
     assert doc["partial"] and doc["narrative"][0].startswith("PARTIAL HISTORY")
-    state, _ = run(bundle, ["I've got chest pain right now."], SETTLED_ANSWERS)
+    # gp_booking: needs an immediate-tier alert to actually stop the interview (D-64)
+    state, _ = run(bundle, ["I've got chest pain right now."], SETTLED_ANSWERS, setting="gp_booking")
     doc = generate(state, bundle)
     assert "immediate-tier alert" in doc["partial"]
 

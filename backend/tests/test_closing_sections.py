@@ -162,8 +162,10 @@ def test_handover_order_presenting_first_past_history_later(bundle):
 
 
 def test_closing_sections_swept_after_an_immediate_alert(bundle):
+    # gp_booking: D-64 means an ED immediate alert no longer stops the interview, so this exercises the
+    # stop-and-sweep mechanism where it still applies (the call transfers live to the duty GP, D-42)
     script = ActorScript(opening=["I've got a tight pain in my chest right now."], default="No.")
-    r = run_case(bundle, script, setting="ed")
+    r = run_case(bundle, script, setting="gp_booking")
     assert r.alerts("immediate")
     md = r.slot("md.list")
     assert md and md["state"] == "not_asked"

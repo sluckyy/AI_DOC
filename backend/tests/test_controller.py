@@ -107,12 +107,12 @@ def test_narrative_fills_slots_with_originating_turn(bundle):
     assert state["slot_values"]["cp.quality"]["source"] == "person_open_phase"
 
 
-def test_current_chest_pain_fires_immediate_alert_and_stops(bundle):
+def test_gp_booking_immediate_alert_stops_the_interview(bundle):
     open_lines = ["I've got a tight pain in my chest right now, it's there at the moment and it's going through to my back."]
-    state, log = run(bundle, open_lines, SETTLED_ANSWERS)
+    state, log = run(bundle, open_lines, SETTLED_ANSWERS, setting="gp_booking")
     assert "rf.chest_pain_current" in state["fired_rules"]
     a = state["alerts"][0]
-    assert a["tier"] == "immediate" and a["route"] == "alert_triage"
+    assert a["tier"] == "immediate" and a["route"] == "live_transfer"
     assert a["verbatim"], "alert carries the patient's words"
     assert state["closed_by_alert"] and state["phase"] == "ended"
     not_asked = [k for k, v in state["slot_values"].items() if v["state"] == "not_asked"]
@@ -120,6 +120,26 @@ def test_current_chest_pain_fires_immediate_alert_and_stops(bundle):
     agent_moves = [a["move"] for role, a in log if role == "agent"]
     assert "alert" in agent_moves
     assert "ask" not in agent_moves, "the interview did not continue after an immediate alert"
+
+
+def test_ed_immediate_alert_is_recorded_but_does_not_stop(bundle):
+    # D-64: an ED patient is already triaged, so Dr Sam keeps going rather than stopping and telling the
+    # patient someone is coming - but the rule still fires and the alert still stands, unchanged, for the
+    # treating team.
+    open_lines = ["I've got a tight pain in my chest right now, it's there at the moment and it's going through to my back."]
+    state, log = run(bundle, open_lines, SETTLED_ANSWERS)
+    assert "rf.chest_pain_current" in state["fired_rules"]
+    a = state["alerts"][0]
+    assert a["tier"] == "immediate" and a["route"] == "alert_triage"
+    assert a["verbatim"], "alert carries the patient's words"
+    assert not state.get("closed_by_alert")
+    assert state["phase"] == "ended"
+    agent_moves = [a["move"] for role, a in log if role == "agent"]
+    assert "ask" in agent_moves, "the interview continued after an immediate alert in ED"
+    assert "alert" not in agent_moves, "no interrupting alert turn was spoken to an already-triaged patient"
+    spoken = " ".join(a["text"] for role, a in log if role == "agent")
+    assert "stop here" not in spoken and "stay where you are" not in spoken
+    assert "keep going so the doctor has as much as possible" in spoken
 
 
 def test_gp_booking_immediate_routes_to_duty_gp(bundle):

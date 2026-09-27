@@ -55,7 +55,9 @@ def test_token_service_failure_degrades_to_the_browser(client, monkeypatch):
 
 
 def test_confidence_travels_with_the_turn_into_the_handover(client):
-    r = client.post("/conversations", json={"setting": "ed", "language": "en"})
+    # gp_booking: relies on the immediate-tier alert stopping the interview quickly to reach a handover in a
+    # short scripted exchange (D-64 means an ED alert no longer stops it)
+    r = client.post("/conversations", json={"setting": "gp_booking", "language": "en"})
     cid = r.json()["conversation_id"]
     asr = {"provider": "azure", "confidence": 0.41, "language": "en-AU", "duration_ms": 2100, "segments": 1, "endpoint_silence_ms": 1200,
            "nbest": [{"text": "Yes.", "confidence": 0.41}, {"text": "Yet.", "confidence": 0.3}]}

@@ -742,9 +742,13 @@ class Controller:
     def _deliver_alerts(self, state: dict, alerts: list[dict]) -> list[AgentTurn]:
         out: list[AgentTurn] = []
         immediate = [a for a in alerts if a["tier"] == "immediate"]
-        for a in immediate:
-            out.append(AgentTurn(text=f"{self.b.scripts['alert_prefix']} {a['patient_message']}", move="alert", phase=state["phase"], expression="serious", next="alert", alert_id=a["id"]))
-        if immediate and not self.b.parameters.continue_after_immediate_alert:
+        # D-64: continuing after an immediate alert (ED, since the patient is already triaged) skips the
+        # per-alert "I'm going to stop here... stay where you are" turn entirely, not just the stop itself -
+        # the rule still fires and the alert still stands, unchanged, in state["alerts"] and the handover.
+        continue_after = self.b.parameters.continue_after_immediate_alert.get(state["setting"], False)
+        if immediate and not continue_after:
+            for a in immediate:
+                out.append(AgentTurn(text=f"{self.b.scripts['alert_prefix']} {a['patient_message']}", move="alert", phase=state["phase"], expression="serious", next="alert", alert_id=a["id"]))
             state["closed_by_alert"] = True
             for name in state["module_queue"]:
                 for s in self._module(name).slots:
