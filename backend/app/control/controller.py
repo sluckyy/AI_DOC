@@ -73,6 +73,7 @@ def new_state(setting: str, language: str, consent: dict, register: str = "patie
         "transition_log": [], "tone_log": [], "bail_out_reason": None, "ended_at": None,
         "capability": {}, "capability_step": 0, "collateral_available": None, "gating_needed": [],
         "pending_confirm": None, "deflections": [], "contact_lost": False,
+        "read_back_slot_ids": [], "corrections_affecting_alerts": [],
     }
 
 
@@ -254,10 +255,19 @@ class Controller:
         return res.fired or bool(res.missing)
 
     def _write(self, state: dict, module_name: str, slot: Slot, value, verbatim: str, turn_id: str, source: str = "person", st: str = "filled", confidence: float | None = None) -> None:
+        # D-63 epistemic ladder (Mathematics of Clinical History Taking, s.4): a value mined
+        # opportunistically from narrative is a hypothesis until it has been read back to the
+        # patient and not corrected; a value from a direct answer is grounded immediately. This
+        # never claims levels the system cannot support (no belief propagation, no calibrated
+        # confidence) — it only tracks whether a proposition has been exposed for confirmation.
+        epistemic_status = None
+        if st == "filled":
+            epistemic_status = "hypothesis" if source in ("person_open_phase", "person_same_turn") else "grounded"
         state["slot_values"][slot.id] = {
             "slot_id": slot.id, "module": module_name, "value": value,
             "verbatim": verbatim if slot.verbatim else None, "state": st, "turn_id": turn_id,
             "source": source, "confidence": confidence, "written_at": now_iso(),
+            "epistemic_status": epistemic_status,
         }
 
     def _rule_values(self, state: dict) -> dict:
@@ -744,7 +754,7 @@ class Controller:
                     if s.repeat_over:
                         continue
                     if self._candidate(mod, s) and s.id not in state["slot_values"]:
-                        state["slot_values"][s.id] = {"slot_id": s.id, "module": name, "value": None, "verbatim": None, "state": "not_asked", "turn_id": None, "source": "sweep", "confidence": None, "written_at": now_iso()}
+                        state["slot_values"][s.id] = {"slot_id": s.id, "module": name, "value": None, "verbatim": None, "state": "not_asked", "turn_id": None, "source": "sweep", "confidence": None, "written_at": now_iso(), "epistemic_status": None}
             out.extend(self._close(state, after_alert=True))
         elif immediate:
             out.append(self._say(state, self.b.scripts["after_alert_continue"], "explain_why"))
@@ -760,7 +770,7 @@ class Controller:
                     continue   # instances exist only for items named; nothing to sweep
                 if self._candidate(mod, s) and s.id not in state["slot_values"]:
                     st = "not_asked" if self._applies(state, s, mod.kind) else "not_applicable"
-                    state["slot_values"][s.id] = {"slot_id": s.id, "module": name, "value": None, "verbatim": None, "state": st, "turn_id": None, "source": "sweep", "confidence": None, "written_at": now_iso()}
+                    state["slot_values"][s.id] = {"slot_id": s.id, "module": name, "value": None, "verbatim": None, "state": st, "turn_id": None, "source": "sweep", "confidence": None, "written_at": now_iso(), "epistemic_status": None}
         self._evaluate_rules(state, "sweep")
         state["phase"] = "final_invite"
         return [self._say(state, self.b.phrasings.final_something_else, "final_invite", phrasing_variant_id="final")]
@@ -775,10 +785,19 @@ class Controller:
             state["read_back_done"] = False
             return self._close(state, after_alert=False)
         state["phase"] = "read_back"
-        return [self._say(state, f"{self.b.phrasings.read_back['intro']} {self._read_back_text(state)} {self.b.phrasings.read_back['check']}", "read_back")]
+        statement, slot_ids = self._read_back_text(state)
+        state["read_back_slot_ids"] = slot_ids
+        for sid in slot_ids:
+            # D-63 epistemic ladder: exposing a hypothesis to the patient for confirmation is the
+            # act of grounding it (s.4.1, L2->L4); it stays grounded unless the reply below corrects it.
+            v = state["slot_values"].get(sid)
+            if v and v.get("epistemic_status") == "hypothesis":
+                v["epistemic_status"] = "patient_grounded"
+        return [self._say(state, f"{self.b.phrasings.read_back['intro']} {statement} {self.b.phrasings.read_back['check']}", "read_back")]
 
-    def _read_back_text(self, state: dict) -> str:
+    def _read_back_text(self, state: dict) -> tuple[str, list[str]]:
         parts: list[str] = []
+        slot_ids: list[str] = []
         for name in state["module_queue"]:
             m = self._module(name)
             for s in m.slots:
@@ -795,11 +814,36 @@ class Controller:
                 elif isinstance(val, str):
                     val = val.replace("_", " ")
                 parts.append(f"{s.intent.split(',')[0]}: {val}")
-        return ("; ".join(parts) + ".") if parts else "I have your description in your own words."
+                slot_ids.append(s.id)
+        statement = ("; ".join(parts) + ".") if parts else "I have your description in your own words."
+        return statement, slot_ids
 
     def _on_read_back(self, state: dict, text: str, turn_id: str) -> list[AgentTurn]:
+        # D-63 conversational repair (s.8, s.8.1): a reply that isn't a bare confirmation means at
+        # least one item just read back may be wrong. The system cannot reliably tell which one from
+        # free text alone, so rather than silently keep every item at its current status, or discard
+        # the correction as an unlinked note, every item in that read-back is flagged pending
+        # clarification and dependants (any alert whose rule used one of them) are flagged too.
+        # This never overwrites a value or un-fires an alert; it only marks what needs a human look.
         if text.strip() and not re.match(r"^\s*(yes|yeah|yep|that's right|correct|right|fine|ok|okay|good|nothing)\b", text.strip(), re.I):
-            state["patient_corrections"].append({"turn_id": turn_id, "phase": "read_back", "text": text.strip()})
+            slot_ids = state.get("read_back_slot_ids") or []
+            affected_alerts: list[str] = []
+            for sid in slot_ids:
+                v = state["slot_values"].get(sid)
+                if v is not None:
+                    v["epistemic_status"] = "correction_pending"
+            if slot_ids:
+                from app.content.rules import referenced_slot_ids as _refs
+                for a in state["alerts"]:
+                    m = self._module(a["module"]) if a.get("module") else None
+                    rule = next((r for r in (m.red_flags if m else []) if r.id == a["rule_id"]), None)
+                    if rule and set(_refs(rule.fires_when)) & set(slot_ids):
+                        a["correction_flag"] = True
+                        affected_alerts.append(a["id"])
+            state["patient_corrections"].append({
+                "turn_id": turn_id, "phase": "read_back", "text": text.strip(),
+                "read_back_slot_ids": slot_ids, "affected_alerts": affected_alerts,
+            })
         state["read_back_done"] = True
         return self._close(state, after_alert=False)
 
