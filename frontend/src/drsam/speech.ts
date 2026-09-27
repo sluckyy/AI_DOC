@@ -58,6 +58,30 @@ export function playAudio(url: string): SpeakHandle {
   return { done, cancel: () => { audio.pause(); finish(); } };
 }
 
+/**
+ * Plays the server-generated audio when there is one, falling back to browser speech
+ * synthesis if playback fails (e.g. a mobile autoplay policy blocking an <audio> element
+ * that wasn't started from a direct tap, which ambient listening no longer provides per turn)
+ * or if the server sent no audio at all.
+ */
+export function speak(url: string | undefined, text: string, bcp47: string, rate: number): SpeakHandle {
+  if (!url) return speakBrowser(text, bcp47, rate);
+  const audio = new Audio(url);
+  let finish!: () => void;
+  let cancelled = false;
+  let fallback: SpeakHandle | null = null;
+  const done = new Promise<void>((res) => (finish = res));
+  const toFallback = () => {
+    if (cancelled) { finish(); return; }
+    fallback = speakBrowser(text, bcp47, rate);
+    fallback.done.then(finish);
+  };
+  audio.onended = () => finish();
+  audio.onerror = toFallback;
+  audio.play().catch(toFallback);
+  return { done, cancel: () => { cancelled = true; audio.pause(); fallback?.cancel(); finish(); } };
+}
+
 export type Recognizer = {
   start: () => void;
   stop: () => void;

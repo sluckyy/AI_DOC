@@ -3,7 +3,7 @@ import { Avatar, Expression } from "./Avatar";
 import type { AgentTurn } from "../api";
 import { api } from "../api";
 import { LANGUAGES } from "../config";
-import { playAudio, speakBrowser, SpeakHandle, Recognizer } from "./speech";
+import { speak, SpeakHandle, Recognizer } from "./speech";
 import { createRecognizer } from "./recognition";
 import { LiveTransfer } from "./LiveTransfer";
 
@@ -96,7 +96,7 @@ export function DrSamPanel({ cid, setting, language, register, initialTurns, mic
         if (i < vis.length) requestAnimationFrame(tick);
       };
       requestAnimationFrame(tick);
-      handle.current = t.audio_url ? playAudio(api.audioUrl(t.audio_url)) : speakBrowser(t.caption, bcp47, register === "older" ? 0.82 : 0.92);
+      handle.current = speak(t.audio_url ? api.audioUrl(t.audio_url) : undefined, t.caption, bcp47, register === "older" ? 0.82 : 0.92);
       await handle.current.done;
       lastSpokeAt.current = Date.now();
       setViseme(0);
