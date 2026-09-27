@@ -6,7 +6,11 @@ version: 0.1.0
 owner: "to be named"
 languages: [en, vi, it, fr, ms, hi]
 language_names: {en: English, vi: Vietnamese, it: Italian, fr: French, ms: Malay, hi: Hindi}
-continue_after_immediate_alert: false      # D-49
+continue_after_immediate_alert:            # D-49; per setting since D-64
+  ed: true          # D-64: ED patients are already triaged; the interview continues and the "someone will come to
+                     # you, stay where you are" wording is not spoken, but the rule still fires and the alert still
+                     # stands, unchanged, for the treating team via the alerts list and the handover
+  gp_booking: false  # unchanged: the call still transfers live to the duty GP (D-42)
 saturation_invitations: 3                  # D-48: Build Spec F-8 says 2, Framework P13 says 3
 silence_end_of_turn_ms: 1200               # N-3: adjustable per deployment
 silence_end_of_turn_ms_by_register: {older: 1800, patient: 1200, clinician: 900, student: 1000, aged_care: 1800}   # N-3: slow speech is not end of turn

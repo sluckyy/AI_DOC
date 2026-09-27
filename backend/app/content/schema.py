@@ -181,7 +181,7 @@ class Parameters(BaseModel):
     owner: str = ""
     languages: list[str]
     language_names: dict[str, str] = Field(default_factory=dict)
-    continue_after_immediate_alert: bool = False
+    continue_after_immediate_alert: dict[str, bool] = Field(default_factory=dict)   # D-64: per setting
     saturation_invitations: int = 3
     silence_end_of_turn_ms: int = 1200
     silence_end_of_turn_ms_by_register: dict[str, int] = Field(default_factory=dict)   # N-3: longer for slow speakers
