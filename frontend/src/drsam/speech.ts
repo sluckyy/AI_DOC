@@ -58,6 +58,30 @@ export function playAudio(url: string): SpeakHandle {
   return { done, cancel: () => { audio.pause(); finish(); } };
 }
 
+/**
+ * Plays the server-generated audio when there is one, falling back to browser speech
+ * synthesis if playback fails (e.g. a mobile autoplay policy blocking an <audio> element
+ * that wasn't started from a direct tap, which ambient listening no longer provides per turn)
+ * or if the server sent no audio at all.
+ */
+export function speak(url: string | undefined, text: string, bcp47: string, rate: number): SpeakHandle {
+  if (!url) return speakBrowser(text, bcp47, rate);
+  const audio = new Audio(url);
+  let finish!: () => void;
+  let cancelled = false;
+  let fallback: SpeakHandle | null = null;
+  const done = new Promise<void>((res) => (finish = res));
+  const toFallback = () => {
+    if (cancelled) { finish(); return; }
+    fallback = speakBrowser(text, bcp47, rate);
+    fallback.done.then(finish);
+  };
+  audio.onended = () => finish();
+  audio.onerror = toFallback;
+  audio.play().catch(toFallback);
+  return { done, cancel: () => { cancelled = true; audio.pause(); fallback?.cancel(); finish(); } };
+}
+
 export type Recognizer = {
   start: () => void;
   stop: () => void;
@@ -75,6 +99,8 @@ export function makeRecognizer(bcp47: string, handlers: { onStart?: () => void; 
   let finalText = "";
   let confidences: number[] = [];
   let silenceTimer: number | null = null;
+  let wanted = false;
+  let announced = false;
   const flush = () => {
     if (!finalText.trim()) return;
     const t = finalText.trim();
@@ -84,7 +110,7 @@ export function makeRecognizer(bcp47: string, handlers: { onStart?: () => void; 
     handlers.onFinal(t, conf, Date.now() - startedAt);
     startedAt = Date.now();
   };
-  rec.onstart = () => { startedAt = Date.now(); handlers.onStart?.(); };
+  rec.onstart = () => { startedAt = Date.now(); if (!announced) { announced = true; handlers.onStart?.(); } };
   rec.onresult = (e: any) => {
     let interim = "";
     for (let i = e.resultIndex; i < e.results.length; i++) {
@@ -97,7 +123,16 @@ export function makeRecognizer(bcp47: string, handlers: { onStart?: () => void; 
     // end-of-utterance: the configured silence with no new results (N-3)
     silenceTimer = window.setTimeout(flush, endOfTurnMs);
   };
-  rec.onerror = (e: any) => handlers.onError?.(e.error || "speech error");
-  rec.onend = () => { flush(); };
-  return { start: () => { try { rec.start(); } catch {} }, stop: () => { try { rec.stop(); } catch {} }, available: true };
+  rec.onerror = (e: any) => {
+    // "no-speech" and "aborted" are routine in ambient listening; the session restarts below
+    if (e.error === "no-speech" || e.error === "aborted") return;
+    handlers.onError?.(e.error || "speech error");
+  };
+  // ambient listening: the browser ends a session after a stretch of silence; keep it open until stopped
+  rec.onend = () => { flush(); if (wanted) window.setTimeout(() => { if (wanted) { try { rec.start(); } catch {} } }, 250); };
+  return {
+    start: () => { wanted = true; try { rec.start(); } catch {} },
+    stop: () => { wanted = false; try { rec.stop(); } catch {} },
+    available: true,
+  };
 }
