@@ -496,10 +496,18 @@ class Controller:
         terms = list(dict.fromkeys(terms))
         listed = ", ".join(terms[:-1]) + (" and " + terms[-1] if len(terms) > 1 else (terms[0] if terms else ""))
         pv = state.get("presenting_verbatim") or ""
-        body = f"You've told me about {listed}. " if listed else ""
-        if pv:
-            body += f"In your words: \"{pv[:220]}\". "
-        text = f"{self.b.phrasings.summary['intro']} {body}{self.b.phrasings.summary['check']}"
+        intro = self.b.phrasings.summary["intro"]
+        # one flowing sentence rather than a label-then-quote citation: the verbatim quote (D-55,
+        # N-10) still travels unaltered, just introduced as something the patient said, not read out
+        if listed and pv:
+            body = f'{intro} — you\'ve told me about {listed}, and the way you put it was: "{pv[:220]}".'
+        elif listed:
+            body = f"{intro} — you've told me about {listed}."
+        elif pv:
+            body = f'{intro} — the way you put it was: "{pv[:220]}".'
+        else:
+            body = f"{intro}."
+        text = f"{body} {self.b.phrasings.summary['check']}"
         return [self._say(state, text, "summarise")]
 
     def _activate_modules(self, state: dict) -> None:
@@ -797,7 +805,7 @@ class Controller:
             v = state["slot_values"].get(sid)
             if v and v.get("epistemic_status") == "hypothesis":
                 v["epistemic_status"] = "patient_grounded"
-        return [self._say(state, f"{self.b.phrasings.read_back['intro']} {statement} {self.b.phrasings.read_back['check']}", "read_back")]
+        return [self._say(state, f"{self.b.phrasings.read_back['intro']}: {statement} {self.b.phrasings.read_back['check']}", "read_back")]
 
     def _read_back_text(self, state: dict) -> tuple[str, list[str]]:
         parts: list[str] = []
@@ -811,15 +819,24 @@ class Controller:
                 if not v or v["state"] != "filled":
                     continue
                 val = v["value"]
+                label = s.intent.split(",")[0]
                 if isinstance(val, list):
                     val = ", ".join(x.replace("_", " ") for x in val)
+                    parts.append(f"{label}: {val}")
                 elif s.value.type == "text" and isinstance(val, str):
-                    val = f'"{val.strip().rstrip(".")}"'   # the patient's own words are read back as a quotation
-                elif isinstance(val, str):
-                    val = val.replace("_", " ")
-                parts.append(f"{s.intent.split(',')[0]}: {val}")
+                    # the patient's own words are still read back verbatim (D-55, N-10), but introduced
+                    # as speech rather than a colon-led citation, which reads like a form being read aloud
+                    parts.append(f'{label}, which you put as "{val.strip().rstrip(".")}"')
+                else:
+                    if isinstance(val, str):
+                        val = val.replace("_", " ")
+                    parts.append(f"{label}: {val}")
                 slot_ids.append(s.id)
-        statement = ("; ".join(parts) + ".") if parts else "I have your description in your own words."
+        if not parts:
+            statement = "I have your description in your own words."
+        else:
+            listed = ", ".join(parts[:-1]) + (", and " + parts[-1] if len(parts) > 1 else parts[0])
+            statement = f"{listed}."
         return statement, slot_ids
 
     def _on_read_back(self, state: dict, text: str, turn_id: str) -> list[AgentTurn]:
