@@ -74,6 +74,13 @@ async function azureRecognizer(cfg: SpeechConfigResponse, handlers: RecognitionH
   let firstOffsetMs: number | undefined;
   let flushTimer: number | null = null;
   let refreshTimer: number | null = null;
+  let restartTimer: number | null = null;
+  // ambient listening has no tap-to-talk to fall back on, so a dropped connection (a network
+  // blip, a flaky hospital wifi) must reconnect on its own rather than silently going deaf
+  // while the status pill still claims to be listening.
+  let wanted = false;
+  let reconnecting = false;
+  let consecutiveFailures = 0;
 
   const flush = () => {
     if (!finalText.trim()) return;
@@ -109,8 +116,31 @@ async function azureRecognizer(cfg: SpeechConfigResponse, handlers: RecognitionH
     // the service already waited the segmentation silence before this result; a short grace joins run-on sentences
     flushTimer = window.setTimeout(flush, 350);
   };
-  rec.canceled = (_s, e) => { handlers.onError?.(e.errorDetails || String(e.reason)); };
-  rec.sessionStopped = () => { flush(); };
+  const reconnect = (reason: string) => {
+    if (!wanted || reconnecting) return;
+    reconnecting = true;
+    flush();
+    const delay = Math.min(500 * 2 ** consecutiveFailures, 8000);
+    restartTimer = window.setTimeout(() => {
+      if (!wanted) { reconnecting = false; return; }
+      rec.startContinuousRecognitionAsync(
+        () => { reconnecting = false; consecutiveFailures = 0; startedAt = Date.now(); handlers.onStart?.(); },
+        () => {
+          reconnecting = false;
+          consecutiveFailures += 1;
+          if (consecutiveFailures >= 3) handlers.onError?.(`still reconnecting after a dropped connection (${reason})`);
+          reconnect(reason);
+        },
+      );
+    }, delay);
+  };
+  rec.canceled = (_s, e) => {
+    // a genuine cancellation error (network drop, auth expiry) reconnects rather than going
+    // silently deaf; anything else (e.g. an intentional stop) is reported, not retried
+    if (e.reason === sdk.CancellationReason.Error) reconnect(e.errorDetails || String(e.reason));
+    else handlers.onError?.(e.errorDetails || String(e.reason));
+  };
+  rec.sessionStopped = () => { flush(); if (wanted) reconnect("session stopped unexpectedly"); };
 
   const scheduleRefresh = () => {
     const ms = Math.max(60, (cfg.expires_in_s || 600) - 60) * 1000;
@@ -121,8 +151,17 @@ async function azureRecognizer(cfg: SpeechConfigResponse, handlers: RecognitionH
 
   return {
     available: true,
-    start: () => { startedAt = Date.now(); rec.startContinuousRecognitionAsync(() => { handlers.onStart?.(); scheduleRefresh(); }, (err) => handlers.onError?.(String(err))); },
-    stop: () => { if (refreshTimer) window.clearTimeout(refreshTimer); rec.stopContinuousRecognitionAsync(() => { flush(); rec.close(); }, () => rec.close()); },
+    start: () => {
+      wanted = true;
+      startedAt = Date.now();
+      rec.startContinuousRecognitionAsync(() => { handlers.onStart?.(); scheduleRefresh(); }, (err) => handlers.onError?.(String(err)));
+    },
+    stop: () => {
+      wanted = false;
+      if (refreshTimer) window.clearTimeout(refreshTimer);
+      if (restartTimer) window.clearTimeout(restartTimer);
+      rec.stopContinuousRecognitionAsync(() => { flush(); rec.close(); }, () => rec.close());
+    },
   };
 }
 

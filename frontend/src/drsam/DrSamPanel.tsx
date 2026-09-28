@@ -114,17 +114,20 @@ export function DrSamPanel({ cid, setting, language, register, initialTurns, mic
   /** Dr Sam is speaking, or finished within the echo tail the microphone may still deliver. */
   function inEchoWindow() { return speakingRef.current || Date.now() - lastSpokeAt.current < 1500; }
 
-  async function send(text: string, prosody: Record<string, number> = {}, asr?: Record<string, unknown> | null) {
+  async function send(text: string, prosody: Record<string, number> = {}, asr?: Record<string, unknown> | null, alreadyShown = false) {
     if (!text.trim() || endedRef.current) return;
     if (busyRef.current) {
-      // the person kept talking while the last turn was in flight: keep it, send it next
+      // the person kept talking while the last turn was in flight: keep it, send it next.
+      // Shown in the transcript now, not just once it's dequeued, so it doesn't look dropped
+      // while Dr Sam is still speaking or thinking.
       pending.current.push({ text, asr: asr || null, prosody });
+      setLines((l) => [...l, { role: "person", text }]);
       return;
     }
     busyRef.current = true;
     setBusy(true);
     setInterim("");
-    setLines((l) => [...l, { role: "person", text }]);
+    if (!alreadyShown) setLines((l) => [...l, { role: "person", text }]);
     try {
       const r = await api.turn(cid, text, prosody, asr || { provider: "typed", confidence: null });
       setPhase(r.phase);
@@ -148,7 +151,7 @@ export function DrSamPanel({ cid, setting, language, register, initialTurns, mic
       pending.current = [];
       const joined = next.map((n) => n.text).join(" ");
       const first = next[0];
-      void send(joined, first.prosody, first.asr);
+      void send(joined, first.prosody, first.asr, true);
     }
   }
 
