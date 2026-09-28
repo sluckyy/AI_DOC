@@ -32,11 +32,11 @@ facilitators:
 transition:
   - {id: tr1, text: "Thanks. I'd like to ask some more specific questions now."}
 summary:
-  intro: "Let me make sure I've got this right."
+  intro: "Let me make sure I've got this right"
   check: "Have I got that right? Tell me what I've missed or got wrong."
 read_back:
-  intro: "Here's what I'll pass on to the doctor."
-  check: "Tell me what I've got wrong, or what to add."
+  intro: "Here's what I'll pass on to the doctor"
+  check: "Tell me if I've got anything wrong, or if there's more to add."
 final_something_else: "Before I finish, is there something else you wanted to mention that I haven't asked about?"
 what_next:
   - {id: wn1, text: "I've written all this down for the doctor. They'll have it before they see you."}
