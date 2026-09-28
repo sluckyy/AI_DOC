@@ -11,7 +11,7 @@ def test_c16_slow_second_language_speaker_scripted_parts(bundle):
         "I have had a cough.", "And my chest feels tight.", "I feel tired all the time.",
         "My ankles are swollen.", "I have a headache most days.", "And I have been dizzy when I stand.",
     ]
-    script = ActorScript(opening=opening, capability={"cap.hearing": "Yes.", "cap.language": "Maybe Vietnamese would be easier.", "cap.present": "No."}, default="No.")
+    script = ActorScript(opening=opening, capability={"cap.hearing": "Yes.", "cap.language": "Maybe Vietnamese would be easier.", "cap.present": "No.", "cap.wellbeing": "No."}, default="No.")
     r = run_case(bundle, script, setting="gp_booking")
     # dialogue pack 2.2: the language offer is made and honoured (major)
     assert "cap.language" in [a.get("slot_id") for _, a in r.log]

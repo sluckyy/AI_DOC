@@ -44,6 +44,10 @@ capability:
   hearing: "Can you hear me clearly?"
   language: "Would you rather do this in another language? I can speak {supported_languages}."
   present: "Is anyone with you who might help with any of this?"
+  # D-43/D-65: review_notes below - trigger wording (WELLBEING_SEVERE, WELLBEING_BARRIER in
+  # controller.py) and this question's own wording are a first pass, not yet clinically reviewed.
+  wellbeing: "One last check before we start: is anything getting in the way of us talking clearly right now - feeling very unwell, feeling very upset, having had a drink, or finding it hard to follow along?"
+  collateral_handoff: "That's okay - I'll ask the person with you to help answer for now, so we don't lose anything. Where you're not sure, just say so."
   bail_out_1: "I think it'll be easier if you talk to a person. Let me put you through."
   bail_out_2: "I'm not the right one to help with this. I'll hand you to someone now."
 # [VARIANT] sets rotate so a persistent asker never hears the identical line twice running (case C-17).

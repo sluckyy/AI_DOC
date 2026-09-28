@@ -24,7 +24,7 @@ def run(bundle, open_lines, answers=None, setting="ed", consent=None, summary_re
         if move == "disclose":
             line = "Yes, that's fine."
         elif move == "capability":
-            line = {"cap.hearing": "Yes, I can hear you fine.", "cap.language": "English is fine.", "cap.present": "No, it's just me."}.get(last["slot_id"], "Yes.")
+            line = {"cap.hearing": "Yes, I can hear you fine.", "cap.language": "English is fine.", "cap.present": "No, it's just me.", "cap.wellbeing": "No, I'm fine."}.get(last["slot_id"], "Yes.")
         elif move == "confirm_time":
             line = "Yes, that's right."
         elif move in ("open", "facilitate"):

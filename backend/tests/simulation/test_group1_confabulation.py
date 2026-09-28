@@ -408,7 +408,7 @@ def test_c18_api_alert_requires_acknowledgement(client, bundle):
         if move == "disclose":
             line = "Yes."
         elif move == "capability":
-            line = {"cap.hearing": "Yes, I can hear you fine.", "cap.language": "English is fine.", "cap.present": "No, it's just me."}[last["slot_id"]]
+            line = {"cap.hearing": "Yes, I can hear you fine.", "cap.language": "English is fine.", "cap.present": "No, it's just me.", "cap.wellbeing": "No, I'm fine."}[last["slot_id"]]
         elif move in ("open", "facilitate"):
             line = opening.pop(0) if opening else "That's all really."
         elif move == "invite":
