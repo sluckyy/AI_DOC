@@ -31,6 +31,14 @@ def _fmt(value) -> str:
     return str(value).replace("_", " ")
 
 
+def _provenance(v: dict | None) -> str:
+    """D-65: a value taken from the person with the patient (the wellbeing gate's collateral
+    handoff) is never labelled patient_reported - a coder must see the distinction at a glance (D-25)."""
+    if not v or v.get("state") != "filled":
+        return "structural"
+    return "collateral_reported" if v.get("source") == "collateral" else "patient_reported"
+
+
 def _tone_sentence(state: dict) -> str | None:
     if not state["consent"].get("tone_adaptation") or not state.get("tone_log"):
         return None
@@ -104,6 +112,8 @@ def generate(state: dict, bundle: ContentBundle, terminology: TerminologyProvide
         narrative.append(f"PARTIAL HISTORY: {partial_reason}. Everything not listed below was not asked. No examination was performed. This must not be read as a complete assessment.")
     if state.get("contact_lost"):
         narrative.append(f"CONTACT LOST at {state.get('contact_lost_at')}: the line dropped. Every alert below stands and needs acknowledgement; no call-back was placed by the agent (S-14, owner decision B10).")
+    if state.get("informant") == "collateral":
+        narrative.append("COLLATERAL HISTORY: the wellbeing gate found a communication barrier at the start of the call, so this history was given by the person with the patient, not the patient directly, from that point on (D-43, D-65).")
     ctx = state.get("slot_values", {})
     demo = [f"age {ctx['ctx.age']['value']}" for _ in [0] if ctx.get("ctx.age", {}).get("value") is not None]
     if ctx.get("ctx.sex_recorded", {}).get("value"):
@@ -146,7 +156,7 @@ def generate(state: dict, bundle: ContentBundle, terminology: TerminologyProvide
                     structured.append({
                         "slot_id": k, "module": m.module, "module_version": m.version, "class": s.slot_class, "intent": s.intent,
                         "item": iv.get("item"), "value": iv.get("value"), "verbatim": iv.get("verbatim"), "state": iv["state"],
-                        "turn_id": iv.get("turn_id"), "source": iv.get("source"), "provenance": "patient_reported" if iv["state"] == "filled" else "structural",
+                        "turn_id": iv.get("turn_id"), "source": iv.get("source"), "provenance": _provenance(iv),
                         "evidence": None, "negative_reporting": s.negative_reporting, "epistemic_status": iv.get("epistemic_status"),
                     })
                     if iv["state"] == "filled":
@@ -159,7 +169,7 @@ def generate(state: dict, bundle: ContentBundle, terminology: TerminologyProvide
                 "intent": s.intent, "value": v["value"] if v else None, "verbatim": v.get("verbatim") if v else None,
                 "state": v["state"] if v else ("not_asked" if s.required else "not_required"),
                 "turn_id": v.get("turn_id") if v else None, "source": v.get("source") if v else None,
-                "provenance": "patient_reported" if v and v["state"] == "filled" else "structural",
+                "provenance": _provenance(v),
                 "evidence": (s.evidence.lr if s.evidence and not s.evidence.gap else None),
                 "negative_reporting": s.negative_reporting, "instrument": s.instrument,
                 "epistemic_status": v.get("epistemic_status") if v else None,
@@ -316,7 +326,7 @@ def generate(state: dict, bundle: ContentBundle, terminology: TerminologyProvide
                      "is_simulation": bool(state.get("is_simulation")), "saturation_invitations": state.get("saturation_invitations"),
                      "content_version": (versions or {}).get("content_version"), "content_mode": (versions or {}).get("content_mode"),
                      "review_status": {n: (versions or {}).get("review_status", {}).get(n) for n in state.get("module_queue", [])},
-                     "collateral_available": state.get("collateral_available"), "capability": state.get("capability")},
+                     "collateral_available": state.get("collateral_available"), "informant": state.get("informant", "self"), "capability": state.get("capability")},
     }
 
 

@@ -129,15 +129,22 @@ alerts with three tiers, routed per setting (ED: alert_triage, and since D-64
 an immediate-tier alert no longer stops the interview, since the patient is
 already triaged; GP booking: still a live transfer to the duty GP and still
 stops the call, D-42); read-back with dependency-aware correction propagation
-and an epistemic status per slot value (D-63); safety-net close, handover,
-coding document, attestation, export; real-time patient speech via Azure AI
-Speech in the browser with ambient listening and no tap-to-talk (D-61, D-62),
-falling back to the Web Speech API for both recognition and synthesis when no
-key is set or a browser blocks playback.
+and an epistemic status per slot value (D-63); a fourth capability-check
+question gating presentations the agent should refuse or hand to a
+companion — intoxication, significant cognitive impairment or acute distress
+always ends the interview, confusion or a speech disturbance switches to the
+person with the patient if one is available and ends it otherwise, with
+every affected slot and the handover clearly marked as collateral-sourced
+(D-43, D-65); safety-net close, handover, coding document, attestation,
+export; real-time patient speech via Azure AI Speech in the browser with
+ambient listening and no tap-to-talk (D-61, D-62), reconnecting on a dropped
+connection, falling back to the Web Speech API for both recognition and
+synthesis when no key is set or a browser blocks playback.
 
 Not yet built: clinical review of the 39 presentation modules beyond chest
 pain (each loads as `grounded`, simulation only, until a clinician reviews
 it — `CONTENT_MODE=clinical` refuses to start on anything less); the mental
 health section (`enabled: false`, blocked on specialist review); per-language
 phrasings (six languages are recognised and synthesised, but the scripted
-content itself is English only); the Rive avatar (an SVG avatar stands in).
+content itself is English only); the Rive avatar (an SVG avatar stands in);
+clinical sign-off on the D-65 wellbeing gate's exact trigger wording.

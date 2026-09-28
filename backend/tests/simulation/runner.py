@@ -19,7 +19,7 @@ from app.handover.generate import generate
 from app.process.rules import check_transcript
 
 CONSENT = {"ai_disclosure": True, "tone_adaptation": True, "summary_to_clinician": True}
-CAPABILITY = {"cap.hearing": "Yes, I can hear you fine.", "cap.language": "English is fine.", "cap.present": "No, it's just me."}
+CAPABILITY = {"cap.hearing": "Yes, I can hear you fine.", "cap.language": "English is fine.", "cap.present": "No, it's just me.", "cap.wellbeing": "No, I'm fine."}
 
 
 @dataclass

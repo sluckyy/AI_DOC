@@ -27,6 +27,12 @@ CONFIDENTIALITY_Q = re.compile(r"\b(police|confidential|who (will|can|gets to) s
 HEARING_TROUBLE = re.compile(r"\b(can't hear|cannot hear|pardon|what did you say|say that again|speak up|hard of hearing|hearing aid|you're breaking up|breaking up|muffled)\b", re.I)
 NEGATED = re.compile(r"\b(no|not|never|without|haven't|hasn't|didn't|don't|doesn't|isn't|wasn't|nor|any)\b(?:\s+\w+){0,3}\s*$", re.I)
 COLLATERAL_PRESENT = re.compile(r"\b(my (wife|husband|partner|daughter|son|mum|mother|dad|father|carer|friend|neighbour|nurse)|someone|is with me|is here|with me|beside me|next to me)\b", re.I)
+# D-43/D-65: answers to the dedicated wellbeing gate question only (never scanned over the open-phase
+# narrative, where "his speech was slurred" routinely describes the *patient's* symptom, not a barrier
+# to *this* conversation - see the wake-up-stroke case). SEVERE always ends the interview; BARRIER
+# switches to the person with the patient if one is available, and ends it if not.
+WELLBEING_SEVERE = re.compile(r"\b(drunk|been drinking|had a (few |couple of )?drinks?|high|stoned|off (his|her|their|my) face|under the influence|taken (drugs|something)|on drugs|too (upset|distressed|unwell|dizzy) to (talk|speak|continue)|can'?t (cope|think straight|focus|concentrate|breathe (properly|right)?) right now|having a panic attack|about to faint|passing out)\b", re.I)
+WELLBEING_BARRIER = re.compile(r"\b(confused|not (really )?with it|not making sense|can'?t (follow|keep up|get (my|his|her|their) words out|find (the|my|his|her|their) words)|slurring|speech is slurred|hard to (follow|understand) (me|him|her|them)|keeps? losing track)\b", re.I)
 
 MOVE_EXPRESSION = {
     "disclose": "warm", "open": "attentive", "facilitate": "listening", "invite": "attentive",
@@ -71,7 +77,7 @@ def new_state(setting: str, language: str, consent: dict, register: str = "patie
         "fired_rules": [], "undecidable_rules": [], "alerts": [], "closed_by_alert": False,
         "closing_delivered": {}, "patient_corrections": [], "read_back_done": False,
         "transition_log": [], "tone_log": [], "bail_out_reason": None, "ended_at": None,
-        "capability": {}, "capability_step": 0, "collateral_available": None, "gating_needed": [],
+        "capability": {}, "capability_step": 0, "collateral_available": None, "informant": "self", "gating_needed": [],
         "pending_confirm": None, "deflections": [], "contact_lost": False,
         "read_back_slot_ids": [], "corrections_affecting_alerts": [],
     }
@@ -263,6 +269,12 @@ class Controller:
         epistemic_status = None
         if st == "filled":
             epistemic_status = "hypothesis" if source in ("person_open_phase", "person_same_turn") else "grounded"
+        # D-65: once the wellbeing gate has switched the interview to the person with the patient,
+        # every direct-answer source is relabelled so the handover never reads a collateral answer
+        # as the patient's own account (checked here, once, rather than at every call site, and after
+        # the epistemic check above so a collateral relabel never masquerades as a grounded direct answer).
+        if state.get("informant") == "collateral" and source in ("person", "person_open_phase", "person_same_turn"):
+            source = "collateral"
         state["slot_values"][slot.id] = {
             "slot_id": slot.id, "module": module_name, "value": value,
             "verbatim": verbatim if slot.verbatim else None, "state": st, "turn_id": turn_id,
@@ -393,7 +405,7 @@ class Controller:
         state["opening_used"] = op.id
         return self._say(state, op.text, "open", phrasing_variant_id=op.id)
 
-    CAPABILITY_STEPS = ("hearing", "language", "present")
+    CAPABILITY_STEPS = ("hearing", "language", "present", "wellbeing")
 
     def _capability_question(self, state: dict) -> AgentTurn:
         step = self.CAPABILITY_STEPS[state["capability_step"]]
@@ -403,7 +415,8 @@ class Controller:
         return self._say(state, text, "capability", slot_id=f"cap.{step}")
 
     def _on_capability(self, state: dict, text: str, turn_id: str) -> list[AgentTurn]:
-        """Dialogue pack 2: hearing, language, someone present. Not announced as an assessment."""
+        """Dialogue pack 2 (hearing, language, someone present) plus D-43/D-65's wellbeing gate.
+        Not announced as an assessment."""
         step = self.CAPABILITY_STEPS[state["capability_step"]]
         state["capability"][step] = {"turn_id": turn_id, "text": text.strip()}
         if step == "hearing":
@@ -418,6 +431,24 @@ class Controller:
                     state["capability"]["language_switched_to"] = code
         elif step == "present":
             state["collateral_available"] = bool(COLLATERAL_PRESENT.search(text)) and not re.match(r"^\s*(no|nope|just me|on my own|alone|nobody)\b", text.strip(), re.I)
+        elif step == "wellbeing":
+            # D-43/D-65: the agent refuses rather than runs an interview it cannot trust, over a
+            # direct answer to a direct question only - never inferred from the open-phase narrative,
+            # where a caller describing someone else's symptoms ("his speech was slurred") is routine
+            # and must not be mistaken for a barrier to *this* conversation.
+            if WELLBEING_SEVERE.search(text):
+                state["capability"]["wellbeing_flag"] = "severe"
+                return self._bail_out(state, "distress_or_impairment")
+            if WELLBEING_BARRIER.search(text):
+                state["capability"]["wellbeing_flag"] = "barrier"
+                if state["collateral_available"]:
+                    state["informant"] = "collateral"
+                    handoff = self.b.phrasings.capability.get("collateral_handoff")
+                    turns = [self._say(state, handoff, "capability")] if handoff else []
+                    state["capability_step"] += 1
+                    turns.append(self._begin_open(state))
+                    return turns
+                return self._bail_out(state, "communication_barrier_no_collateral")
         state["capability_step"] += 1
         if state["capability_step"] < len(self.CAPABILITY_STEPS):
             return [self._capability_question(state)]

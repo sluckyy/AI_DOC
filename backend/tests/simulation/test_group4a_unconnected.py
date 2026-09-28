@@ -78,7 +78,7 @@ def test_c11_the_knuckle(bundle):
 def test_c12_hes_just_not_right(bundle):
     script = ActorScript(
         opening=["I'm calling about my son, he's two. He's had a fever since yesterday and he's just not himself, he's not right, this is different."],
-        capability={"cap.hearing": "Yes.", "cap.language": "English.", "cap.present": "It's me, his mum, I'm calling about my son."},
+        capability={"cap.hearing": "Yes.", "cap.language": "English.", "cap.present": "It's me, his mum, I'm calling about my son.", "cap.wellbeing": "No, we're okay."},
         answers={
             "uc.child_age": "He's two.",
             "uc.carer_concern_different": "Yes, this is different, he's just not himself.",

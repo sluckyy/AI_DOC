@@ -62,7 +62,7 @@ def test_confidence_travels_with_the_turn_into_the_handover(client):
     asr = {"provider": "azure", "confidence": 0.41, "language": "en-AU", "duration_ms": 2100, "segments": 1, "endpoint_silence_ms": 1200,
            "nbest": [{"text": "Yes.", "confidence": 0.41}, {"text": "Yet.", "confidence": 0.3}]}
     client.post(f"/conversations/{cid}/turns", json={"transcript": "Yes.", "asr": asr})
-    for line in ["Yes I can hear you.", "English is fine.", "No, just me."]:
+    for line in ["Yes I can hear you.", "English is fine.", "No, just me.", "No, I'm fine."]:
         client.post(f"/conversations/{cid}/turns", json={"transcript": line, "asr": {"provider": "azure", "confidence": 0.93, "language": "en-AU"}})
     client.post(f"/conversations/{cid}/turns", json={"transcript": "I've got a tight pain in my chest right now."})   # typed
     conv = client.get(f"/conversations/{cid}").json()
