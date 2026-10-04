@@ -48,4 +48,4 @@ slots:
       no_terms: ["no", none, nothing like that, not on any, don't take]
     verbatim: true
     negative_reporting: explicit
-    gates: [stroke_cluster, trauma, falls, haemoptysis, gi_bleeding]
+    gates: [stroke_cluster, trauma_head_injury, falls, haemoptysis, gi_bleeding]
