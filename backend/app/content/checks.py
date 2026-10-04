@@ -11,13 +11,18 @@
 Plus: every invitation says "something else", never "anything else" (P5), and no
 red flag is suppressible (P10, enforced by the schema).
 
-Build Specification Part C checks layered on top (numbered C2, C5, C6, C7, C9, C10):
+Build Specification Part C checks layered on top (numbered C2, C5, C6, C7, C9, C10, C11, C12):
 C2  frozen open-phase ids (OP-n) keep their text (F-9); the freeze file is content/shared/frozen_ids.yaml.
 C5  nothing Dr Sam says matches the prohibited phrase list (HAZ-2, F-27).
 C6  no phrasing asks the patient to move their neck, walk or balance, or loosen a cast (F-20).
 C7  no red-flag rule carries a numeric literal; thresholds are parameters (F-30).
 C9  every absolute-time slot is a clock time with confirm: true, so the interval is read back (F-14).
 C10 every red flag names its source (evidence presence).
+C11 route integrity: every route_to target exists, is not blocked, and is a presentation module;
+    every route_to key is a defined option on its own slot (review of systems, F-10, D-37).
+C12 gating coverage (F-16): every gate.* id a module's `gating` list names exists in a loaded
+    gating module, and every module name a slot's `gates` list names exists (D-47, D-57) -
+    otherwise the slot or the gate is silently unreachable, with no error anywhere.
 """
 from __future__ import annotations
 
@@ -101,6 +106,8 @@ def run_checks(bundle: ContentBundle) -> list[Finding]:
     findings: list[Finding] = []
     all_slot_ids: dict[str, str] = {}
     ctx_ids = {s.id for s in bundle.context.slots}
+    module_names = set(bundle.modules.keys())
+    presentation_names = {n for n, m in bundle.modules.items() if m.kind == "presentation"}
 
     def check_slot(owner: str, s) -> None:
         for p in s.phrasings:
@@ -119,6 +126,24 @@ def run_checks(bundle: ContentBundle) -> list[Finding]:
         if s.id in all_slot_ids:
             findings.append(Finding(6, f"{owner}/{s.id}", f"slot id reused (also in {all_slot_ids[s.id]})"))
         all_slot_ids[s.id] = owner
+        # C12: a closing/gating slot's `gates` names the modules that must be active for it to be
+        # asked (D-47, D-57); a name that matches no module leaves the slot silently unreachable.
+        for g in s.gates:
+            if g not in module_names:
+                findings.append(Finding("C12", f"{owner}/{s.id}", f"gates references unknown module {g!r}"))
+        # C11 route integrity: routes_to targets exist and are not blocked (review of systems, F-10, D-37).
+        option_ids = {o.id for o in s.value.options} if s.value.options else None
+        for option_id, target in s.route_to.items():
+            if option_ids is not None and option_id not in option_ids:
+                findings.append(Finding("C11", f"{owner}/{s.id}/route_to", f"route_to key {option_id!r} is not a defined option on this slot"))
+            if target not in module_names:
+                findings.append(Finding("C11", f"{owner}/{s.id}/route_to/{option_id}", f"routes to unknown module {target!r}"))
+                continue
+            target_module = bundle.modules[target]
+            if target_module.status == "blocked":
+                findings.append(Finding("C11", f"{owner}/{s.id}/route_to/{option_id}", f"routes to blocked module {target!r}"))
+            elif target not in presentation_names:
+                findings.append(Finding("C11", f"{owner}/{s.id}/route_to/{option_id}", f"routes to non-presentation module {target!r} (kind={target_module.kind})"))
 
     for s in bundle.context.slots:
         check_slot("context", s)
@@ -133,6 +158,11 @@ def run_checks(bundle: ContentBundle) -> list[Finding]:
 
     for name, m in bundle.modules.items():
         local_ids = {s.id for s in m.slots}
+        # C12 gating coverage (F-16): every gate.* id a presentation declares it needs must exist
+        # in a loaded gating module, or the controller silently never asks it and never prefills it.
+        for gid in m.gating:
+            if gid not in gate_ids:
+                findings.append(Finding("C12", name, f"gating references unknown gate slot {gid!r}"))
         for s in m.slots:
             check_slot(name, s)
             for p in s.phrasings:
