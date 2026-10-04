@@ -65,6 +65,9 @@ async function azureRecognizer(cfg: SpeechConfigResponse, handlers: RecognitionH
   // listening is ambient from the first turn; without it the SDK opens the default microphone itself
   const audio = stream ? sdk.AudioConfig.fromStreamInput(stream) : sdk.AudioConfig.fromDefaultMicrophoneInput();
   const rec = new sdk.SpeechRecognizer(speechConfig, audio);
+  // D-68: biases recognition toward the current question's expected vocabulary (medical terms,
+  // drug names) rather than guessing blind; replaced wholesale on each question, never accumulated.
+  const phraseList = sdk.PhraseListGrammar.fromRecognizer(rec);
 
   let finalText = "";
   let confidences: number[] = [];
@@ -161,6 +164,10 @@ async function azureRecognizer(cfg: SpeechConfigResponse, handlers: RecognitionH
       if (refreshTimer) window.clearTimeout(refreshTimer);
       if (restartTimer) window.clearTimeout(restartTimer);
       rec.stopContinuousRecognitionAsync(() => { flush(); rec.close(); }, () => rec.close());
+    },
+    setPhraseHints: (phrases: string[]) => {
+      phraseList.clear();
+      if (phrases.length) phraseList.addPhrases(phrases);
     },
   };
 }

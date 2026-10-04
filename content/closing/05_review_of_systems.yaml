@@ -17,8 +17,8 @@ reviewed: false
 review_notes:
   - "The mental health module is blocked pending specialist sign-off (D-50); the mood and sleep item here has no route and a low-mood positive is surfaced as a flag only, never followed up by the agent"
   - "Item wording per system is a GP reviewer decision; the list per stem is the owner's call on interview length"
-  - "Whether the early-pregnancy bleeding item is asked of everyone in the genitourinary sweep, or only where gate.pregnancy_possible applies, is an O&G reviewer decision"
-  - "Routing targets are presentation modules under content/modules; the controller has not yet implemented route_to or the silent reconciliation of duplicates"
+  - "D-66 (2026-10-04): the genitourinary sweep item no longer reads out 'pain in a testicle' or 'vaginal bleeding ... pregnant' once the patient has said which they are (ctx.sex_recorded or an explicit self-description anywhere in the conversation) - see ros-gu-male-v1/ros-gu-female-v1. gate.pregnancy_possible is unaffected and still asks on its own if a relevant module activates, regardless of this wording choice. Whether this should instead (or also) turn on a recorded pregnancy-possible answer rather than self-described sex is still an O&G reviewer call"
+  - "Routing targets are presentation modules under content/modules; route_to is implemented (Controller._on_module) and checked at build time (C11)"
 setting: both
 slots:
   - id: ros.cardiorespiratory
@@ -68,7 +68,15 @@ slots:
     always: true
     intent: urinary and genital symptoms in the last few weeks, each named, with a positive routed to its presentation module
     phrasings:
+      # D-66: the combined wording asked everyone where sex isn't yet known (spoken_when unset is
+      # always eligible and is the fallback once the two sex-specific ones below are filtered out -
+      # see Controller._active_phrasings); the sex-specific ones drop only the option that cannot
+      # apply, never a question the patient could actually need (urinary symptoms and blood in urine
+      # stay in every version). spoken_when is a rule expression the controller evaluates, unlike
+      # the free-text use_when reviewers already use elsewhere in this module.
       - {id: ros-gu-v1, form: closed, text: "In the last few weeks, have you had any of these: burning when you pass urine or going more often, blood in your urine, pain in a testicle, or vaginal bleeding while pregnant or possibly pregnant?"}
+      - {id: ros-gu-male-v1, form: closed, spoken_when: "self_described_sex == 'male'", text: "In the last few weeks, have you had any of these: burning when you pass urine or going more often, blood in your urine, or pain in a testicle?"}
+      - {id: ros-gu-female-v1, form: closed, spoken_when: "self_described_sex == 'female'", text: "In the last few weeks, have you had any of these: burning when you pass urine or going more often, blood in your urine, or vaginal bleeding while pregnant or possibly pregnant?"}
     value:
       type: set
       options:

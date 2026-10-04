@@ -16,7 +16,7 @@
 # (parameters.family_history_thresholds), never the eleven-relative list.
 module: family_history
 kind: closing
-order: 30
+order: 40
 display_name: your family's health
 version: 0.1.0
 status: grounded

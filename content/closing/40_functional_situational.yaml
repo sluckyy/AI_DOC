@@ -6,7 +6,7 @@
 # The handover carries the inputs, never a frailty score or grade.
 module: functional_situational
 kind: closing
-order: 40
+order: 50
 display_name: how you manage day to day
 version: 0.1.0
 status: grounded

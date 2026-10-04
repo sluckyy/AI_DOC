@@ -86,6 +86,9 @@ export type Recognizer = {
   start: () => void;
   stop: () => void;
   available: boolean;
+  /** D-68: bias the next recognition toward this question's expected vocabulary (Azure only; a no-op
+   * where the recogniser offers no such feature, e.g. the browser fallback). */
+  setPhraseHints?: (phrases: string[]) => void;
 };
 
 export function makeRecognizer(bcp47: string, handlers: { onStart?: () => void; onInterim?: (t: string) => void; onFinal: (t: string, confidence: number, durationMs: number) => void; onError?: (e: string) => void }, endOfTurnMs = 1200): Recognizer {
