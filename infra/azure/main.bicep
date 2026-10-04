@@ -201,6 +201,7 @@ resource api 'Microsoft.App/containerApps@2024-03-01' = {
             { name: 'STT_PROVIDER', value: 'auto' }
             { name: 'AZURE_SPEECH_REGION', value: location }
             { name: 'AZURE_SPEECH_KEY', secretRef: 'azure-speech-key' }
+            { name: 'AZURE_SPEECH_VOICE', value: 'en-AU-FreyaNeural' }   // D-08
             { name: 'CONTENT_SAFETY_PROVIDER', value: 'azure' }
             { name: 'CONTENT_SAFETY_ENDPOINT', value: contentSafety.properties.endpoint }
             { name: 'CONTENT_SAFETY_KEY', secretRef: 'content-safety-key' }
