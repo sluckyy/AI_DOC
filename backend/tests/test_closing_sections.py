@@ -17,8 +17,10 @@ def _sections(bundle):
 
 
 def test_sections_load_in_order(bundle):
+    # D-67 (2026-10-04): reordered from systems/medications/past-history/family/functional/social
+    # to put social and family ahead of functional, and keep past history right after systems review.
     names = _sections(bundle)
-    assert names == ["review_of_systems", "medications", "past_history", "family_history", "functional_situational", "social_history"], names
+    assert names == ["review_of_systems", "past_history", "medications", "social_history", "family_history", "functional_situational"], names
 
 
 def test_split_items_keeps_uncertain_descriptions():

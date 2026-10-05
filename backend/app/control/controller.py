@@ -33,6 +33,13 @@ COLLATERAL_PRESENT = re.compile(r"\b(my (wife|husband|partner|daughter|son|mum|m
 # switches to the person with the patient if one is available, and ends it if not.
 WELLBEING_SEVERE = re.compile(r"\b(drunk|been drinking|had a (few |couple of )?drinks?|high|stoned|off (his|her|their|my) face|under the influence|taken (drugs|something)|on drugs|too (upset|distressed|unwell|dizzy) to (talk|speak|continue)|can'?t (cope|think straight|focus|concentrate|breathe (properly|right)?) right now|having a panic attack|about to faint|passing out)\b", re.I)
 WELLBEING_BARRIER = re.compile(r"\b(confused|not (really )?with it|not making sense|can'?t (follow|keep up|get (my|his|her|their) words out|find (the|my|his|her|their) words)|slurring|speech is slurred|hard to (follow|understand) (me|him|her|them)|keeps? losing track)\b", re.I)
+# D-66: the patient's own words, anywhere they've already spoken, that they are a man or a woman -
+# used only to pick which review-of-systems wording is spoken (e.g. not reading out "pain in a
+# testicle" to someone who has already said they're a woman). Never a red-flag rule input: check 8
+# already keeps sex out of escalation logic entirely, and this mechanism cannot touch it - it only
+# ever selects which Phrasing is spoken, never which values a rule evaluates.
+SELF_DESCRIBED_MALE = re.compile(r"\b(i'?m|i am|as) a man\b|\bi'?m male\b|\bi am male\b", re.I)
+SELF_DESCRIBED_FEMALE = re.compile(r"\b(i'?m|i am|as) a woman\b|\bi'?m female\b|\bi am female\b", re.I)
 
 MOVE_EXPRESSION = {
     "disclose": "warm", "open": "attentive", "facilitate": "listening", "invite": "attentive",
@@ -56,12 +63,14 @@ class AgentTurn:
     expression: str = "attentive"
     next: str = "wait_for_person"
     alert_id: str | None = None
+    asr_hints: list[str] | None = None   # D-68: vocabulary the recogniser should expect for this question's answer
 
     def as_dict(self) -> dict:
         return {
             "role": "agent", "text": self.text, "move": self.move, "phase": self.phase,
             "phrasing_variant_id": self.phrasing_variant_id, "slot_id": self.slot_id,
             "expression": self.expression, "next": self.next, "alert_id": self.alert_id,
+            "asr_hints": self.asr_hints,
         }
 
 
@@ -211,6 +220,51 @@ class Controller:
             if isinstance(v.get("value"), str):
                 bits.append(v["value"])
         return " ".join(bits).lower()
+
+    def _self_described_sex(self, state: dict) -> str | None:
+        """D-66: ctx.sex_recorded if filled, else an explicit self-description anywhere the patient
+        has already spoken, else None - so a slot's sex-conditional wording (see _active_phrasings)
+        falls back to asking everyone, rather than ever assuming."""
+        rec = state["slot_values"].get("ctx.sex_recorded")
+        if rec and rec.get("state") == "filled" and isinstance(rec.get("value"), str):
+            v = rec["value"].strip().lower()
+            if v in ("male", "female"):
+                return v
+        corpus = self._mention_corpus(state)
+        if SELF_DESCRIBED_MALE.search(corpus):
+            return "male"
+        if SELF_DESCRIBED_FEMALE.search(corpus):
+            return "female"
+        return None
+
+    def _active_phrasings(self, state: dict, slot: Slot) -> list:
+        """A phrasing with a spoken_when (a rule expression, unlike the free-text use_when reviewers
+        already use elsewhere) wins outright over the unconditioned ones once it matches - it is
+        more specific, not an addition to the general case. Falls back to the unconditioned
+        phrasings when none matches (sex not yet known, say), and to every phrasing if somehow
+        there are no unconditioned ones either, so a slot is never left with nothing to say."""
+        if not any(p.spoken_when for p in slot.phrasings):
+            return slot.phrasings
+        values = {"self_described_sex": self._self_described_sex(state)}
+        matched = [p for p in slot.phrasings if p.spoken_when and evaluate(p.spoken_when, values).fired]
+        if matched:
+            return matched
+        return [p for p in slot.phrasings if not p.spoken_when] or slot.phrasings
+
+    @staticmethod
+    def _asr_hints(slot: Slot) -> list[str] | None:
+        """The vocabulary this question's answer is likely to use, so the recogniser can be told what
+        to expect for it (Azure Speech's phrase list biasing) rather than guessing blind on medical
+        terms and drug names generic speech models were never trained to expect. Only set/enum
+        slots have a defined vocabulary to offer; free text and yes/no give the recogniser nothing
+        it doesn't already handle well."""
+        if slot.value.type not in ("enum", "set") or not slot.value.options:
+            return None
+        hints: list[str] = []
+        for opt in slot.value.options:
+            hints.append(opt.id.replace("_", " "))
+            hints.extend(opt.synonyms)
+        return hints[:60] or None   # kept short; a very long phrase list biases recognition poorly
 
     @staticmethod
     def _mentioned(corpus: str, terms: list[str]) -> bool:
@@ -367,9 +421,10 @@ class Controller:
             name = state["active_module"]
             slot = self._module(name).slot(state["current_slot"])
             if slot and slot.id not in state["slot_values"]:
-                ph = slot.phrasings[0] if slot.phrasings else None
+                active = self._active_phrasings(state, slot)
+                ph = active[0] if active else None
                 text = (ph.text if ph else slot.intent).replace("{problem}", state.get("generic_problem", "problem"))
-                return [self._say(state, text, "reask", phrasing_variant_id=(ph.id if ph else None), slot_id=slot.id)]
+                return [self._say(state, text, "reask", phrasing_variant_id=(ph.id if ph else None), slot_id=slot.id, asr_hints=self._asr_hints(slot))]
         return []
 
     def _dispatch(self, state: dict, text: str, turn_id: str) -> list[AgentTurn]:
@@ -639,7 +694,8 @@ class Controller:
                 slot = outstanding[0]
                 state["current_slot"] = slot.id
                 attempts = state["slot_attempts"].get(slot.id, 0)
-                phrasing = slot.phrasings[min(attempts, len(slot.phrasings) - 1)] if slot.phrasings else None
+                active = self._active_phrasings(state, slot)
+                phrasing = active[min(attempts, len(active) - 1)] if active else None
                 text = phrasing.text if phrasing else slot.intent
                 text = text.replace("{problem}", state.get("generic_problem", "problem"))
                 if "#" in slot.id:
@@ -656,7 +712,7 @@ class Controller:
                     turns.append(self._say(state, slot.preamble, "explain_why"))
                 if slot.absolute_time and slot.value.type == "clock_time" and attempts == 0 and self.b.scripts.get("time_ask_prefix") and "time" not in text.lower():
                     text = f"{self.b.scripts['time_ask_prefix']} {text}"
-                turns.append(self._say(state, text, "ask" if attempts == 0 else "reask", phrasing_variant_id=(phrasing.id if phrasing else None), slot_id=slot.id))
+                turns.append(self._say(state, text, "ask" if attempts == 0 else "reask", phrasing_variant_id=(phrasing.id if phrasing else None), slot_id=slot.id, asr_hints=self._asr_hints(slot)))
                 return turns
             # module complete: move to next
             idx = state["module_queue"].index(name)

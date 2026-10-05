@@ -10,7 +10,7 @@
 # the shared gate (gate.anticoagulant) and are not repeated here.
 module: medications
 kind: closing
-order: 10
+order: 20
 display_name: medicines and allergies
 version: 0.1.0
 status: grounded

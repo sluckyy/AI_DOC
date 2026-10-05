@@ -8,7 +8,7 @@
 # the functional and situational section under their recipient keys (D-47).
 module: social_history
 kind: closing
-order: 50
+order: 30
 display_name: your work and your life outside health
 version: 0.1.0
 status: grounded

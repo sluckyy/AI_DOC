@@ -85,13 +85,13 @@ against a requirement id. `pytest tests/simulation -q` runs them; the run also
 lints everything Dr Sam said and the handover against the prohibited phrase list.
 
 After the presenting complaint, Dr Sam runs the closing sections in
-`content/closing/`, in the order their files declare: a systems review whose
-positives route to their own question sets, medicines by category and per
-medicine, past history by five retrieval routes with a lay-anchored sweep,
-family history in three states with guideline thresholds named, function and
-situation as inputs never a score (with per-item pass-on consent), and social
-history. Each is a YAML module of `kind: closing`; a section can be re-ordered,
-disabled or replaced without code.
+`content/closing/`, in the order each file's own `order:` field declares
+(D-67): a systems review whose positives route to their own question sets,
+past history by five retrieval routes with a lay-anchored sweep, medicines by
+category and per medicine, social history, family history in three states
+with guideline thresholds named, and function and situation as inputs never a
+score (with per-item pass-on consent). Each is a YAML module of `kind:
+closing`; a section can be re-ordered, disabled or replaced without code.
 
 Content is reloadable without a restart: `POST /api/content/reload` re-reads
 `content/` and keeps the previous bundle if the new one fails the authoring
@@ -123,8 +123,9 @@ See `design/07_demo_script.md`.
 
 Phase 1 vertical slice, built: 47 content modules (40 presentation modules,
 the shared gating module, and the six closing sections — review of systems,
-medications, past history, family history, functional and situational, social
-history); the open phase, saturation, summary, per-slot questioning; red-flag
+past history, medications, social history, family history, functional and
+situational — in that order, D-67); the open phase, saturation, summary,
+per-slot questioning; red-flag
 alerts with three tiers, routed per setting (ED: alert_triage, and since D-64
 an immediate-tier alert no longer stops the interview, since the patient is
 already triaged; GP booking: still a live transfer to the duty GP and still

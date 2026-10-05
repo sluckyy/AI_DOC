@@ -13,6 +13,7 @@ export type AgentTurn = {
   visemes: { offset_ms: number; viseme_id: number }[];
   duration_ms: number;
   prosody: { rate: string; pitch: string; pause_after_ms: number };
+  asr_hints: string[] | null;
 };
 
 export type SpeechConfigResponse = {

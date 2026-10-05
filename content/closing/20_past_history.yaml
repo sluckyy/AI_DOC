@@ -17,7 +17,7 @@
 # the summary) is the handover layer's job, not this file's.
 module: past_history
 kind: closing
-order: 20
+order: 10
 display_name: your health in the past
 version: 0.1.0
 status: grounded

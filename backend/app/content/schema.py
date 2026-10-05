@@ -18,7 +18,9 @@ class Phrasing(BaseModel):
     id: str
     form: Literal["open", "closed"] = "open"
     text: str
-    use_when: str | None = None
+    use_when: str | None = None   # prose for reviewers only; never evaluated as code (unlike spoken_when)
+    spoken_when: str | None = None   # D-66: a rule expression (same language as asked_when); only this
+                                      # phrasing's own selection evaluates it - see Controller._active_phrasings
 
 
 class Option(BaseModel):

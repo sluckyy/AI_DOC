@@ -80,6 +80,9 @@ export function DrSamPanel({ cid, setting, language, register, initialTurns, mic
     speakingRef.current = true;
     while (queue.current.length) {
       const t = queue.current.shift()!;
+      // D-68: bias recognition toward this question's expected vocabulary for whatever the person
+      // says next; cleared (not left stale) on a turn that doesn't carry hints of its own.
+      recRef.current?.setPhraseHints?.(t.asr_hints || []);
       setLines((l) => [...l, { role: "agent", text: t.caption, move: t.move, alert: t.move === "alert" }]);
       recentCaptions.current = [...recentCaptions.current.slice(-2), t.caption];
       setExpression((t.expression as Expression) || "attentive");

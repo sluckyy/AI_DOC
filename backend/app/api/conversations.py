@@ -104,7 +104,7 @@ def _persist_agent_turns(db: Session, conv: Conversation, turns: list[AgentTurn]
             "next": t.next, "alert_id": t.alert_id, "phrasing_variant_id": t.phrasing_variant_id, "slot_id": t.slot_id,
             "audio_url": f"/audio/{tid}" if syn.audio else None, "visemes": syn.visemes, "duration_ms": syn.duration_ms,
             "prosody": {"rate": rate, "pitch": "0%", "pause_after_ms": 1500 if t.move in ("invite", "ask", "reask", "open") else 600},
-            "content_safety": verdict,
+            "content_safety": verdict, "asr_hints": t.asr_hints,
         })
     return out
 
